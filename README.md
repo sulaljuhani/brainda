@@ -1,0 +1,373 @@
+# VIB - Personal Knowledge Management System
+
+VIB is a personal knowledge management system that combines note-taking, document ingestion, semantic search, and intelligent reminders. It features RAG (Retrieval Augmented Generation) capabilities for answering questions based on your stored knowledge.
+
+## Features
+
+- **Note Management**: Create, update, and organize notes with tags
+- **Document Ingestion**: Upload and process documents (PDF, text, etc.) with automatic parsing
+- **Semantic Search**: Vector-based search across notes and documents using embeddings
+- **RAG Chat Interface**: Ask questions and get answers based on your knowledge base
+- **Smart Reminders**: Schedule and manage reminders with natural language processing
+- **Push Notifications**: Web push notifications for reminders and updates
+- **Metrics & Monitoring**: Prometheus metrics for system health and performance
+
+## Architecture
+
+VIB consists of several microservices orchestrated with Docker Compose:
+
+- **API Server** (FastAPI): Main application server
+- **Worker** (Celery): Background task processing for embeddings and document ingestion
+- **Beat** (Celery Beat): Scheduled task management
+- **PostgreSQL**: Primary database for structured data
+- **Redis**: Message broker and cache
+- **Qdrant**: Vector database for semantic search
+- **Web Frontend**: React-based user interface
+
+## Prerequisites
+
+- **Docker** (version 20.10 or higher)
+- **Docker Compose** (version 2.0 or higher)
+- **Git**
+- At least **4GB RAM** available for Docker
+
+## Installation
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd brainda
+```
+
+### 2. Configure Environment Variables
+
+Copy the example environment file and customize it:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and update the following variables:
+
+```bash
+# Database credentials
+POSTGRES_USER=vib
+POSTGRES_PASSWORD=<your-secure-password>
+POSTGRES_DB=vib
+DATABASE_URL=postgresql://vib:<your-secure-password>@postgres:5432/vib
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# Qdrant
+QDRANT_URL=http://qdrant:6333
+
+# Authentication - Generate a secure token
+API_TOKEN=<generate-with-openssl-rand-hex-32>
+
+# Application
+LOG_LEVEL=INFO
+TZ=UTC
+
+# LLM Backend (optional)
+LLM_BACKEND=ollama
+OLLAMA_URL=http://ollama:11434
+```
+
+Generate a secure API token:
+
+```bash
+openssl rand -hex 32
+```
+
+### 3. Create Required Directories
+
+```bash
+mkdir -p vault/notes uploads
+```
+
+### 4. Start the Services
+
+```bash
+docker compose up -d
+```
+
+This will start all services in detached mode. Initial startup may take several minutes as Docker downloads images and builds containers.
+
+### 5. Verify Installation
+
+Check that all services are healthy:
+
+```bash
+docker compose ps
+```
+
+All services should show status "Up" or "Up (healthy)".
+
+Check the health endpoint:
+
+```bash
+curl http://localhost:8000/api/v1/health
+```
+
+You should see a JSON response with `"status": "healthy"` and all services marked as "ok".
+
+## Usage
+
+### Access the Application
+
+- **API Base URL**: http://localhost:8000
+- **Health Check**: http://localhost:8000/api/v1/health
+- **Metrics**: http://localhost:8000/api/v1/metrics
+- **API Docs**: http://localhost:8000/docs
+
+### API Authentication
+
+All API requests require authentication using a Bearer token. Include your API token in the Authorization header:
+
+```bash
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+     http://localhost:8000/api/v1/protected
+```
+
+### Creating Your First Note
+
+```bash
+curl -X POST http://localhost:8000/api/v1/notes \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "My First Note",
+    "body": "This is the content of my first note.",
+    "tags": ["example", "tutorial"]
+  }'
+```
+
+### Searching Your Knowledge Base
+
+```bash
+curl -X POST http://localhost:8000/api/v1/search \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "search query here",
+    "limit": 5
+  }'
+```
+
+### Using the Chat Interface
+
+Ask questions about your knowledge base:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "What are my notes about Python?"
+  }'
+```
+
+Create notes via chat:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Create a note titled Meeting Notes with body Discussed project timeline"
+  }'
+```
+
+Set reminders:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Remind me to review docs in 2 hours"
+  }'
+```
+
+## Development
+
+### Running in Development Mode
+
+For development with hot-reload:
+
+```bash
+# Start backend services
+docker compose up -d postgres redis qdrant
+
+# Run API server locally
+cd app
+export PYTHONPATH=$(pwd)
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Run Celery worker (in another terminal)
+celery -A worker.tasks worker --loglevel=info
+
+# Run Celery beat (in another terminal)
+celery -A worker.scheduler beat --loglevel=info
+
+# Run web frontend (in another terminal)
+cd app/web
+npm install
+npm run dev
+```
+
+### Running Tests
+
+Execute the comprehensive test suite:
+
+```bash
+# Run MVP complete tests
+./test-mvp-complete.sh
+
+# Run specific stage tests
+./test-stage0.sh  # Basic health and metrics
+./test-stage1.sh  # Notes and reminders
+```
+
+### Viewing Logs
+
+```bash
+# All services
+docker compose logs -f
+
+# Specific service
+docker compose logs -f orchestrator
+docker compose logs -f worker
+docker compose logs -f postgres
+```
+
+## Configuration
+
+### Database Migrations
+
+Database schema is initialized automatically on first startup via `init.sql`. For incremental migrations:
+
+```bash
+docker exec vib-postgres psql -U vib -d vib -f /app/migrations/your_migration.sql
+```
+
+### Adjusting Resource Limits
+
+Edit `docker-compose.yml` to adjust resource allocations:
+
+```yaml
+services:
+  orchestrator:
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+```
+
+### Performance Tuning
+
+Key environment variables for performance:
+
+- `CHAT_RATE_LIMIT`: Maximum chat requests per window (default: 30)
+- `CHAT_RATE_WINDOW_SECONDS`: Rate limit window in seconds (default: 60)
+- `API_LATENCY_THRESHOLD`: API response time target in ms (default: 500)
+- `SEARCH_LATENCY_THRESHOLD`: Search response time target in ms (default: 200)
+
+## Troubleshooting
+
+### Services Not Starting
+
+Check Docker logs:
+```bash
+docker compose logs
+```
+
+Ensure ports are not already in use:
+```bash
+lsof -i :8000  # API
+lsof -i :5434  # PostgreSQL
+lsof -i :6379  # Redis
+lsof -i :6333  # Qdrant
+```
+
+### Database Connection Errors
+
+Verify PostgreSQL is running and accepting connections:
+```bash
+docker compose exec postgres pg_isready -U vib
+```
+
+### Embedding Tasks Not Processing
+
+Check Celery worker status:
+```bash
+docker compose logs worker
+```
+
+Verify Redis connectivity:
+```bash
+docker compose exec redis redis-cli ping
+```
+
+### Vector Search Not Working
+
+Ensure Qdrant collection is created:
+```bash
+curl http://localhost:6333/collections
+```
+
+Check embedding model is downloaded:
+```bash
+docker compose logs orchestrator | grep "all-MiniLM-L6-v2"
+```
+
+## Project Structure
+
+```
+.
+├── app/
+│   ├── api/                    # FastAPI application
+│   │   ├── adapters/          # External service adapters
+│   │   ├── models/            # Pydantic models
+│   │   ├── routers/           # API route handlers
+│   │   ├── services/          # Business logic
+│   │   ├── tools/             # Reusable tool implementations
+│   │   └── main.py            # Application entry point
+│   ├── common/                # Shared utilities
+│   ├── web/                   # React frontend
+│   └── worker/                # Celery tasks and scheduler
+├── migrations/                # SQL migration files
+├── tests/                     # Test scripts and fixtures
+├── vault/                     # Note storage (markdown files)
+├── uploads/                   # Uploaded document storage
+├── docker-compose.yml         # Service orchestration
+├── Dockerfile                 # Container build definition
+└── README.md                  # This file
+```
+
+## Security Considerations
+
+- **API Tokens**: Store API tokens securely, never commit to version control
+- **Environment Files**: Keep `.env` files out of version control
+- **Network Exposure**: By default, services are exposed on localhost only
+- **Production Deployment**: Update CORS settings, use HTTPS, implement proper authentication
+- **File Uploads**: Uploaded files are stored with restricted permissions (600)
+- **Database**: Use strong passwords and restrict network access in production
+
+## Contributing
+
+See `AGENTS.md` for development guidelines, coding standards, and contribution workflow.
+
+## License
+
+[Add your license information here]
+
+## Support
+
+For issues and questions:
+- Check the troubleshooting section above
+- Review logs with `docker compose logs`
+- Open an issue in the repository
