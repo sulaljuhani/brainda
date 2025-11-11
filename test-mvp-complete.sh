@@ -307,7 +307,11 @@ measure_latency() {
   for ((i=0; i<iterations; i++)); do
     local start end duration
     start=$(date +%s%3N)
-    curl -sS ${VERBOSE:+-v} -H "Authorization: Bearer $TOKEN" "$BASE_URL$endpoint" >/dev/null
+    if [[ "$VERBOSE" == "true" ]]; then
+      curl -sS -v -H "Authorization: Bearer $TOKEN" "$BASE_URL$endpoint" >/dev/null
+    else
+      curl -sS -H "Authorization: Bearer $TOKEN" "$BASE_URL$endpoint" >/dev/null
+    fi
     end=$(date +%s%3N)
     duration=$((end - start))
     results+=($duration)
@@ -415,6 +419,12 @@ run_test() {
     return 0
   fi
 
+  if [[ "$FAST_MODE" == "true" && -n "${SLOW_TEST_MAP[$test_name]:-}" ]]; then
+    warn "Skipping $test_name (slow test, fast mode enabled)"
+    TEST_RECORDS+=("$test_name|SKIPPED|0s|Skipped in fast mode")
+    return 0
+  fi
+
   TOTAL_TESTS=$((TOTAL_TESTS + 1))
   log "Running test: $test_name"
   local start_ts end_ts duration rc=0
@@ -439,24 +449,6 @@ run_test() {
   return $rc
 }
 
-run_test_with_retry() {
-  local test_name="$1"
-  local test_func="$2"
-  local max_attempts=3
-  local attempt=1
-  shift 2
-  local args=("$@")
-  while [[ $attempt -le $max_attempts ]]; do
-    if run_test "$test_name" "$test_func" "${args[@]}"; then
-      return 0
-    fi
-    attempt=$((attempt + 1))
-    log "Retrying $test_name ($attempt/$max_attempts)"
-    sleep 5
-  done
-  return 1
-}
-
 # Configuration loaders
 load_env_file() {
   if [[ -f .env ]]; then
@@ -472,7 +464,7 @@ load_config_json() {
   if [[ -f "$CONFIG_FILE" ]]; then
     log "Loading config from $CONFIG_FILE"
     BASE_URL=$(jq -r '.base_url // empty' "$CONFIG_FILE" || echo "$BASE_URL")
-    HEATH_TIMEOUT=$(jq -r '.timeout.health_check // empty' "$CONFIG_FILE" || true)
+    HEALTH_TIMEOUT=$(jq -r '.timeout.health_check // empty' "$CONFIG_FILE" || true)
     local skip_list
     mapfile -t skip_list < <(jq -r '.skip_tests[]?' "$CONFIG_FILE")
     for name in "${skip_list[@]}"; do
@@ -1016,7 +1008,7 @@ notes_check() {
     external_edit)
       local before after file="vault/$NOTE_FIXTURE_MD_PATH"
       before=$(psql_query "SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';")
-      echo "\nUpdated $(date)" >> "$file"
+      printf '\nUpdated %s\n' "$(date)" >> "$file"
       wait_for "psql_query \"SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';\" | awk -v before=$before 'NF && \$1 > before { exit 0 } END { exit 1 }'" 120 "re-embedding after external edit"
       after=$(psql_query "SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';")
       assert_greater_than "${after:-0}" "${before:-0}" "Embedding timestamp advanced" || rc=1
@@ -2068,10 +2060,10 @@ generate_json_report() {
     --argjson passed "$PASSED_TESTS" \
     --argjson failed "$FAILED_TESTS" \
     --argjson warnings "$WARNINGS" \
-    --arg reminder_p95 "${REMINDER_FIRE_LAG_P95:-"null"}" \
-    --arg push_rate "${PUSH_SUCCESS_RATE:-"null"}" \
-    --arg doc_p95 "${DOC_INGESTION_P95:-"null"}" \
-    --arg search_p95 "${VECTOR_SEARCH_P95:-"null"}" \
+    --arg reminder_p95 "${REMINDER_FIRE_LAG_P95:-null}" \
+    --arg push_rate "${PUSH_SUCCESS_RATE:-null}" \
+    --arg doc_p95 "${DOC_INGESTION_P95:-null}" \
+    --arg search_p95 "${VECTOR_SEARCH_P95:-null}" \
     --arg tests "$(printf '%s
 ' "${TEST_RECORDS[@]}" | jq -Rsn '[inputs | select(length>0) | split("|") | {name:.[0], status:.[1], duration:.[2], message:.[3]}]')" \
     '($tests | fromjson) as $items | {
