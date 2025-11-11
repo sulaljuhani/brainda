@@ -116,16 +116,38 @@ def extract_note_id_from_frontmatter(content: str) -> uuid.UUID | None:
     return None
 
 def ensure_qdrant_collection(client: QdrantClient):
-    collections = client.get_collections().collections
-    if "knowledge_base" not in [c.name for c in collections]:
-        client.create_collection(
-            collection_name="knowledge_base",
-            vectors_config=VectorParams(
-                size=VECTOR_DIMENSIONS,
-                distance=Distance.COSINE
+    """Ensure the Qdrant collection exists with proper error handling."""
+    try:
+        # Get existing collections
+        collections_response = client.get_collections()
+        existing_collections = [c.name for c in collections_response.collections]
+
+        logger.info("worker_checking_qdrant_collections", existing=existing_collections)
+
+        # Create collection if it doesn't exist
+        if "knowledge_base" not in existing_collections:
+            logger.info("worker_creating_qdrant_collection", collection_name="knowledge_base")
+            client.create_collection(
+                collection_name="knowledge_base",
+                vectors_config=VectorParams(
+                    size=VECTOR_DIMENSIONS,
+                    distance=Distance.COSINE
+                )
             )
-        )
-        logger.info("created_qdrant_collection", collection_name="knowledge_base")
+            logger.info("worker_created_qdrant_collection", collection_name="knowledge_base")
+        else:
+            logger.info("worker_qdrant_collection_exists", collection_name="knowledge_base")
+
+        # Verify collection exists
+        collections_response = client.get_collections()
+        existing_collections = [c.name for c in collections_response.collections]
+        if "knowledge_base" not in existing_collections:
+            logger.error("worker_qdrant_collection_verification_failed", collection_name="knowledge_base")
+            raise RuntimeError("Failed to create or verify Qdrant collection")
+
+    except Exception as e:
+        logger.error("worker_qdrant_collection_error", error=str(e))
+        raise
 
 async def embed_and_upsert_note_async(note_id: uuid.UUID, title: str, body: str, tags: list, md_path: str, user_id: uuid.UUID):
     """Embed note and store in Qdrant"""

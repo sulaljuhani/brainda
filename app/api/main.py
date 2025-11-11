@@ -312,18 +312,65 @@ async def queue_embedding_task(note_id: uuid.UUID):
     celery_client.send_task('worker.tasks.embed_note_task', args=[str(note_id)])
 
 async def ensure_qdrant_collection():
-    client = QdrantClient(url=os.getenv("QDRANT_URL"))
-    
-    collections = client.get_collections().collections
-    if "knowledge_base" not in [c.name for c in collections]:
-        client.create_collection(
-            collection_name="knowledge_base",
-            vectors_config=VectorParams(
-                size=VECTOR_DIMENSIONS,
-                distance=Distance.COSINE
+    """Ensure the Qdrant collection exists with retry logic."""
+    max_retries = 5
+    retry_delay = 2
+
+    for attempt in range(max_retries):
+        try:
+            client = QdrantClient(url=os.getenv("QDRANT_URL"))
+
+            # Get existing collections
+            collections_response = client.get_collections()
+            existing_collections = [c.name for c in collections_response.collections]
+
+            logger.info(
+                "checking_qdrant_collections",
+                existing=existing_collections,
+                attempt=attempt + 1
             )
-        )
-        logger.info("created_qdrant_collection", collection_name="knowledge_base")
+
+            # Create collection if it doesn't exist
+            if "knowledge_base" not in existing_collections:
+                logger.info("creating_qdrant_collection", collection_name="knowledge_base")
+                client.create_collection(
+                    collection_name="knowledge_base",
+                    vectors_config=VectorParams(
+                        size=VECTOR_DIMENSIONS,
+                        distance=Distance.COSINE
+                    )
+                )
+                logger.info("created_qdrant_collection", collection_name="knowledge_base")
+            else:
+                logger.info("qdrant_collection_exists", collection_name="knowledge_base")
+
+            # Verify collection was created
+            collections_response = client.get_collections()
+            existing_collections = [c.name for c in collections_response.collections]
+            if "knowledge_base" in existing_collections:
+                logger.info("qdrant_collection_verified", collection_name="knowledge_base")
+                return
+            else:
+                logger.warning(
+                    "qdrant_collection_not_verified",
+                    collection_name="knowledge_base",
+                    attempt=attempt + 1
+                )
+
+        except Exception as e:
+            logger.error(
+                "qdrant_collection_creation_failed",
+                error=str(e),
+                attempt=attempt + 1,
+                max_retries=max_retries
+            )
+            if attempt < max_retries - 1:
+                logger.info("retrying_qdrant_collection", delay=retry_delay)
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                logger.error("qdrant_collection_creation_exhausted", max_retries=max_retries)
+                raise
 
 # Metrics middleware (must run before other middleware to capture timings)
 app.add_middleware(MetricsMiddleware)
