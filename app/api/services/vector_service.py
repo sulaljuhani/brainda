@@ -27,16 +27,38 @@ class VectorService:
         self._ensure_collection()
 
     def _ensure_collection(self) -> None:
-        collections = self.client.get_collections().collections
-        if self.collection_name in [c.name for c in collections]:
-            return
-        from qdrant_client.http.models import Distance, VectorParams
+        """Ensure the vector collection exists with proper error handling."""
+        try:
+            # Get existing collections
+            collections_response = self.client.get_collections()
+            existing_collections = [c.name for c in collections_response.collections]
 
-        self.client.create_collection(
-            collection_name=self.collection_name,
-            vectors_config=VectorParams(size=384, distance=Distance.COSINE),
-        )
-        logger.info("vector_collection_created", name=self.collection_name)
+            # Check if collection already exists
+            if self.collection_name in existing_collections:
+                logger.info("vector_collection_exists", name=self.collection_name)
+                return
+
+            # Import here to avoid circular dependencies
+            from qdrant_client.http.models import Distance, VectorParams
+
+            # Create the collection
+            logger.info("creating_vector_collection", name=self.collection_name)
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+            )
+            logger.info("vector_collection_created", name=self.collection_name)
+
+            # Verify collection was created
+            collections_response = self.client.get_collections()
+            existing_collections = [c.name for c in collections_response.collections]
+            if self.collection_name not in existing_collections:
+                logger.error("vector_collection_verification_failed", name=self.collection_name)
+                raise RuntimeError(f"Failed to create or verify collection: {self.collection_name}")
+
+        except Exception as e:
+            logger.error("vector_collection_error", name=self.collection_name, error=str(e))
+            raise
 
     async def upsert_document_chunks(
         self,
