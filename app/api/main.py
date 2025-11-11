@@ -54,6 +54,7 @@ async def lifespan(app: FastAPI):
     # Startup
     start_scheduler()
     await sync_scheduled_reminders()
+    await ensure_qdrant_collection()
     yield
     # Shutdown (if needed)
 
