@@ -52,6 +52,7 @@ from worker.scheduler import start_scheduler, sync_scheduled_reminders
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    await ensure_qdrant_collection()
     start_scheduler()
     await sync_scheduled_reminders()
     yield
