@@ -1,0 +1,17 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# User uploads and sensitive data
+uploads/
+vault/
+backups/data/
+
+# Submodules
+brainda/

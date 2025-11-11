@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+input_file=""
+declare -a passthrough=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--file)
+      passthrough+=("$1" "$2")
+      shift 2
+      ;;
+    -*)
+      passthrough+=("$1")
+      shift
+      ;;
+    *)
+      if [[ -z "$input_file" ]]; then
+        input_file="$1"
+        shift
+      else
+        passthrough+=("$1")
+        shift
+      fi
+      ;;
+  esac
+done
+if [[ -n "$input_file" ]]; then
+  docker exec -i -e PGPASSWORD="$PGPASSWORD" vib-postgres pg_restore "${passthrough[@]}" < "$input_file"
+else
+  docker exec -i -e PGPASSWORD="$PGPASSWORD" vib-postgres pg_restore "${passthrough[@]}"
+fi
