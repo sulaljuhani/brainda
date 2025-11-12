@@ -71,8 +71,29 @@ LOG_LEVEL=INFO
 TZ=UTC
 
 # LLM Backend (optional)
-LLM_BACKEND=ollama
+LLM_BACKEND=ollama  # dummy | ollama | openai | anthropic | custom
+LLM_MODEL=placeholder-model
+
+# Provider-specific settings
+# Ollama
 OLLAMA_URL=http://ollama:11434
+OLLAMA_MODEL=llama3
+
+# OpenAI
+OPENAI_API_KEY=sk-your-openai-key
+OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_BASE_URL=https://api.openai.com/v1
+
+# Anthropic
+ANTHROPIC_API_KEY=sk-ant-your-key
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+ANTHROPIC_MAX_TOKENS=1024
+
+# Custom (OpenAI-compatible)
+CUSTOM_LLM_URL=https://api.your-llm.com/v1/chat/completions
+CUSTOM_LLM_API_KEY=your-secret-key
+CUSTOM_LLM_MODEL=your-model-v1
+CUSTOM_LLM_HEADERS={"X-Organization": "your-org"}
 ```
 
 Generate a secure API token:
@@ -371,3 +392,17 @@ For issues and questions:
 - Check the troubleshooting section above
 - Review logs with `docker compose logs`
 - Open an issue in the repository
+### Configuring LLM Providers
+
+Set `LLM_BACKEND` to choose which adapter powers Retrieval-Augmented Generation responses. The server includes native adapters for Ollama, OpenAI, Anthropic, and arbitrary OpenAI-compatible APIs.
+
+| Backend | Required Settings | Notes |
+| --- | --- | --- |
+| `dummy` | None | Returns a placeholder response without calling an external model. Useful for development without API keys. |
+| `ollama` | `OLLAMA_URL`, optional `OLLAMA_MODEL` | Streams responses from a local or remote Ollama deployment. |
+| `openai` | `OPENAI_API_KEY`, optional `OPENAI_MODEL`, `OPENAI_BASE_URL` | Uses the official OpenAI Chat Completions API with retry logic and token counting. |
+| `anthropic` | `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, `ANTHROPIC_MAX_TOKENS` | Integrates with Anthropic Claude via the Messages API with streaming support. |
+| `custom` | `CUSTOM_LLM_URL`, optional `CUSTOM_LLM_API_KEY`, `CUSTOM_LLM_MODEL`, `CUSTOM_LLM_HEADERS` | Targets any OpenAI-compatible endpoint by forwarding messages and headers. |
+
+All adapters expose both standard responses and streaming generators. Token usage is estimated with `tiktoken` when available so you can monitor cost across providers.
+

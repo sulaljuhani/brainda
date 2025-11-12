@@ -6,6 +6,7 @@ httpx==0.25.2
 celery==5.3.4
 structlog==23.2.0
 python-dotenv==1.0.0
+tenacity>=8.2.3
 sentence-transformers>=3.0.0
 huggingface-hub>=0.20.0
 onnxruntime==1.17.3
@@ -22,3 +23,6 @@ unstructured[pdf]>=0.15.0
 matplotlib>=3.7.0
 pillow>=10.0.0
 pdf2image>=1.16.0
+openai>=1.12.0
+anthropic>=0.18.0
+tiktoken>=0.5.2
