@@ -211,39 +211,9 @@ async def create_note_record(
     note: "NoteCreateRequest",
     db: asyncpg.Connection,
 ) -> dict:
-    """Core note creation logic shared between HTTP endpoints and chat actions."""
+    """Core note creation logic shared between HTTP endpoints and chat actions.
+    Idempotency is handled by middleware."""
     try:
-        existing = await db.fetchrow(
-            """
-            SELECT id, title, md_path, created_at
-            FROM notes
-            WHERE user_id = $1
-              AND title = $2
-              AND created_at > NOW() - INTERVAL '5 minutes'
-            LIMIT 1
-            """,
-            user_id,
-            note.title,
-        )
-        if existing:
-            logger.info(
-                "duplicate_note_skipped",
-                note_id=str(existing["id"]),
-                title=note.title,
-            )
-            notes_deduped_total.labels(user_id=str(user_id)).inc()
-            return {
-                "success": True,
-                "deduplicated": True,
-                "data": {
-                    "id": str(existing["id"]),
-                    "title": existing["title"],
-                    "md_path": existing["md_path"],
-                    "created_at": existing["created_at"].isoformat() + "Z",
-                    "message": "Note with this title already exists",
-                },
-            }
-
         md_path = generate_markdown_filename(note.title, "/vault")
         try:
             inserted_note = await db.fetchrow(
@@ -283,6 +253,8 @@ async def create_note_record(
                 },
             }
         except UniqueViolationError:
+            # DB constraint caught a duplicate - this is a safety net
+            # Primary duplicate prevention is handled by idempotency middleware
             logger.warning(
                 "duplicate_note_prevented_by_constraint",
                 title=note.title,
@@ -291,7 +263,7 @@ async def create_note_record(
                 """
                 SELECT id, title, md_path, created_at
                 FROM notes
-                WHERE user_id = $1 AND title = $2
+                WHERE user_id = $1 AND lower(title) = lower($2)
                 ORDER BY created_at DESC LIMIT 1
                 """,
                 user_id,
@@ -300,7 +272,6 @@ async def create_note_record(
             notes_deduped_total.labels(user_id=str(user_id)).inc()
             return {
                 "success": True,
-                "deduplicated": True,
                 "data": {
                     "id": str(existing["id"]),
                     "title": existing["title"],
@@ -381,6 +352,13 @@ async def ensure_qdrant_collection():
 # Metrics middleware (must run before other middleware to capture timings)
 app.add_middleware(MetricsMiddleware)
 
+# Auth middleware (extracts user_id from token and sets in request.state)
+from api.middleware import AuthMiddleware, IdempotencyMiddleware
+app.add_middleware(AuthMiddleware)
+
+# Idempotency middleware (ensures exactly-once semantics for state-changing operations)
+app.add_middleware(IdempotencyMiddleware)
+
 # CORS - Secure configuration using environment variables
 # CRITICAL: Never use allow_origins=["*"] with allow_credentials=True
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -394,7 +372,8 @@ app.add_middleware(
     allow_origins=CORS_ORIGINS,  # Specific origins only, configured via environment
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID", "Idempotency-Key"],
+    expose_headers=["X-Idempotency-Replay"],
 )
 
 from api.dependencies import verify_token

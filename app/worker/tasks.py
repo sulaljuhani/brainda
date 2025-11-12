@@ -51,6 +51,10 @@ celery_app.conf.beat_schedule = {
     "cleanup-old-data": {
         "task": "worker.tasks.cleanup_old_data",
         "schedule": crontab(hour=3, minute=0),
+    },
+    "cleanup-idempotency-keys": {
+        "task": "worker.tasks.cleanup_expired_idempotency_keys",
+        "schedule": crontab(minute=0),  # Every hour
     }
 }
 
@@ -92,7 +96,7 @@ async def _vacuum_tables(tables: list[str]):
     # Whitelist of allowed tables to prevent SQL injection
     ALLOWED_TABLES = {
         "messages", "jobs", "notification_delivery", "audit_log",
-        "notes", "documents", "chunks", "reminders", "users"
+        "notes", "documents", "chunks", "reminders", "users", "idempotency_keys"
     }
     conn = await _connect_db()
     try:
@@ -527,6 +531,45 @@ def start_file_watcher():
     logger.info("file_watcher_started", path=path)
     # The observer runs in a background thread, so we don't need to block here.
     # The main Celery process will keep the script alive.
+
+@celery_app.task(name="worker.tasks.cleanup_expired_idempotency_keys")
+def cleanup_expired_idempotency_keys():
+    """
+    Delete idempotency keys older than 24 hours.
+    Runs every hour via Celery Beat.
+    """
+    return asyncio.run(_cleanup_expired_idempotency_keys_async())
+
+
+async def _cleanup_expired_idempotency_keys_async():
+    """Clean up expired idempotency keys from the database."""
+    start = time.monotonic()
+    conn = await _connect_db()
+    try:
+        command = await conn.execute("""
+            DELETE FROM idempotency_keys
+            WHERE expires_at < NOW()
+        """)
+        deleted = _rows_from_command(command)
+
+        duration = time.monotonic() - start
+        logger.info(
+            "idempotency_cleanup_completed",
+            deleted_count=deleted,
+            duration_seconds=duration
+        )
+
+        # Vacuum table if significant deletions
+        if deleted > 100:
+            await _vacuum_tables(["idempotency_keys"])
+
+        return {"deleted": deleted, "duration_seconds": duration}
+    except Exception as exc:
+        logger.error("idempotency_cleanup_failed", error=str(exc))
+        raise
+    finally:
+        await conn.close()
+
 
 @celery_app.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):

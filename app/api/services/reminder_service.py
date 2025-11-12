@@ -18,12 +18,9 @@ class ReminderService:
         data: ReminderCreate
     ) -> dict:
         """
-        Create reminder with 5-minute deduplication window.
-        Uses optimistic insert to prevent race conditions.
+        Create reminder. Idempotency is handled by middleware.
         Returns standardized response format.
         """
-        # Try to create new reminder first (optimistic approach)
-        # If a duplicate exists, the DB constraint will catch it
         try:
             # Use a transaction to ensure atomicity
             async with self.db.transaction():
@@ -55,7 +52,8 @@ class ReminderService:
             return {"success": True, "data": dict(reminder)}
 
         except UniqueViolationError as e:
-            # Race condition caught by DB constraint - fetch the existing reminder
+            # DB constraint caught a duplicate - this is a safety net
+            # Primary duplicate prevention is handled by idempotency middleware
             logger.info(
                 "duplicate_reminder_prevented_by_constraint",
                 user_id=str(user_id),
@@ -63,13 +61,12 @@ class ReminderService:
                 error=str(e)
             )
 
-            # Fetch existing reminder
+            # Fetch the existing reminder
             existing = await self.db.fetchrow("""
                 SELECT * FROM reminders
                 WHERE user_id = $1
                 AND title = $2
-                AND ABS(EXTRACT(EPOCH FROM (due_at_utc - $3::timestamptz))) < 1
-                AND created_at > NOW() - INTERVAL '5 minutes'
+                AND due_at_utc = $3
                 AND status = 'active'
                 ORDER BY created_at DESC
                 LIMIT 1
@@ -79,11 +76,7 @@ class ReminderService:
                 reminders_deduped_total.labels(user_id=str(user_id)).inc()
                 return {
                     "success": True,
-                    "deduplicated": True,
-                    "data": {
-                        **dict(existing),
-                        "message": f"Reminder already exists (created {self._time_ago(existing['created_at'])})"
-                    }
+                    "data": dict(existing)
                 }
             else:
                 # This shouldn't happen, but handle it gracefully
