@@ -19,3 +19,6 @@ pywebpush==1.14.0
 python-multipart==0.0.6
 unstructured==0.11.0
 unstructured[pdf]==0.11.0
+matplotlib>=3.7.0
+pillow>=10.0.0
+pdf2image>=1.16.0
