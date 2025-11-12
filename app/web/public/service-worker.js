@@ -17,24 +17,79 @@ self.addEventListener('push', function(event) {
   );
 });
 
+// Get API token from IndexedDB
+async function getApiToken() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('vib-auth', 1);
+
+    request.onerror = () => reject(request.error);
+
+    request.onsuccess = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('tokens')) {
+        resolve(null);
+        return;
+      }
+
+      const transaction = db.transaction(['tokens'], 'readonly');
+      const store = transaction.objectStore('tokens');
+      const getRequest = store.get('api_token');
+
+      getRequest.onsuccess = () => resolve(getRequest.result?.value);
+      getRequest.onerror = () => reject(getRequest.error);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('tokens')) {
+        db.createObjectStore('tokens', { keyPath: 'key' });
+      }
+    };
+  });
+}
+
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  
+
   const action = event.action;
   const data = event.notification.data;
-  
+
   if (action === 'snooze_15m') {
-    // Call API to snooze
-    fetch(`/api/v1/reminders/${data.reminder_id}/snooze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ duration_minutes: 15 })
-    });
+    // Call API to snooze with authentication
+    event.waitUntil(
+      getApiToken().then(token => {
+        if (!token) {
+          console.error('No API token available for service worker');
+          return;
+        }
+
+        return fetch(`/api/v1/reminders/${data.reminder_id}/snooze`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ duration_minutes: 15 })
+        }).catch(err => console.error('Failed to snooze reminder:', err));
+      })
+    );
   } else if (action === 'done') {
-    // Mark as done
-    fetch(`/api/v1/reminders/${data.reminder_id}`, {
-      method: 'DELETE'
-    });
+    // Mark as done with authentication
+    event.waitUntil(
+      getApiToken().then(token => {
+        if (!token) {
+          console.error('No API token available for service worker');
+          return;
+        }
+
+        return fetch(`/api/v1/reminders/${data.reminder_id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }).catch(err => console.error('Failed to delete reminder:', err));
+      })
+    );
   } else {
     // Open app
     event.waitUntil(

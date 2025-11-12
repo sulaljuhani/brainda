@@ -101,10 +101,22 @@ class DocumentService:
         limit: int = 50,
         cursor: Optional[UUID] = None,
     ) -> List[dict]:
+        # Whitelist of valid document statuses to prevent SQL injection
+        VALID_STATUSES = {"pending", "processing", "indexed", "failed"}
+
         clauses = ["user_id = $1"]
         params = [user_id]
 
         if status:
+            # Validate status against whitelist
+            if status not in VALID_STATUSES:
+                logger.warning(
+                    "invalid_document_status_rejected",
+                    status=status,
+                    user_id=str(user_id)
+                )
+                # Return empty list for invalid status instead of raising error
+                return []
             clauses.append(f"status = ${len(params) + 1}")
             params.append(status)
 

@@ -5,7 +5,7 @@ import time
 import hashlib
 import uuid
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
@@ -89,11 +89,21 @@ async def _vacuum_tables(tables: list[str]):
     """Run vacuum analyze on tables to reclaim space after cleanup."""
     if not tables:
         return
+    # Whitelist of allowed tables to prevent SQL injection
+    ALLOWED_TABLES = {
+        "messages", "jobs", "notification_delivery", "audit_log",
+        "notes", "documents", "chunks", "reminders", "users"
+    }
     conn = await _connect_db()
     try:
         await conn.set_autocommit(True)
         for table in tables:
+            # Validate table name against whitelist
+            if table not in ALLOWED_TABLES:
+                logger.warning("vacuum_table_rejected", table=table, reason="not_in_whitelist")
+                continue
             try:
+                # Use parameterized identifier (safe after whitelist validation)
                 await conn.execute(f"VACUUM (ANALYZE) {table};")
                 logger.info("vacuum_table_completed", table=table)
             except Exception as exc:
@@ -170,23 +180,25 @@ async def embed_and_upsert_note_async(note_id: uuid.UUID, title: str, body: str,
                 "title": title,
                 "tags": tags,
                 "md_path": md_path,
-                "created_at": datetime.utcnow().isoformat() + "Z",
-                "updated_at": datetime.utcnow().isoformat() + "Z",
-                "embedded_at": datetime.utcnow().isoformat() + "Z",
+                "created_at": datetime.now(timezone.utc).isoformat() + "Z",
+                "updated_at": datetime.now(timezone.utc).isoformat() + "Z",
+                "embedded_at": datetime.now(timezone.utc).isoformat() + "Z",
                 "user_id": str(user_id)
             }
         }]
     )
     logger.info("embedding_note_qdrant_upserted", note_id=str(note_id))
-    
+
+    # Update database in a transaction to ensure atomicity
     conn = await _connect_db()
     try:
-        await conn.execute("""
-            INSERT INTO file_sync_state (user_id, file_path, content_hash, last_modified_at, last_embedded_at, embedding_model, vector_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (user_id, file_path) DO UPDATE
-            SET content_hash = $3, last_embedded_at = $5, vector_id = $7, updated_at = NOW()
-        """, user_id, md_path, hash_content(text), datetime.utcnow(), datetime.utcnow(), embedding_service.model_name, str(note_id))
+        async with conn.transaction():
+            await conn.execute("""
+                INSERT INTO file_sync_state (user_id, file_path, content_hash, last_modified_at, last_embedded_at, embedding_model, vector_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (user_id, file_path) DO UPDATE
+                SET content_hash = $3, last_embedded_at = $5, vector_id = $7, updated_at = NOW()
+            """, user_id, md_path, hash_content(text), datetime.now(timezone.utc), datetime.now(timezone.utc), embedding_service.model_name, str(note_id))
         logger.info("embedding_note_db_upserted", note_id=str(note_id))
     finally:
         await conn.close()
@@ -250,11 +262,13 @@ def embed_note_task(note_id_str: str):
                     note['id'], note['title'], note['body'], note['tags'],
                     note['md_path'], note['user_id']
                 )
-                await conn.execute("""
-                    UPDATE notes
-                    SET updated_at = NOW()
-                    WHERE id = $1
-                """, note_id)
+                # Update note timestamp in a transaction
+                async with conn.transaction():
+                    await conn.execute("""
+                        UPDATE notes
+                        SET updated_at = NOW()
+                        WHERE id = $1
+                    """, note_id)
                 logger.info("embed_note_task_success", note_id=note_id_str, md_path=note['md_path'])
             except Exception as exc:
                 logger.error("embed_note_task_failure", note_id=note_id_str, error=str(exc))
@@ -371,24 +385,26 @@ async def _process_document(job_id: str):
             "metadata": doc_metadata,
         }
 
-        await conn.execute(
-            """
-            UPDATE documents
-            SET status = 'indexed', error_message = NULL, updated_at = NOW()
-            WHERE id = $1
-            """,
-            document_id,
-        )
+        # Update document and job status in a transaction to ensure atomicity
+        async with conn.transaction():
+            await conn.execute(
+                """
+                UPDATE documents
+                SET status = 'indexed', error_message = NULL, updated_at = NOW()
+                WHERE id = $1
+                """,
+                document_id,
+            )
 
-        await conn.execute(
-            """
-            UPDATE jobs
-            SET status = 'completed', result = $1, completed_at = NOW(), updated_at = NOW()
-            WHERE id = $2
-            """,
-            result_payload,
-            uuid.UUID(job_id),
-        )
+            await conn.execute(
+                """
+                UPDATE jobs
+                SET status = 'completed', result = $1, completed_at = NOW(), updated_at = NOW()
+                WHERE id = $2
+                """,
+                result_payload,
+                uuid.UUID(job_id),
+            )
 
         return result_payload, document_meta
     finally:
@@ -398,31 +414,33 @@ async def _process_document(job_id: str):
 async def _mark_job_failed(job_id: str, error_message: str):
     conn = await _connect_db()
     try:
-        await conn.execute(
-            """
-            UPDATE jobs
-            SET status = 'failed',
-                error_message = $1,
-                completed_at = NOW(),
-                updated_at = NOW()
-            WHERE id = $2
-            """,
-            error_message,
-            uuid.UUID(job_id),
-        )
-
-        job = await conn.fetchrow("SELECT * FROM jobs WHERE id = $1", uuid.UUID(job_id))
-        if job and job["payload"]:
-            document_id = uuid.UUID(job["payload"]["document_id"])
+        # Update job and document status in a transaction to ensure atomicity
+        async with conn.transaction():
             await conn.execute(
                 """
-                UPDATE documents
-                SET status = 'failed', error_message = $1, updated_at = NOW()
+                UPDATE jobs
+                SET status = 'failed',
+                    error_message = $1,
+                    completed_at = NOW(),
+                    updated_at = NOW()
                 WHERE id = $2
                 """,
                 error_message,
-                document_id,
+                uuid.UUID(job_id),
             )
+
+            job = await conn.fetchrow("SELECT * FROM jobs WHERE id = $1", uuid.UUID(job_id))
+            if job and job["payload"]:
+                document_id = uuid.UUID(job["payload"]["document_id"])
+                await conn.execute(
+                    """
+                    UPDATE documents
+                    SET status = 'failed', error_message = $1, updated_at = NOW()
+                    WHERE id = $2
+                    """,
+                    error_message,
+                    document_id,
+                )
     finally:
         await conn.close()
 
@@ -437,6 +455,10 @@ async def _cleanup_old_data_async():
     start = time.monotonic()
     conn = await _connect_db()
     results: dict[str, int] = {}
+    # Whitelist of allowed tables for cleanup to prevent SQL injection
+    ALLOWED_CLEANUP_TABLES = {
+        "messages", "jobs", "notification_delivery", "audit_log"
+    }
     try:
         policies = [
             ("messages", RETENTION_MESSAGES),
@@ -445,7 +467,11 @@ async def _cleanup_old_data_async():
             ("audit_log", RETENTION_AUDIT_LOG),
         ]
         for table, retention_days in policies:
-            cutoff = datetime.utcnow() - timedelta(days=retention_days)
+            # Validate table name against whitelist
+            if table not in ALLOWED_CLEANUP_TABLES:
+                logger.warning("cleanup_table_rejected", table=table, reason="not_in_whitelist")
+                continue
+            cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
             command = await conn.execute(
                 f"DELETE FROM {table} WHERE created_at < $1",
                 cutoff,

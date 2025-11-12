@@ -2,7 +2,6 @@ from fastapi import Depends, HTTPException, Header
 import asyncpg
 import os
 import uuid
-from functools import lru_cache
 
 from common.db import connect_with_json_codec
 
@@ -16,13 +15,14 @@ async def get_db():
     finally:
         await conn.close()
 
-@lru_cache()
+# SECURITY: @lru_cache() removed - caching async functions with DB connections
+# causes race conditions where users can access each other's data
 async def get_user_id_from_token(token: str, db: asyncpg.Connection) -> uuid.UUID:
     """Lookup or create a user record based on the API token."""
     user = await db.fetchrow("SELECT id FROM users WHERE api_token = $1", token)
     if user:
         return user["id"]
-    
+
     placeholder_email = f"default+{token[:8]}@vib.local"
     new_user = await db.fetchrow(
         """

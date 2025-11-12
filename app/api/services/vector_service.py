@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
@@ -72,7 +72,7 @@ class VectorService:
             embeddings = await self.embedding_service.embed_batch(texts)
 
         points = []
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat() + "Z"
         for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             payload = {
                 "embedding_model": self.embedding_service.model_name,

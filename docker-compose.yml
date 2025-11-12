@@ -93,8 +93,8 @@ services:
     build: .
     container_name: vib-worker
     init: true  # Prevent zombie processes
-    security_opt:
-      - seccomp:unconfined  # Allow ONNX Runtime to load (requires executable stack)
+    # SECURITY: seccomp:unconfined removed to prevent container escape vulnerabilities
+    # If ONNX Runtime has issues, create a custom seccomp profile instead of disabling all sandboxing
     volumes:
       - ./vault:/vault
       - ./uploads:/uploads
