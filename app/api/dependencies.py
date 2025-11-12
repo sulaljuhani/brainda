@@ -5,13 +5,12 @@ import uuid
 
 import asyncpg
 import redis.asyncio as redis_async
-from fastapi import Depends, HTTPException, Header
+from fastapi import Depends, HTTPException, Header, Request
 
 from api.services.auth_service import AuthService
 from common.db import connect_with_json_codec
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-API_TOKEN = os.getenv("API_TOKEN", "default-token-change-me")
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
 _redis_client: Optional[redis_async.Redis] = None
@@ -67,42 +66,25 @@ async def get_user_id_from_token(token: str, db: asyncpg.Connection) -> uuid.UUI
     if user:
         return user["id"]
 
-    # Auto-provision a user for unexpected API tokens (backward compatibility)
-    placeholder_email = f"default+{token[:8]}@vib.local"
-    display_name = placeholder_email.split("@")[0]
-    async with db.transaction():
-        organization = await auth_service.create_organization(f"{display_name} family")
-        new_user = await db.fetchrow(
-            """
-            INSERT INTO users (email, api_token, display_name, organization_id, role, is_active)
-            VALUES ($1, $2, $3, $4, 'owner', TRUE)
-            ON CONFLICT (api_token) DO UPDATE
-            SET email = EXCLUDED.email,
-                display_name = COALESCE(users.display_name, EXCLUDED.display_name),
-                organization_id = COALESCE(users.organization_id, EXCLUDED.organization_id),
-                role = COALESCE(users.role, 'owner'),
-                is_active = TRUE,
-                updated_at = NOW()
-            RETURNING id
-            """,
-            placeholder_email,
-            token,
-            display_name,
-            organization["id"],
-        )
-    return new_user["id"]
+    raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 async def get_current_user(
-    authorization: str = Header(None),
-    db: asyncpg.Connection = Depends(get_db)
+    request: Request,
+    token: str = Depends(verify_token),
 ) -> uuid.UUID:
-    token = await verify_token(authorization)
-    return await get_user_id_from_token(token, db)
+    user_id = getattr(request.state, "authenticated_user_id", None)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user_id
 
 
-async def verify_token(authorization: str = Header(None)) -> str:
-    """Extract the bearer token from the Authorization header."""
+async def verify_token(
+    request: Request,
+    authorization: str = Header(None),
+    db: asyncpg.Connection = Depends(get_db),
+) -> str:
+    """Validate a bearer token and attach authentication context to the request."""
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
 
@@ -113,8 +95,7 @@ async def verify_token(authorization: str = Header(None)) -> str:
     if not token:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    # Allow legacy single-user token to short-circuit without session lookup
-    if token == API_TOKEN:
-        return token
-
+    user_id = await get_user_id_from_token(token, db)
+    request.state.authenticated_user_id = user_id
+    request.state.authenticated_token = token
     return token
