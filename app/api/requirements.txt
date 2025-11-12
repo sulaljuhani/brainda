@@ -6,8 +6,9 @@ httpx==0.25.2
 celery==5.3.4
 structlog==23.2.0
 python-dotenv==1.0.0
-sentence-transformers==2.2.2
-huggingface-hub==0.19.4
+sentence-transformers>=3.0.0
+huggingface-hub>=0.20.0
+onnxruntime>=1.17.0
 qdrant-client==1.6.0
 watchdog==3.0.0
 APScheduler==3.10.4

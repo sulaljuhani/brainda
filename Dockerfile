@@ -5,10 +5,35 @@ WORKDIR /app
 COPY app/api/requirements.txt /app/api/requirements.txt
 COPY entrypoint.sh /entrypoint.sh
 
-RUN pip install --no-cache-dir --timeout=100 -r /app/api/requirements.txt
+RUN pip install --no-cache-dir --timeout=100 --upgrade pip \
+ && pip install --no-cache-dir --timeout=100 -r /app/api/requirements.txt
 
-# Install Node.js, npm, procps (pgrep/ps used in health checks), and PDF processing tools
-RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils libmagic1 && rm -rf /var/lib/apt/lists/*
+# Install Node.js, npm, procps (pgrep/ps used in health checks), PDF processing tools, and binutils (for readelf)
+RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils libmagic1 binutils && rm -rf /var/lib/apt/lists/*
+
+# Verify ONNX Runtime has non-executable stack (security check - without importing)
+RUN bash -lc 'set -euo pipefail; \
+paths=$(python3 - << "PY"
+import site, glob, sys
+for d in site.getsitepackages():
+    for p in glob.glob(d + "/onnxruntime/**/*.so", recursive=True):
+        print(p)
+PY
+); \
+echo "Discovered ONNX Runtime shared objects:"; echo "$paths"; \
+bad=0; \
+for so in $paths; do \
+  line=$(readelf -lW "$so" | grep GNU_STACK || true); \
+  echo "[$so] $line"; \
+  if echo "$line" | grep -q " E "; then bad=1; fi; \
+done; \
+if [ "$bad" -eq 1 ]; then \
+  echo "ERROR: At least one ONNX Runtime .so requests an executable stack (GNU_STACK ... E)."; \
+  echo "Use a different onnxruntime wheel (or rebuild with -Wl,-z,noexecstack)."; \
+  exit 1; \
+else \
+  echo "✓ All ONNX Runtime .so files have non-executable stack."; \
+fi'
 
 # Install frontend dependencies
 COPY app/web/package.json /app/web/
