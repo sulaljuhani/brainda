@@ -8,6 +8,7 @@ VIB is a personal knowledge management system that combines note-taking, documen
 - **Document Ingestion**: Upload and process documents (PDF, text, etc.) with automatic parsing
 - **Semantic Search**: Vector-based search across notes and documents using embeddings
 - **RAG Chat Interface**: Ask questions and get answers based on your knowledge base
+- **Modern Chat UI**: Dark-mode chat surface with responsive navigation and tool-call visualization
 - **Smart Reminders**: Schedule and manage reminders with natural language processing
 - **Push Notifications**: Web push notifications for reminders and updates
 - **Metrics & Monitoring**: Prometheus metrics for system health and performance
@@ -142,6 +143,12 @@ You should see a JSON response with `"status": "healthy"` and all services marke
 - **Health Check**: http://localhost:8000/api/v1/health
 - **Metrics**: http://localhost:8000/api/v1/metrics
 - **API Docs**: http://localhost:8000/docs
+
+### Modern UI Prototype
+
+- The chat-first interface described in `devloper_notes/UI.md` is implemented in `app/web/components/VibInterface.tsx`.
+- Import the component into your React shell (for example, a Vite or Next.js page) to preview the dark-mode layout, sidebar navigation, and streaming chat experience.
+- Design tokens (color, typography, spacing) are defined via CSS custom properties at the top of the component so the visual system can be reused across additional screens.
 
 ### API Authentication
 
