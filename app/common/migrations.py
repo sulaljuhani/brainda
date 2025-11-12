@@ -6,11 +6,11 @@ Ensures migrations are applied in order and only once.
 """
 
 import asyncpg
-import logging
+import structlog
 import os
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 async def run_migrations(db_url: str, migrations_dir: str = "/app/migrations"):
