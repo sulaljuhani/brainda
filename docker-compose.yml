@@ -93,6 +93,8 @@ services:
     build: .
     container_name: vib-worker
     init: true  # Prevent zombie processes
+    security_opt:
+      - seccomp:unconfined  # Allow ONNX Runtime to load (requires executable stack)
     volumes:
       - ./vault:/vault
       - ./uploads:/uploads
