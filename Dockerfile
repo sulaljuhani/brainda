@@ -5,8 +5,8 @@ WORKDIR /app
 COPY app/api/requirements.txt /app/api/requirements.txt
 COPY entrypoint.sh /entrypoint.sh
 
-# Install Node.js, npm, procps (pgrep/ps used in health checks), PDF processing tools, and execstack
-RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils libmagic1 execstack && rm -rf /var/lib/apt/lists/*
+# Install Node.js, npm, procps (pgrep/ps used in health checks), PDF processing tools, and prelink (provides execstack)
+RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils libmagic1 prelink && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir --timeout=100 -r /app/api/requirements.txt
 
