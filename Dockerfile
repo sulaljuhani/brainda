@@ -7,8 +7,8 @@ COPY entrypoint.sh /entrypoint.sh
 
 RUN pip install --no-cache-dir --timeout=100 -r /app/api/requirements.txt
 
-# Install Node.js, npm, and procps (pgrep/ps used in health checks)
-RUN apt-get update && apt-get install -y nodejs npm procps && rm -rf /var/lib/apt/lists/*
+# Install Node.js, npm, procps (pgrep/ps used in health checks), and PDF processing tools
+RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils libmagic1 && rm -rf /var/lib/apt/lists/*
 
 # Install frontend dependencies
 COPY app/web/package.json /app/web/

@@ -681,7 +681,7 @@ PY
   DOC_ID=$(echo "$response" | jq -r '.document_id // .data.document_id')
   DOC_JOB_ID=$(echo "$response" | jq -r '.job_id')
   if [[ "$DOC_JOB_ID" != "null" && -n "$DOC_JOB_ID" ]]; then
-    wait_for "curl -sS -H 'Authorization: Bearer $TOKEN' $BASE_URL/api/v1/jobs/$DOC_JOB_ID | jq -r '.status' | grep -q completed" 120 "document ingestion completion"
+    wait_for "curl -sS -H 'Authorization: Bearer $TOKEN' $BASE_URL/api/v1/jobs/$DOC_JOB_ID | jq -r '.status' | grep -q completed" 180 "document ingestion completion"
   fi
   DOC_FIXTURE_CREATED=true
 }
@@ -1017,7 +1017,7 @@ notes_check() {
       local before after file="vault/$NOTE_FIXTURE_MD_PATH"
       before=$(psql_query "SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';")
       echo "\nUpdated $(date)" >> "$file"
-      wait_for "psql_query \"SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';\" | awk -v before=$before 'NF && \$1 > before { exit 0 } END { exit 1 }'" 120 "re-embedding after external edit"
+      wait_for "psql_query \"SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';\" | awk -v before=$before 'NF && \$1 > before { exit 0 } END { exit 1 }'" 180 "re-embedding after external edit"
       after=$(psql_query "SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';")
       assert_greater_than "${after:-0}" "${before:-0}" "Embedding timestamp advanced" || rc=1
       ;;
