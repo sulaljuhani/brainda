@@ -13,56 +13,32 @@ class ReminderService:
         self.db = db
     
     async def create_reminder(
-        self, 
-        user_id: UUID, 
+        self,
+        user_id: UUID,
         data: ReminderCreate
     ) -> dict:
         """
         Create reminder with 5-minute deduplication window.
+        Uses optimistic insert to prevent race conditions.
         Returns standardized response format.
         """
-        # Check for duplicate in last 5 minutes
-        existing = await self.db.fetchrow("""
-            SELECT * FROM reminders 
-            WHERE user_id = $1 
-            AND title = $2 
-            AND ABS(EXTRACT(EPOCH FROM (due_at_utc - $3::timestamptz))) < 1
-            AND created_at > NOW() - INTERVAL '5 minutes'
-            AND status = 'active'
-        """, user_id, data.title, data.due_at_utc)
-        
-        if existing:
-            logger.info(
-                "duplicate_reminder_skipped",
-                user_id=str(user_id),
-                reminder_id=str(existing['id']),
-                title=data.title,
-                due_at_utc=data.due_at_utc.isoformat()
-            )
-            reminders_deduped_total.labels(user_id=str(user_id)).inc()
-            return {
-                "success": True,
-                "deduplicated": True,
-                "data": {
-                    **dict(existing),
-                    "message": f"Reminder already exists (created {self._time_ago(existing['created_at'])})"
-                }
-            }
-        
-        # Create new reminder
+        # Try to create new reminder first (optimistic approach)
+        # If a duplicate exists, the DB constraint will catch it
         try:
-            reminder = await self.db.fetchrow("""
-                INSERT INTO reminders (
-                    user_id, title, body, due_at_utc, due_at_local, 
-                    timezone, repeat_rrule, note_id, status
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active')
-                RETURNING *
-            """, 
-                user_id, data.title, data.body, data.due_at_utc, 
-                data.due_at_local, data.timezone, data.repeat_rrule, 
-                data.note_id
-            )
-            
+            # Use a transaction to ensure atomicity
+            async with self.db.transaction():
+                reminder = await self.db.fetchrow("""
+                    INSERT INTO reminders (
+                        user_id, title, body, due_at_utc, due_at_local,
+                        timezone, repeat_rrule, note_id, status
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active')
+                    RETURNING *
+                """,
+                    user_id, data.title, data.body, data.due_at_utc,
+                    data.due_at_local, data.timezone, data.repeat_rrule,
+                    data.note_id
+                )
+
             logger.info(
                 "reminder_created",
                 user_id=str(user_id),
@@ -71,35 +47,52 @@ class ReminderService:
                 timezone=data.timezone,
                 repeat=bool(data.repeat_rrule)
             )
-            
+
             from worker.scheduler import schedule_reminder
             schedule_reminder(str(reminder['id']), data.due_at_utc)
             reminders_created_total.labels(user_id=str(user_id)).inc()
-            
+
             return {"success": True, "data": dict(reminder)}
-            
+
         except UniqueViolationError as e:
-            # Race condition caught by DB constraint
-            logger.warning(
+            # Race condition caught by DB constraint - fetch the existing reminder
+            logger.info(
                 "duplicate_reminder_prevented_by_constraint",
                 user_id=str(user_id),
                 title=data.title,
                 error=str(e)
             )
-            # Fetch existing
+
+            # Fetch existing reminder
             existing = await self.db.fetchrow("""
-                SELECT * FROM reminders 
-                WHERE user_id = $1 AND title = $2 
+                SELECT * FROM reminders
+                WHERE user_id = $1
+                AND title = $2
                 AND ABS(EXTRACT(EPOCH FROM (due_at_utc - $3::timestamptz))) < 1
-                ORDER BY created_at DESC LIMIT 1
+                AND created_at > NOW() - INTERVAL '5 minutes'
+                AND status = 'active'
+                ORDER BY created_at DESC
+                LIMIT 1
             """, user_id, data.title, data.due_at_utc)
-            
-            reminders_deduped_total.labels(user_id=str(user_id)).inc()
-            return {
-                "success": True,
-                "deduplicated": True,
-                "data": dict(existing)
-            }
+
+            if existing:
+                reminders_deduped_total.labels(user_id=str(user_id)).inc()
+                return {
+                    "success": True,
+                    "deduplicated": True,
+                    "data": {
+                        **dict(existing),
+                        "message": f"Reminder already exists (created {self._time_ago(existing['created_at'])})"
+                    }
+                }
+            else:
+                # This shouldn't happen, but handle it gracefully
+                logger.error(
+                    "duplicate_reminder_constraint_but_not_found",
+                    user_id=str(user_id),
+                    title=data.title
+                )
+                raise ValueError("Failed to create reminder due to duplicate constraint")
     
     def _time_ago(self, dt: datetime) -> str:
         """Human readable time difference"""
@@ -115,25 +108,37 @@ class ReminderService:
             return f"{seconds // 3600} hours ago"
     
     async def list_reminders(
-        self, 
-        user_id: UUID, 
+        self,
+        user_id: UUID,
         status: Optional[str] = None,
         limit: int = 50
     ) -> List[dict]:
         """List user's reminders"""
+        # Whitelist of valid reminder statuses to prevent SQL injection
+        VALID_STATUSES = {"active", "dismissed", "snoozed", "completed"}
+
         query = """
-            SELECT * FROM reminders 
+            SELECT * FROM reminders
             WHERE user_id = $1
         """
         params = [user_id]
-        
+
         if status:
+            # Validate status against whitelist
+            if status not in VALID_STATUSES:
+                logger.warning(
+                    "invalid_reminder_status_rejected",
+                    status=status,
+                    user_id=str(user_id)
+                )
+                # Return empty list for invalid status
+                return []
             query += " AND status = $2"
             params.append(status)
-        
+
         query += " ORDER BY due_at_utc ASC LIMIT $" + str(len(params) + 1)
         params.append(limit)
-        
+
         reminders = await self.db.fetch(query, *params)
         return [dict(r) for r in reminders]
     

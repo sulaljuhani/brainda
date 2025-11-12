@@ -172,8 +172,8 @@ def create_markdown_file(note_id: uuid.UUID, title: str, body: str, tags: list, 
 id: {note_id}
 title: {title}
 tags: {tags_yaml}
-created: {datetime.utcnow().isoformat()}Z
-updated: {datetime.utcnow().isoformat()}Z
+created: {datetime.now(timezone.utc).isoformat()}Z
+updated: {datetime.now(timezone.utc).isoformat()}Z
 ---
 
 # {title}
@@ -195,7 +195,7 @@ id: {note['id']}
 title: {note['title']}
 tags: {tags_yaml}
 created: {note['created_at'].isoformat()}Z
-updated: {datetime.utcnow().isoformat()}Z
+updated: {datetime.now(timezone.utc).isoformat()}Z
 ---
 
 # {note['title']}
@@ -381,13 +381,20 @@ async def ensure_qdrant_collection():
 # Metrics middleware (must run before other middleware to capture timings)
 app.add_middleware(MetricsMiddleware)
 
-# CORS
+# CORS - Secure configuration using environment variables
+# CRITICAL: Never use allow_origins=["*"] with allow_credentials=True
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+# Clean up whitespace from origins
+CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS]
+
+logger.info("cors_configuration", allowed_origins=CORS_ORIGINS)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Configure properly in production
+    allow_origins=CORS_ORIGINS,  # Specific origins only, configured via environment
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
 )
 
 from api.dependencies import verify_token
@@ -401,7 +408,7 @@ async def health_check():
     
     health = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "services": {}
     }
     
@@ -425,6 +432,7 @@ async def health_check():
     
     # Check Redis
     logger.info("checking_redis")
+    r = None
     try:
         r = redis.from_url(os.getenv("REDIS_URL"))
         r.ping()
@@ -440,6 +448,12 @@ async def health_check():
         health["services"]["redis"] = "error"
         health["status"] = "unhealthy"
         logger.error("redis_health_check_failed", error=str(e))
+    finally:
+        if r:
+            try:
+                r.close()
+            except Exception:
+                pass
     
     # Check Qdrant
     logger.info("checking_qdrant")
@@ -476,6 +490,7 @@ async def health_check():
     
     # Check Celery worker (via Redis)
     logger.info("checking_celery")
+    celery_app = None
     try:
         from celery import Celery
         celery_app = Celery(broker=os.getenv("REDIS_URL"))
@@ -491,6 +506,12 @@ async def health_check():
     except Exception as e:
         health["services"]["celery_worker"] = "error"
         logger.error("celery_health_check_failed", error=str(e))
+    finally:
+        if celery_app:
+            try:
+                celery_app.close()
+            except Exception:
+                pass
     
     status_code = 200 if health["status"] == "healthy" else 503
     return health
@@ -514,7 +535,7 @@ async def metrics():
 @app.get("/api/v1/protected")
 async def protected_endpoint(token: str = Depends(verify_token)):
     logger.info("protected_endpoint_accessed")
-    return {"message": "Access granted", "timestamp": datetime.utcnow().isoformat()}
+    return {"message": "Access granted", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 # --- API Router ---
 router = APIRouter(prefix="/api/v1")
@@ -553,7 +574,7 @@ def _parse_note_command(message: str) -> tuple[str, str]:
     if title_match:
         title = title_match.group(1).strip(' "\'')
     else:
-        title = f"Chat Note {datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+        title = f"Chat Note {datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
     body = body_match.group(1).strip() if body_match else message.strip()
     return title or "Chat Note", body
 
