@@ -21,7 +21,7 @@ export default function DocumentList() {
   }, []);
 
   async function fetchDocuments() {
-    const token = localStorage.getItem('api_token');
+    const token = localStorage.getItem('session_token') ?? localStorage.getItem('api_token');
     const response = await fetch('/api/v1/documents', {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -32,7 +32,7 @@ export default function DocumentList() {
 
   async function deleteDocument(id: string) {
     if (!confirm('Delete this document?')) return;
-    const token = localStorage.getItem('api_token');
+    const token = localStorage.getItem('session_token') ?? localStorage.getItem('api_token');
     await fetch(`/api/v1/documents/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },

@@ -9,11 +9,11 @@ from fastapi import Request
 import structlog
 import os
 from common.db import connect_with_json_codec
+from api.dependencies import get_user_id_from_token
 
 logger = structlog.get_logger()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-API_TOKEN = os.getenv("API_TOKEN", "default-token-change-me")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -44,43 +44,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         token = authorization.split(" ", 1)[1]
 
-        # Validate token
-        if token != API_TOKEN:
-            # Invalid token - let the endpoint handler deal with it
-            return await call_next(request)
-
-        # Get user_id from database
+        # Get user_id from database/session
         conn = None
         try:
             conn = await connect_with_json_codec(DATABASE_URL)
-            user = await conn.fetchrow(
-                "SELECT id FROM users WHERE api_token = $1", token
-            )
-
-            if user:
-                # Set user_id in request state for downstream middleware
-                request.state.user_id = user["id"]
-                logger.debug(
-                    "auth_middleware_user_found", user_id=str(user["id"])
-                )
-            else:
-                # Create user if doesn't exist
-                placeholder_email = f"default+{token[:8]}@vib.local"
-                new_user = await conn.fetchrow(
-                    """
-                    INSERT INTO users (email, api_token)
-                    VALUES ($1, $2)
-                    ON CONFLICT (api_token) DO UPDATE
-                    SET email = EXCLUDED.email
-                    RETURNING id
-                    """,
-                    placeholder_email,
-                    token,
-                )
-                request.state.user_id = new_user["id"]
-                logger.info(
-                    "auth_middleware_user_created", user_id=str(new_user["id"])
-                )
+            user_id = await get_user_id_from_token(token, conn)
+            request.state.user_id = user_id
+            logger.debug("auth_middleware_user_found", user_id=str(user_id))
 
         except Exception as e:
             logger.error("auth_middleware_error", error=str(e))

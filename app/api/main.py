@@ -92,7 +92,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             ).observe(duration)
 
 from api.adapters.llm_adapter import get_llm_adapter
-from api.dependencies import get_db, get_user_id_from_token
+from api.dependencies import get_db, get_current_user
 from api.task_queue import get_celery_client
 from api.metrics import (
     api_request_duration_seconds,
@@ -372,7 +372,6 @@ app.add_middleware(
     expose_headers=["X-Idempotency-Replay"],
 )
 
-from api.dependencies import verify_token
 
 # Health check
 @app.get("/api/v1/health")
@@ -496,8 +495,8 @@ async def health_check():
 async def version():
     return {
         "version": "1.0.0",
-        "stage": "3",
-        "description": "Document ingestion + RAG"
+        "stage": "8",
+        "description": "Multi-user authentication with passkeys and TOTP"
     }
 
 # Metrics endpoint (Prometheus format)
@@ -508,9 +507,13 @@ async def metrics():
 
 # Protected endpoint example
 @app.get("/api/v1/protected")
-async def protected_endpoint(token: str = Depends(verify_token)):
-    logger.info("protected_endpoint_accessed")
-    return {"message": "Access granted", "timestamp": datetime.now(timezone.utc).isoformat()}
+async def protected_endpoint(user_id: uuid.UUID = Depends(get_current_user)):
+    logger.info("protected_endpoint_accessed", user_id=str(user_id))
+    return {
+        "message": "Access granted",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "user_id": str(user_id),
+    }
 
 # --- API Router ---
 router = APIRouter(prefix="/api/v1")
@@ -714,13 +717,12 @@ async def _run_chat_flow(
 @router.post("/notes")
 async def create_note_endpoint(
     note: NoteCreateRequest,
-    token: str = Depends(verify_token),
+    user_id: uuid.UUID = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db)
 ):
     """Create a new note"""
     logger.info("create_note_endpoint_start", title=note.title)
     try:
-        user_id = await get_user_id_from_token(token, db)
         return await create_note_record(user_id, note, db)
     except Exception as e:
         logger.error("create_note_endpoint_error", error=str(e))
@@ -730,11 +732,10 @@ async def create_note_endpoint(
 async def list_notes_endpoint(
     limit: int = 50,
     cursor: str = None,
-    token: str = Depends(verify_token),
+    user_id: uuid.UUID = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db)
 ):
     """List notes with pagination"""
-    user_id = await get_user_id_from_token(token, db)
     notes = await db.fetch("""
         SELECT id, title, tags, md_path, created_at, updated_at
         FROM notes
@@ -755,12 +756,11 @@ async def list_notes_endpoint(
 async def update_note_endpoint(
     note_id: uuid.UUID,
     payload: NoteUpdateRequest,
-    token: str = Depends(verify_token),
+    user_id: uuid.UUID = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db)
 ):
     """Update a note"""
-    user_id = await get_user_id_from_token(token, db)
-    
+
     note = await db.fetchrow("SELECT * FROM notes WHERE id = $1 AND user_id = $2", note_id, user_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -783,7 +783,7 @@ async def update_note_endpoint(
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
     payload: ChatRequest,
-    token: str = Depends(verify_token),
+    user_id: uuid.UUID = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Lightweight, rule-based chat endpoint backed by existing tools."""
@@ -791,31 +791,40 @@ async def chat_endpoint(
     if not message:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    user_id = await get_user_id_from_token(token, db)
     return await _run_chat_flow(message, payload.conversation_id, user_id, db)
 
 
 @router.get("/chat", response_model=ChatResponse)
 async def chat_status(
     message: Optional[str] = None,
-    token: str = Depends(verify_token),
+    user_id: uuid.UUID = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Support lightweight GET access for health/rate-limit probes."""
     normalized = (message or "status check").strip()
-    user_id = await get_user_id_from_token(token, db)
     return await _run_chat_flow(normalized, None, user_id, db)
 
 
 app.include_router(router)
 
-from api.routers import reminders, devices, documents, search, calendar, google_calendar
+from api.routers import (
+    reminders,
+    devices,
+    documents,
+    search,
+    calendar,
+    google_calendar,
+    auth,
+    totp,
+)
 app.include_router(reminders.router)
 app.include_router(devices.router)
 app.include_router(documents.router)
 app.include_router(search.router)
 app.include_router(calendar.router)
 app.include_router(google_calendar.router)
+app.include_router(auth.router)
+app.include_router(totp.router)
 
 if __name__ == "__main__":
     import uvicorn

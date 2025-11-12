@@ -20,8 +20,10 @@ export default function ReminderList() {
     fetchReminders();
   }, []);
 
+  const getToken = () => localStorage.getItem('session_token') ?? localStorage.getItem('api_token');
+
   async function fetchReminders() {
-    const token = localStorage.getItem('api_token');
+    const token = getToken();
     const response = await fetch('/api/v1/reminders', {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -31,7 +33,7 @@ export default function ReminderList() {
   }
 
   async function snoozeReminder(id: string, minutes: number) {
-    const token = localStorage.getItem('api_token');
+    const token = getToken();
     await fetch(`/api/v1/reminders/${id}/snooze`, {
       method: 'POST',
       headers: {
@@ -44,7 +46,7 @@ export default function ReminderList() {
   }
 
   async function cancelReminder(id: string) {
-    const token = localStorage.getItem('api_token');
+    const token = getToken();
     await fetch(`/api/v1/reminders/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
