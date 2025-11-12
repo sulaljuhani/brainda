@@ -4,6 +4,8 @@ import { formatDistanceToNow } from 'date-fns';
 import type { KeyboardEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import WeeklyCalendar from './WeeklyCalendar';
+
 type MessageRole = 'user' | 'assistant';
 
 type ToolCall = {
@@ -357,6 +359,129 @@ const GLOBAL_STYLES = `
     padding: var(--space-6);
   }
 
+  .vib-calendar-pane {
+    width: 360px;
+    border-left: 1px solid var(--border-subtle);
+    background: color-mix(in srgb, var(--bg-tertiary) 85%, transparent);
+    padding: var(--space-6) var(--space-4);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .weekly-calendar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .weekly-calendar .calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .weekly-calendar .calendar-header h2 {
+    font-size: var(--text-lg);
+    margin: 0;
+  }
+
+  .weekly-calendar .calendar-header button {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-1) var(--space-2);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .weekly-calendar .calendar-header button:hover {
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+  }
+
+  .weekly-calendar .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .weekly-calendar .calendar-day {
+    background: rgba(24, 24, 24, 0.8);
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-height: 160px;
+  }
+
+  .weekly-calendar .day-header {
+    font-weight: var(--font-semibold);
+    color: var(--text-secondary);
+  }
+
+  .weekly-calendar .day-events {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .weekly-calendar .event {
+    background: rgba(25, 118, 210, 0.15);
+    border-left: 3px solid rgba(25, 118, 210, 0.7);
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .weekly-calendar .event.recurring {
+    background: rgba(123, 31, 162, 0.15);
+    border-left-color: rgba(123, 31, 162, 0.7);
+  }
+
+  .weekly-calendar .event.empty {
+    background: transparent;
+    border-left: none;
+    color: var(--text-tertiary);
+    text-align: center;
+    padding: var(--space-2) 0;
+  }
+
+  .weekly-calendar .event-time {
+    font-weight: var(--font-semibold);
+    color: var(--accent-primary);
+  }
+
+  .weekly-calendar .event-title {
+    font-weight: var(--font-medium);
+  }
+
+  .weekly-calendar .event-location {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .weekly-calendar .calendar-loading,
+  .weekly-calendar .calendar-error {
+    padding: var(--space-3);
+    text-align: center;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .weekly-calendar .calendar-error {
+    color: var(--error);
+  }
+
   .vib-chat-surface {
     max-width: var(--max-chat-width);
     width: 100%;
@@ -631,6 +756,10 @@ const GLOBAL_STYLES = `
       padding: var(--space-4);
     }
 
+    .vib-calendar-pane {
+      display: none;
+    }
+
     .vib-chat-input {
       border-radius: var(--radius-xl);
     }
@@ -671,6 +800,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'notes', label: 'Notes', icon: '📝' },
   { id: 'documents', label: 'Documents', icon: '📄' },
   { id: 'reminders', label: 'Reminders', icon: '⏰' },
+  { id: 'calendar', label: 'Calendar', icon: '📆' },
   { id: 'search', label: 'Search', icon: '🔎' },
 ];
 
@@ -1024,6 +1154,9 @@ export default function VibInterface() {
             </form>
           </section>
         </main>
+        <aside className="vib-calendar-pane" aria-label="Weekly calendar overview">
+          <WeeklyCalendar />
+        </aside>
       </div>
     </div>
   );

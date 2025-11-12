@@ -22,18 +22,40 @@ class ReminderService:
         Returns standardized response format.
         """
         try:
+            if data.calendar_event_id:
+                event = await self.db.fetchrow(
+                    "SELECT id, user_id, status FROM calendar_events WHERE id = $1",
+                    data.calendar_event_id,
+                )
+                if not event or event["user_id"] != user_id:
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_EVENT",
+                            "message": "Calendar event not found for this user",
+                        },
+                    }
+                if event["status"] == "cancelled":
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_EVENT",
+                            "message": "Cannot link reminder to cancelled event",
+                        },
+                    }
+
             # Use a transaction to ensure atomicity
             async with self.db.transaction():
                 reminder = await self.db.fetchrow("""
                     INSERT INTO reminders (
                         user_id, title, body, due_at_utc, due_at_local,
-                        timezone, repeat_rrule, note_id, status
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active')
+                        timezone, repeat_rrule, note_id, calendar_event_id, status
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')
                     RETURNING *
                 """,
                     user_id, data.title, data.body, data.due_at_utc,
                     data.due_at_local, data.timezone, data.repeat_rrule,
-                    data.note_id
+                    data.note_id, data.calendar_event_id
                 )
 
             logger.info(
@@ -42,7 +64,8 @@ class ReminderService:
                 reminder_id=str(reminder['id']),
                 due_at_utc=data.due_at_utc.isoformat(),
                 timezone=data.timezone,
-                repeat=bool(data.repeat_rrule)
+                repeat=bool(data.repeat_rrule),
+                calendar_event_id=str(data.calendar_event_id) if data.calendar_event_id else None,
             )
 
             from worker.scheduler import schedule_reminder
@@ -162,10 +185,32 @@ class ReminderService:
         param_idx = 1
         
         for field, value in data.dict(exclude_unset=True).items():
-            if field != "schema_version" and value is not None:
-                updates.append(f"{field} = ${param_idx}")
-                params.append(value)
-                param_idx += 1
+            if field == "schema_version":
+                continue
+            if field == "calendar_event_id" and value is not None:
+                event = await self.db.fetchrow(
+                    "SELECT id, user_id, status FROM calendar_events WHERE id = $1",
+                    value,
+                )
+                if not event or event["user_id"] != user_id:
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_EVENT",
+                            "message": "Calendar event not found for this user",
+                        },
+                    }
+                if event["status"] == "cancelled":
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_EVENT",
+                            "message": "Cannot link reminder to cancelled event",
+                        },
+                    }
+            updates.append(f"{field} = ${param_idx}")
+            params.append(value)
+            param_idx += 1
         
         if not updates:
             return {"success": True, "data": dict(existing)}
