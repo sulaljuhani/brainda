@@ -7,6 +7,14 @@ import uuid
 import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, Optional
+
+from dateutil import tz
+from dateutil.parser import isoparse
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from watchdog.observers import Observer
@@ -15,6 +23,11 @@ import structlog
 import yaml
 from common.db import connect_with_json_codec
 from common.embeddings import VECTOR_DIMENSIONS, MODEL_NAME
+from common.google_calendar import (
+    GoogleCalendarRepository,
+    credentials_from_dict,
+    credentials_to_dict,
+)
 from api.metrics import (
     celery_queue_depth,
     document_ingestion_duration_seconds,
@@ -55,7 +68,11 @@ celery_app.conf.beat_schedule = {
     "cleanup-idempotency-keys": {
         "task": "worker.tasks.cleanup_expired_idempotency_keys",
         "schedule": crontab(minute=0),  # Every hour
-    }
+    },
+    "google-calendar-sync": {
+        "task": "worker.tasks.schedule_google_calendar_syncs",
+        "schedule": crontab(minute="*/15"),
+    },
 }
 
 logger = structlog.get_logger()
@@ -76,6 +93,8 @@ RETENTION_MESSAGES = int(os.getenv("RETENTION_MESSAGES", "90"))
 RETENTION_JOBS = int(os.getenv("RETENTION_JOBS", "30"))
 RETENTION_NOTIFICATIONS = int(os.getenv("RETENTION_NOTIFICATIONS", "60"))
 RETENTION_AUDIT_LOG = int(os.getenv("RETENTION_AUDIT_LOG", "365"))
+
+GOOGLE_SYNC_DEBOUNCE_SECONDS = int(os.getenv("GOOGLE_SYNC_DEBOUNCE_SECONDS", "300"))
 
 
 async def _connect_db():
@@ -577,3 +596,368 @@ def setup_periodic_tasks(sender, **kwargs):
     import threading
     watcher_thread = threading.Thread(target=start_file_watcher, daemon=True)
     watcher_thread.start()
+
+
+async def _load_google_credentials(
+    repo: GoogleCalendarRepository,
+    user_id: uuid.UUID,
+) -> Optional[Credentials]:
+    creds_data = await repo.get_credentials(user_id)
+    if not creds_data:
+        return None
+
+    credentials = credentials_from_dict(creds_data)
+    if credentials.expired and credentials.refresh_token:
+        try:
+            credentials.refresh(Request())
+            await repo.save_credentials(user_id, credentials_to_dict(credentials))
+        except Exception as exc:  # pragma: no cover - network dependency
+            logger.error(
+                "google_credentials_refresh_failed",
+                user_id=str(user_id),
+                error=str(exc),
+            )
+            return None
+    return credentials
+
+
+async def _ensure_vib_calendar(service, repo: GoogleCalendarRepository, user_id: uuid.UUID) -> Optional[str]:
+    sync_state = await repo.get_sync_state(user_id)
+    if sync_state and sync_state.get("google_calendar_id"):
+        return sync_state["google_calendar_id"]
+
+    calendars = service.calendarList().list().execute()
+    for calendar in calendars.get("items", []):
+        if calendar.get("summary") == "VIB":
+            calendar_id = calendar.get("id")
+            await repo.update_sync_state(user_id, google_calendar_id=calendar_id)
+            return calendar_id
+
+    calendar_body = {
+        "summary": "VIB",
+        "description": "Events synced from VIB",
+        "timeZone": "UTC",
+    }
+    created = service.calendars().insert(body=calendar_body).execute()
+    calendar_id = created.get("id")
+    await repo.update_sync_state(user_id, google_calendar_id=calendar_id)
+    logger.info("google_calendar_created", user_id=str(user_id), calendar_id=calendar_id)
+    return calendar_id
+
+
+def _to_google_event_format(event: dict) -> dict[str, Any]:
+    timezone_name = event.get("timezone") or "UTC"
+    starts_at = event.get("starts_at")
+    ends_at = event.get("ends_at") or (
+        (starts_at + timedelta(hours=1)) if starts_at else None
+    )
+    body: dict[str, Any] = {
+        "summary": event.get("title") or "Untitled event",
+        "description": event.get("description") or "",
+        "start": {
+            "dateTime": starts_at.isoformat() if starts_at else None,
+            "timeZone": timezone_name,
+        },
+        "end": {
+            "dateTime": ends_at.isoformat() if ends_at else None,
+            "timeZone": timezone_name,
+        },
+        "status": event.get("status", "confirmed"),
+    }
+    if event.get("location_text"):
+        body["location"] = event["location_text"]
+    if event.get("rrule"):
+        body["recurrence"] = [f"RRULE:{event['rrule']}"]
+    return body
+
+
+def _parse_google_datetime(value: Optional[str], timezone_hint: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    dt = isoparse(value)
+    if dt.tzinfo is None:
+        tzinfo = tz.gettz(timezone_hint or "UTC")
+        dt = dt.replace(tzinfo=tzinfo)
+    return dt
+
+
+def _parse_google_recurrence(recurrence: Optional[list[str]]) -> Optional[str]:
+    if not recurrence:
+        return None
+    for rule in recurrence:
+        if rule.startswith("RRULE:"):
+            return rule[6:]
+    return None
+
+
+def _from_google_event_format(
+    google_event: dict,
+    user_id: uuid.UUID,
+    calendar_id: str,
+) -> dict[str, Any]:
+    start_info = google_event.get("start", {})
+    end_info = google_event.get("end", {})
+    start_value = start_info.get("dateTime") or start_info.get("date")
+    end_value = end_info.get("dateTime") or end_info.get("date")
+    timezone_hint = start_info.get("timeZone") or end_info.get("timeZone") or "UTC"
+
+    starts_at = _parse_google_datetime(start_value, timezone_hint)
+    ends_at = _parse_google_datetime(end_value, timezone_hint)
+
+    return {
+        "user_id": user_id,
+        "title": google_event.get("summary") or "Untitled event",
+        "description": google_event.get("description"),
+        "starts_at": starts_at,
+        "ends_at": ends_at,
+        "timezone": timezone_hint,
+        "location_text": google_event.get("location"),
+        "rrule": _parse_google_recurrence(google_event.get("recurrence")),
+        "source": "google",
+        "google_event_id": google_event.get("id"),
+        "google_calendar_id": calendar_id,
+        "status": google_event.get("status", "confirmed"),
+    }
+
+
+async def _process_google_event(
+    repo: GoogleCalendarRepository,
+    user_id: uuid.UUID,
+    google_event: dict,
+    calendar_id: str,
+):
+    google_event_id = google_event.get("id")
+    status = google_event.get("status", "confirmed")
+    existing = await repo.get_event_by_google_id(google_event_id)
+
+    if status == "cancelled":
+        if existing:
+            await repo.update_event_fields(existing["id"], {"status": "cancelled"})
+            logger.info("google_event_cancelled_locally", event_id=str(existing["id"]))
+        return
+
+    payload = _from_google_event_format(google_event, user_id, calendar_id)
+
+    if not existing:
+        created = await repo.create_google_event(payload)
+        logger.info("google_event_imported", event_id=str(created["id"]))
+        return
+
+    updates = payload.copy()
+    updates.pop("user_id", None)
+    if existing.get("source") != "google":
+        updates.pop("source", None)
+        updated_value = google_event.get("updated")
+        if updated_value:
+            google_updated = _parse_google_datetime(updated_value, payload.get("timezone"))
+            local_updated = existing.get("updated_at")
+            if google_updated and local_updated and google_updated <= local_updated:
+                logger.info(
+                    "google_event_conflict_skipped",
+                    event_id=str(existing["id"]),
+                )
+                return
+
+    await repo.update_event_fields(existing["id"], updates)
+    logger.info("google_event_updated_locally", event_id=str(existing["id"]))
+
+
+@celery_app.task(name="worker.tasks.schedule_google_calendar_syncs")
+def schedule_google_calendar_syncs():
+    async def _schedule():
+        conn = await _connect_db()
+        try:
+            repo = GoogleCalendarRepository(conn)
+            rows = await repo.list_users_with_sync()
+            now = datetime.now(timezone.utc)
+            for row in rows:
+                user_id = row.get("user_id")
+                if not user_id:
+                    continue
+                last_sync_at = row.get("last_sync_at")
+                if last_sync_at and (now - last_sync_at).total_seconds() < GOOGLE_SYNC_DEBOUNCE_SECONDS:
+                    continue
+                sync_google_calendar_push.delay(str(user_id))
+                if row.get("sync_direction") == "two_way":
+                    sync_google_calendar_pull.delay(str(user_id))
+        finally:
+            await conn.close()
+
+    asyncio.run(_schedule())
+
+
+@celery_app.task(name="worker.tasks.sync_google_calendar_push")
+def sync_google_calendar_push(user_id_str: str):
+    async def _run():
+        user_id = uuid.UUID(user_id_str)
+        conn = await _connect_db()
+        try:
+            repo = GoogleCalendarRepository(conn)
+            credentials = await _load_google_credentials(repo, user_id)
+            if not credentials:
+                logger.warning("google_sync_missing_credentials", user_id=user_id_str)
+                return
+
+            service = build("calendar", "v3", credentials=credentials, cache_discovery=False)
+            calendar_id = await _ensure_vib_calendar(service, repo, user_id)
+            if not calendar_id:
+                logger.warning("google_sync_no_calendar", user_id=user_id_str)
+                return
+
+            events = await repo.list_events_for_sync(user_id, "internal")
+            synced = 0
+            errors = 0
+            for event in events:
+                try:
+                    if event.get("status") == "cancelled" and event.get("google_event_id"):
+                        try:
+                            service.events().delete(
+                                calendarId=calendar_id,
+                                eventId=event["google_event_id"],
+                            ).execute()
+                        except HttpError as exc:
+                            if exc.resp.status != 404:
+                                raise
+                        await repo.update_event_fields(event["id"], {
+                            "google_event_id": None,
+                            "google_calendar_id": calendar_id,
+                        })
+                        synced += 1
+                        continue
+
+                    if event.get("status") == "cancelled":
+                        continue
+
+                    google_body = _to_google_event_format(event)
+                    if not event.get("google_event_id"):
+                        created = service.events().insert(
+                            calendarId=calendar_id,
+                            body=google_body,
+                        ).execute()
+                        await repo.update_event_fields(event["id"], {
+                            "google_event_id": created.get("id"),
+                            "google_calendar_id": calendar_id,
+                        })
+                        synced += 1
+                    else:
+                        service.events().update(
+                            calendarId=calendar_id,
+                            eventId=event["google_event_id"],
+                            body=google_body,
+                        ).execute()
+                        await repo.update_event_fields(event["id"], {
+                            "google_calendar_id": calendar_id,
+                        })
+                        synced += 1
+                except HttpError as exc:
+                    errors += 1
+                    logger.error(
+                        "google_sync_push_http_error",
+                        user_id=user_id_str,
+                        event_id=str(event["id"]),
+                        error=str(exc),
+                    )
+                except Exception as exc:
+                    errors += 1
+                    logger.error(
+                        "google_sync_push_error",
+                        user_id=user_id_str,
+                        event_id=str(event["id"]),
+                        error=str(exc),
+                    )
+
+            await repo.update_sync_state(user_id, last_sync_at=datetime.now(timezone.utc))
+            await repo.save_credentials(user_id, credentials_to_dict(credentials))
+            logger.info(
+                "google_sync_push_completed",
+                user_id=user_id_str,
+                synced=synced,
+                errors=errors,
+            )
+        finally:
+            await conn.close()
+
+    asyncio.run(_run())
+
+
+@celery_app.task(name="worker.tasks.sync_google_calendar_pull")
+def sync_google_calendar_pull(user_id_str: str):
+    async def _run():
+        user_id = uuid.UUID(user_id_str)
+        conn = await _connect_db()
+        try:
+            repo = GoogleCalendarRepository(conn)
+            sync_state = await repo.get_sync_state(user_id)
+            if not sync_state or sync_state.get("sync_direction") != "two_way":
+                return
+
+            credentials = await _load_google_credentials(repo, user_id)
+            if not credentials:
+                logger.warning("google_sync_missing_credentials", user_id=user_id_str)
+                return
+
+            service = build("calendar", "v3", credentials=credentials, cache_discovery=False)
+            calendar_id = await _ensure_vib_calendar(service, repo, user_id)
+            if not calendar_id:
+                logger.warning("google_sync_no_calendar", user_id=user_id_str)
+                return
+
+            sync_token = sync_state.get("sync_token")
+            events_processed = 0
+            page_token = None
+
+            while True:
+                list_kwargs = {
+                    "calendarId": calendar_id,
+                    "showDeleted": True,
+                }
+                if sync_token:
+                    list_kwargs["syncToken"] = sync_token
+                else:
+                    list_kwargs["maxResults"] = 250
+                if page_token:
+                    list_kwargs["pageToken"] = page_token
+
+                response = service.events().list(**list_kwargs).execute()
+                events = response.get("items", [])
+                for google_event in events:
+                    await _process_google_event(repo, user_id, google_event, calendar_id)
+                events_processed += len(events)
+
+                page_token = response.get("nextPageToken")
+                if page_token:
+                    continue
+                sync_token = response.get("nextSyncToken", sync_token)
+                break
+
+            await repo.update_sync_state(
+                user_id,
+                sync_token=sync_token,
+                last_sync_at=datetime.now(timezone.utc),
+            )
+            await repo.save_credentials(user_id, credentials_to_dict(credentials))
+            logger.info(
+                "google_sync_pull_completed",
+                user_id=user_id_str,
+                events_processed=events_processed,
+            )
+        except HttpError as exc:
+            if exc.resp.status == 410:  # Sync token expired
+                await repo.update_sync_state(user_id, sync_token=None)
+                logger.warning("google_sync_pull_token_expired", user_id=user_id_str)
+            else:
+                logger.error(
+                    "google_sync_pull_http_error",
+                    user_id=user_id_str,
+                    error=str(exc),
+                )
+        except Exception as exc:
+            logger.error(
+                "google_sync_pull_error",
+                user_id=user_id_str,
+                error=str(exc),
+            )
+        finally:
+            await conn.close()
+
+    asyncio.run(_run())
