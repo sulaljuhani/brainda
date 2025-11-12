@@ -5,6 +5,7 @@
 
 BRAINDA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+alias brainda-pull="cd $BRAINDA_DIR && ./scripts/pull-and-restart.sh"
 alias brainda-update="cd $BRAINDA_DIR && ./scripts/dev-update.sh"
 alias brainda-rebuild="cd $BRAINDA_DIR && ./scripts/dev-rebuild.sh"
 alias brainda-reset="cd $BRAINDA_DIR && ./scripts/full-reset.sh"
@@ -21,6 +22,7 @@ alias brainda-python="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f
 echo "✅ BrainDA development aliases loaded!"
 echo ""
 echo "Available commands:"
+echo "  brainda-pull        - Pull from GitHub and restart (smart, detects dep changes)"
 echo "  brainda-update      - Pull latest code and restart containers"
 echo "  brainda-rebuild     - Rebuild containers (after dependency changes)"
 echo "  brainda-reset       - Full reset (deletes all data!)"
