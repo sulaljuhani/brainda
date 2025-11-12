@@ -8,8 +8,8 @@ COPY entrypoint.sh /entrypoint.sh
 RUN pip install --no-cache-dir --timeout=100 --upgrade pip \
  && pip install --no-cache-dir --timeout=100 -r /app/api/requirements.txt
 
-# Install Node.js, npm, procps (pgrep/ps used in health checks), PDF processing tools, and binutils (for readelf)
-RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils libmagic1 binutils && rm -rf /var/lib/apt/lists/*
+# Install Node.js, npm, procps (pgrep/ps used in health checks), PDF processing tools, tesseract (for unstructured OCR), and binutils (for readelf)
+RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils tesseract-ocr libmagic1 binutils && rm -rf /var/lib/apt/lists/*
 
 # Verify ONNX Runtime has non-executable stack (security check - without importing)
 RUN bash -c 'set -euo pipefail; \
