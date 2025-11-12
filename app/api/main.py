@@ -48,10 +48,16 @@ logger = structlog.get_logger()
 
 from contextlib import asynccontextmanager
 from worker.scheduler import start_scheduler, sync_scheduled_reminders
+from common.migrations import run_migrations
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    # CRITICAL: Run migrations first, before any code that depends on DB schema
+    logger.info("running_database_migrations")
+    await run_migrations(DATABASE_URL)
+
+    # Now it's safe to start services that depend on the full schema
     start_scheduler()
     await sync_scheduled_reminders()
     await ensure_qdrant_collection()
