@@ -16,8 +16,13 @@ export default function DocumentUpload() {
   const [result, setResult] = useState<UploadResult | null>(null);
   const [jobStatus, setJobStatus] = useState<string>('');
 
+  const getAuthToken = useCallback(
+    () => localStorage.getItem('session_token') ?? localStorage.getItem('api_token'),
+    [],
+  );
+
   const pollJobStatus = useCallback(async (jobId: string) => {
-    const token = localStorage.getItem('api_token');
+    const token = getAuthToken();
     const maxAttempts = 60;
     let attempts = 0;
 
@@ -51,7 +56,7 @@ export default function DocumentUpload() {
     };
 
     poll();
-  }, []);
+  }, [getAuthToken]);
 
   const onDrop = useCallback(async (files: File[]) => {
     const file = files[0];
@@ -64,7 +69,7 @@ export default function DocumentUpload() {
     const formData = new FormData();
     formData.append('file', file);
 
-    const token = localStorage.getItem('api_token');
+    const token = getAuthToken();
 
     try {
       const response = await fetch('/api/v1/ingest', {
@@ -85,7 +90,7 @@ export default function DocumentUpload() {
     } finally {
       setUploading(false);
     }
-  }, [pollJobStatus]);
+  }, [getAuthToken, pollJobStatus]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

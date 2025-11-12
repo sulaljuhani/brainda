@@ -33,10 +33,25 @@ async function getApiToken() {
 
       const transaction = db.transaction(['tokens'], 'readonly');
       const store = transaction.objectStore('tokens');
-      const getRequest = store.get('api_token');
 
-      getRequest.onsuccess = () => resolve(getRequest.result?.value);
-      getRequest.onerror = () => reject(getRequest.error);
+      const resolveWithFallback = () => {
+        const legacyRequest = store.get('api_token');
+        legacyRequest.onsuccess = () => resolve(legacyRequest.result?.value);
+        legacyRequest.onerror = () => reject(legacyRequest.error);
+      };
+
+      const sessionRequest = store.get('session_token');
+      sessionRequest.onsuccess = () => {
+        const token = sessionRequest.result?.value;
+        if (token) {
+          resolve(token);
+        } else {
+          resolveWithFallback();
+        }
+      };
+      sessionRequest.onerror = () => {
+        resolveWithFallback();
+      };
     };
 
     request.onupgradeneeded = (event) => {

@@ -48,7 +48,10 @@ export default function WeeklyCalendar() {
       setLoading(true);
       setError(null);
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('api_token') : null;
+        const token =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('session_token') ?? localStorage.getItem('api_token')
+            : null;
         const response = await fetch(
           `/api/v1/calendar/events?start=${encodeURIComponent(isoStart)}&end=${encodeURIComponent(isoEnd)}`,
           {

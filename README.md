@@ -13,6 +13,7 @@ VIB is a personal knowledge management system that combines note-taking, documen
 - **Calendar Scheduling**: Create recurring events, view a weekly calendar, and link reminders to events
 - **Push Notifications**: Web push notifications for reminders and updates
 - **Metrics & Monitoring**: Prometheus metrics for system health and performance
+- **Passkeys & TOTP Security**: Multi-user authentication with WebAuthn passkeys, session tokens, and backup TOTP codes
 
 ## Architecture
 
@@ -136,6 +137,17 @@ curl http://localhost:8000/api/v1/health
 
 You should see a JSON response with `"status": "healthy"` and all services marked as "ok".
 
+### 6. Apply Stage 8 Migration
+
+Run the Stage 8 SQL migration to create multi-user authentication tables:
+
+```bash
+docker compose exec vib-postgres \
+  psql -U vib -d vib -f migrations/006_add_multi_user_auth.sql
+```
+
+Repeat this command on each environment when you deploy Stage 8.
+
 ## Usage
 
 ### Access the Application
@@ -153,12 +165,35 @@ You should see a JSON response with `"status": "healthy"` and all services marke
 
 ### API Authentication
 
-All API requests require authentication using a Bearer token. Include your API token in the Authorization header:
+Stage 8 introduces session-based authentication with passkeys and TOTP. The API accepts:
+
+- **Session tokens** issued by the passkey/TOTP login flow (stored as `session_token` in localStorage and IndexedDB)
+- **Legacy API tokens** (`API_TOKEN`) for backward compatibility and automation scripts
+
+Send either token as a Bearer credential:
 
 ```bash
-curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+curl -H "Authorization: Bearer YOUR_SESSION_OR_API_TOKEN" \
      http://localhost:8000/api/v1/protected
 ```
+
+Legacy API tokens continue to work, but new users should register a passkey and rely on session tokens.
+
+#### Passkey Endpoints
+
+- `POST /api/v1/auth/register/begin` – start WebAuthn registration (returns options + challenge)
+- `POST /api/v1/auth/register/complete` – verify attestation and persist the credential
+- `POST /api/v1/auth/login/begin` – issue a WebAuthn authentication challenge
+- `POST /api/v1/auth/login/complete` – verify assertion and create a 30-day session
+- `POST /api/v1/auth/logout` – invalidate the current session token
+
+#### TOTP Backup Endpoints
+
+- `POST /api/v1/auth/totp/setup` – generate a secret, QR code, and hashed backup codes
+- `POST /api/v1/auth/totp/verify` – confirm TOTP and enable the factor
+- `POST /api/v1/auth/totp/authenticate` – sign in with a TOTP or backup code (issues a session token)
+
+Front-end components `PasskeyRegister.tsx` and `PasskeyLogin.tsx` demonstrate how to call these endpoints from the browser.
 
 ### Google Calendar Synchronisation (Stage 7)
 
