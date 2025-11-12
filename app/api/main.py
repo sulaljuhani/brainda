@@ -48,6 +48,7 @@ logger = structlog.get_logger()
 from contextlib import asynccontextmanager
 from worker.scheduler import start_scheduler, sync_scheduled_reminders
 from common.migrations import run_migrations
+from api.task_queue import get_celery_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -93,7 +94,6 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
 from api.adapters.llm_adapter import get_llm_adapter
 from api.dependencies import get_db, get_current_user
-from api.task_queue import get_celery_client
 from api.metrics import (
     api_request_duration_seconds,
     celery_queue_depth,
