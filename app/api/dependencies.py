@@ -69,16 +69,6 @@ async def get_user_id_from_token(token: str, db: asyncpg.Connection) -> uuid.UUI
     raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
-async def get_current_user(
-    request: Request,
-    token: str = Depends(verify_token),
-) -> uuid.UUID:
-    user_id = getattr(request.state, "authenticated_user_id", None)
-    if user_id is None:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    return user_id
-
-
 async def verify_token(
     request: Request,
     authorization: str = Header(None),
@@ -99,3 +89,13 @@ async def verify_token(
     request.state.authenticated_user_id = user_id
     request.state.authenticated_token = token
     return token
+
+
+async def get_current_user(
+    request: Request,
+    token: str = Depends(verify_token),
+) -> uuid.UUID:
+    user_id = getattr(request.state, "authenticated_user_id", None)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user_id
