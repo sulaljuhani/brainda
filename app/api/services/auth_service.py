@@ -4,12 +4,30 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, Optional
 from uuid import UUID
 
+import hashlib
+import hmac
+import os
+
 import asyncpg
 import bcrypt
 import structlog
 
 
 logger = structlog.get_logger(__name__)
+
+_SESSION_TOKEN_SECRET = os.getenv("SESSION_TOKEN_SECRET")
+if not _SESSION_TOKEN_SECRET:
+    fallback_secret = os.getenv("API_TOKEN") or "default-session-secret-change-me"
+    logger.warning(
+        "session_token_secret_missing",
+        message="Falling back to less secure default for session hashing",
+    )
+    _SESSION_TOKEN_SECRET = fallback_secret
+_SESSION_TOKEN_SECRET_BYTES = _SESSION_TOKEN_SECRET.encode("utf-8")
+
+
+def _hash_session_token(token: str) -> str:
+    return hmac.new(_SESSION_TOKEN_SECRET_BYTES, token.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 class AuthService:
@@ -187,6 +205,7 @@ class AuthService:
         expires_at: Optional[datetime] = None,
     ) -> asyncpg.Record:
         expiry = expires_at or datetime.now(timezone.utc) + timedelta(days=30)
+        hashed_token = _hash_session_token(token)
         return await self.db.fetchrow(
             """
             INSERT INTO sessions (
@@ -196,7 +215,7 @@ class AuthService:
             RETURNING *
             """,
             user_id,
-            token,
+            hashed_token,
             device_name,
             device_type,
             ip_address,
@@ -205,10 +224,44 @@ class AuthService:
         )
 
     async def get_session_by_token(self, token: str) -> Optional[asyncpg.Record]:
-        return await self.db.fetchrow(
+        hashed_token = _hash_session_token(token)
+        session = await self.db.fetchrow(
+            "SELECT * FROM sessions WHERE token = $1",
+            hashed_token,
+        )
+        if session:
+            return session
+
+        # Legacy plaintext sessions fallback with automatic migration
+        legacy_session = await self.db.fetchrow(
             "SELECT * FROM sessions WHERE token = $1",
             token,
         )
+        if not legacy_session:
+            return None
+
+        try:
+            await self.db.execute(
+                "UPDATE sessions SET token = $1 WHERE id = $2",
+                hashed_token,
+                legacy_session["id"],
+            )
+            refreshed = await self.db.fetchrow(
+                "SELECT * FROM sessions WHERE id = $1",
+                legacy_session["id"],
+            )
+            logger.info(
+                "session_token_migrated",
+                session_id=str(legacy_session["id"]),
+            )
+            return refreshed
+        except Exception as exc:
+            logger.warning(
+                "session_token_migration_failed",
+                session_id=str(legacy_session["id"]),
+                error=str(exc),
+            )
+            return legacy_session
 
     async def touch_session(self, session_id: UUID) -> None:
         await self.db.execute(
@@ -217,7 +270,10 @@ class AuthService:
         )
 
     async def delete_session(self, token: str) -> None:
-        await self.db.execute("DELETE FROM sessions WHERE token = $1", token)
+        hashed_token = _hash_session_token(token)
+        deleted = await self.db.execute("DELETE FROM sessions WHERE token = $1", hashed_token)
+        if deleted == "DELETE 0":
+            await self.db.execute("DELETE FROM sessions WHERE token = $1", token)
 
     # --- Audit log --------------------------------------------------------
 
