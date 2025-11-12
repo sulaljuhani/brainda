@@ -12,14 +12,8 @@ RUN pip install --no-cache-dir --timeout=100 --upgrade pip \
 RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils libmagic1 binutils && rm -rf /var/lib/apt/lists/*
 
 # Verify ONNX Runtime has non-executable stack (security check - without importing)
-RUN bash -lc 'set -euo pipefail; \
-paths=$(python3 - << "PY"
-import site, glob, sys
-for d in site.getsitepackages():
-    for p in glob.glob(d + "/onnxruntime/**/*.so", recursive=True):
-        print(p)
-PY
-); \
+RUN bash -c 'set -euo pipefail; \
+paths=$(python3 -c "import site, glob; [print(p) for d in site.getsitepackages() for p in glob.glob(d + \"/onnxruntime/**/*.so\", recursive=True)]"); \
 echo "Discovered ONNX Runtime shared objects:"; echo "$paths"; \
 bad=0; \
 for so in $paths; do \
