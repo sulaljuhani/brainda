@@ -2,19 +2,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies first (these rarely change, so cache this layer)
+# Install system dependencies first (rarely change)
 RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils tesseract-ocr libmagic1 binutils && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies (change occasionally)
 COPY app/api/requirements.txt /app/api/requirements.txt
-COPY entrypoint.sh /entrypoint.sh
-
-# Use BuildKit cache mount for faster rebuilds even without Docker layer cache
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --timeout=100 --upgrade pip \
  && pip install --timeout=100 -r /app/api/requirements.txt
 
-# Verify ONNX Runtime has non-executable stack (security check - without importing)
+# Verify ONNX Runtime security
 RUN bash -c 'set -euo pipefail; \
 paths=$(python3 -c "import site, glob; [print(p) for d in site.getsitepackages() for p in glob.glob(d + \"/onnxruntime/**/*.so\", recursive=True)]"); \
 echo "Discovered ONNX Runtime shared objects:"; echo "$paths"; \
@@ -32,17 +29,21 @@ else \
   echo "✓ All ONNX Runtime .so files have non-executable stack."; \
 fi'
 
-# Install frontend dependencies
+# Install frontend dependencies (change occasionally)
 COPY app/web/package.json /app/web/
 RUN --mount=type=cache,target=/root/.npm \
     cd /app/web && npm install
-# Pre-download sentence-transformers model so runtime tasks don't spend minutes caching it
+
+# Pre-download ML model (rarely changes)
 RUN python - <<'PY'
 from sentence_transformers import SentenceTransformer
 SentenceTransformer('all-MiniLM-L6-v2')
 PY
 
-COPY app/ /app/
+# Copy entrypoint
+COPY entrypoint.sh /entrypoint.sh
+
+# DON'T copy app/ here - it will be mounted as volume in dev mode
 
 ENV PYTHONPATH="/app"
 ENV TOKENIZERS_PARALLELISM=false
