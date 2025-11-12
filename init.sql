@@ -105,3 +105,11 @@ CREATE INDEX IF NOT EXISTS idx_file_sync_user_path ON file_sync_state(user_id, f
 CREATE INDEX IF NOT EXISTS idx_file_sync_embedding_model ON file_sync_state(embedding_model);
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_messages_user_created ON messages(user_id, created_at);
+
+-- Stage 7 additions
+CREATE TABLE IF NOT EXISTS google_credentials (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    encrypted_credentials TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);

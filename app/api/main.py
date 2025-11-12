@@ -7,7 +7,6 @@ from fastapi import FastAPI, Depends, HTTPException, Header, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
-from celery import Celery
 import logging
 import structlog
 import os
@@ -70,11 +69,7 @@ app = FastAPI(title="VIB API", version="1.0.0", lifespan=lifespan)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # --- Celery client ---
-celery_client = Celery(
-    "vib-worker",
-    broker=os.getenv("REDIS_URL", "redis://redis:6379/0"),
-    backend=os.getenv("REDIS_URL", "redis://redis:6379/0"),
-)
+celery_client = get_celery_client()
 
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -98,6 +93,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
 from api.adapters.llm_adapter import get_llm_adapter
 from api.dependencies import get_db, get_user_id_from_token
+from api.task_queue import get_celery_client
 from api.metrics import (
     api_request_duration_seconds,
     celery_queue_depth,
@@ -813,12 +809,13 @@ async def chat_status(
 
 app.include_router(router)
 
-from api.routers import reminders, devices, documents, search, calendar
+from api.routers import reminders, devices, documents, search, calendar, google_calendar
 app.include_router(reminders.router)
 app.include_router(devices.router)
 app.include_router(documents.router)
 app.include_router(search.router)
 app.include_router(calendar.router)
+app.include_router(google_calendar.router)
 
 if __name__ == "__main__":
     import uvicorn

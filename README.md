@@ -160,6 +160,40 @@ curl -H "Authorization: Bearer YOUR_API_TOKEN" \
      http://localhost:8000/api/v1/protected
 ```
 
+### Google Calendar Synchronisation (Stage 7)
+
+VIB can synchronise calendar events with Google Calendar once you register an OAuth2 client and provide credentials.
+
+1. Create a Google Cloud project and enable the **Google Calendar API**.
+2. Configure an OAuth2 client (application type **Web Application**) with the redirect URI `http://localhost:8000/api/v1/calendar/google/callback` (add your production URL as needed).
+3. Copy the client ID/secret into `.env` alongside the following variables:
+
+   ```bash
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/calendar/google/callback
+   GOOGLE_OAUTH_STATE_SECRET=<random-64-byte-string>
+   GOOGLE_TOKEN_ENCRYPTION_KEY=<output of Fernet.generate_key()>
+   GOOGLE_OAUTH_SUCCESS_REDIRECT=http://localhost:3000/settings?success=google_connected
+   GOOGLE_OAUTH_FAILURE_REDIRECT=http://localhost:3000/settings?error=google_auth_failed
+   ```
+
+4. Restart the API and worker containers so the new configuration is loaded.
+5. Use the API (or frontend component) to connect a user and authorise Google Calendar access.
+
+> **Security tip:** Generate the `GOOGLE_TOKEN_ENCRYPTION_KEY` with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` and store secrets securely.
+
+#### Relevant API Endpoints
+
+- `GET /api/v1/calendar/google/connect` – start the OAuth flow (returns the Google consent URL).
+- `GET /api/v1/calendar/google/callback` – OAuth redirect handler that stores tokens.
+- `POST /api/v1/calendar/google/disconnect` – revoke local access and delete stored credentials.
+- `GET /api/v1/calendar/google/status` – view connection state, direction, and last sync time.
+- `POST /api/v1/calendar/google/sync` – enqueue an immediate sync job.
+- `PATCH /api/v1/calendar/google/settings` – toggle one-way vs two-way sync.
+
+Background Celery jobs (`worker.tasks.schedule_google_calendar_syncs`) dispatch per-user push/pull tasks every 15 minutes. You can override the debounce window with `GOOGLE_SYNC_DEBOUNCE_SECONDS` if needed.
+
 ### Creating Your First Note
 
 ```bash
