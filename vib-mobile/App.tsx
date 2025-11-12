@@ -9,6 +9,7 @@ import { Alert, Platform, Text } from 'react-native';
 import ChatScreen from './src/screens/ChatScreen';
 import RemindersScreen from './src/screens/RemindersScreen';
 import NotesScreen from './src/screens/NotesScreen';
+import CalendarScreen from './src/screens/CalendarScreen';
 import offlineQueue from './src/lib/offline-queue';
 import {
   registerForPushNotifications,
@@ -45,6 +46,7 @@ const linking = {
           id: (id: string) => id,
         },
       },
+      Calendar: 'calendar',
     },
   },
 };
@@ -125,6 +127,14 @@ export default function App() {
             options={{
               tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📝</Text>,
               title: 'Notes',
+            }}
+          />
+          <Tab.Screen
+            name="Calendar"
+            component={CalendarScreen}
+            options={{
+              tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📆</Text>,
+              title: 'Calendar',
             }}
           />
         </Tab.Navigator>

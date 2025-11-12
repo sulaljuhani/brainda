@@ -813,11 +813,12 @@ async def chat_status(
 
 app.include_router(router)
 
-from api.routers import reminders, devices, documents, search
+from api.routers import reminders, devices, documents, search, calendar
 app.include_router(reminders.router)
 app.include_router(devices.router)
 app.include_router(documents.router)
 app.include_router(search.router)
+app.include_router(calendar.router)
 
 if __name__ == "__main__":
     import uvicorn

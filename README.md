@@ -10,6 +10,7 @@ VIB is a personal knowledge management system that combines note-taking, documen
 - **RAG Chat Interface**: Ask questions and get answers based on your knowledge base
 - **Modern Chat UI**: Dark-mode chat surface with responsive navigation and tool-call visualization
 - **Smart Reminders**: Schedule and manage reminders with natural language processing
+- **Calendar Scheduling**: Create recurring events, view a weekly calendar, and link reminders to events
 - **Push Notifications**: Web push notifications for reminders and updates
 - **Metrics & Monitoring**: Prometheus metrics for system health and performance
 
@@ -218,6 +219,42 @@ curl -X POST http://localhost:8000/api/v1/chat \
     "message": "Remind me to review docs in 2 hours"
   }'
 ```
+
+### Managing Calendar Events
+
+Create a recurring event (with RRULE support):
+
+```bash
+curl -X POST http://localhost:8000/api/v1/calendar/events \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Weekly Review",
+    "starts_at": "2025-01-13T17:00:00Z",
+    "timezone": "UTC",
+    "location_text": "Zoom",
+    "rrule": "FREQ=WEEKLY;BYDAY=MO;COUNT=4"
+  }'
+```
+
+List events for a weekly window (recurring instances are expanded):
+
+```bash
+START="2025-01-13T00:00:00Z"
+END="2025-01-20T00:00:00Z"
+
+curl "http://localhost:8000/api/v1/calendar/events?start=$START&end=$END" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+Link an existing reminder to a calendar event:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/calendar/events/$EVENT_ID/reminders/$REMINDER_ID \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+The web prototype (`app/web/components/VibInterface.tsx`) now shows a weekly calendar panel next to chat, and the Expo mobile app (`vib-mobile/src/screens/CalendarScreen.tsx`) includes a dedicated **Calendar** tab.
 
 ## Development
 

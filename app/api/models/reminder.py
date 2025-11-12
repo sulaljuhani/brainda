@@ -13,6 +13,7 @@ class ReminderCreate(BaseModel):
     timezone: str
     repeat_rrule: Optional[str] = None
     note_id: Optional[UUID] = None
+    calendar_event_id: Optional[UUID] = None
 
     @validator('timezone')
     def validate_timezone(cls, v):
@@ -43,6 +44,7 @@ class ReminderUpdate(BaseModel):
     timezone: Optional[str] = None
     repeat_rrule: Optional[str] = None
     status: Optional[str] = None
+    calendar_event_id: Optional[UUID] = None
 
 class ReminderResponse(BaseModel):
     id: UUID
@@ -55,6 +57,7 @@ class ReminderResponse(BaseModel):
     repeat_rrule: Optional[str]
     status: str
     note_id: Optional[UUID]
+    calendar_event_id: Optional[UUID]
     created_at: datetime
     updated_at: datetime
 
