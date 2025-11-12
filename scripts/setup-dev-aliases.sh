@@ -1,0 +1,38 @@
+#!/bin/bash
+# Run this script to set up convenient aliases for development
+# Usage: source ./scripts/setup-dev-aliases.sh
+# Or add to your ~/.bashrc: source /path/to/brainda/scripts/setup-dev-aliases.sh
+
+BRAINDA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+alias brainda-update="cd $BRAINDA_DIR && ./scripts/dev-update.sh"
+alias brainda-rebuild="cd $BRAINDA_DIR && ./scripts/dev-rebuild.sh"
+alias brainda-reset="cd $BRAINDA_DIR && ./scripts/full-reset.sh"
+alias brainda-logs="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f"
+alias brainda-logs-api="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f orchestrator"
+alias brainda-logs-worker="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f worker"
+alias brainda-restart="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f docker-compose.dev.yml restart"
+alias brainda-stop="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f docker-compose.dev.yml down"
+alias brainda-start="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d"
+alias brainda-test="cd $BRAINDA_DIR && ./test-mvp-complete.sh"
+alias brainda-shell="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f docker-compose.dev.yml exec orchestrator bash"
+alias brainda-python="cd $BRAINDA_DIR && docker compose -f docker-compose.yml -f docker-compose.dev.yml exec orchestrator python"
+
+echo "✅ BrainDA development aliases loaded!"
+echo ""
+echo "Available commands:"
+echo "  brainda-update      - Pull latest code and restart containers"
+echo "  brainda-rebuild     - Rebuild containers (after dependency changes)"
+echo "  brainda-reset       - Full reset (deletes all data!)"
+echo "  brainda-logs        - View logs from all services"
+echo "  brainda-logs-api    - View API logs only"
+echo "  brainda-logs-worker - View worker logs only"
+echo "  brainda-restart     - Restart all services"
+echo "  brainda-stop        - Stop all services"
+echo "  brainda-start       - Start all services"
+echo "  brainda-test        - Run MVP tests"
+echo "  brainda-shell       - Open bash shell in orchestrator container"
+echo "  brainda-python      - Open Python REPL in orchestrator container"
+echo ""
+echo "💡 Add this to your ~/.bashrc to make aliases permanent:"
+echo "   source $BRAINDA_DIR/scripts/setup-dev-aliases.sh"

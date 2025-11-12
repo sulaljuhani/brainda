@@ -1,0 +1,33 @@
+# Development override for docker-compose
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+version: '3.8'
+
+services:
+  orchestrator:
+    # Mount code as volume for live reloading (no rebuild needed for code changes)
+    volumes:
+      - ./app:/app
+      - ./vault:/vault
+      - ./uploads:/uploads
+      - ./migrations:/app/migrations
+      - ./entrypoint.sh:/entrypoint.sh
+    # Enable hot reload for FastAPI
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    volumes:
+      - ./app:/app
+      - ./vault:/vault
+      - ./uploads:/uploads
+      - ./entrypoint.sh:/entrypoint.sh
+    # Worker will auto-reload on code changes with --pool=solo
+    environment:
+      - SERVICE=worker
+      - CELERY_WORKER_POOL=solo  # Better for development
+
+  beat:
+    volumes:
+      - ./app:/app
+      - ./entrypoint.sh:/entrypoint.sh
+    environment:
+      - SERVICE=beat
