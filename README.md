@@ -15,6 +15,20 @@ VIB is a personal knowledge management system that combines note-taking, documen
 - **Metrics & Monitoring**: Prometheus metrics for system health and performance
 - **Passkeys & TOTP Security**: Multi-user authentication with WebAuthn passkeys, session tokens, and backup TOTP codes
 
+## MVP Requirement Coverage
+
+The Stage 0-8 requirements documented in [`devloper_notes/README.md`](devloper_notes/README.md) map to the implementation as follows:
+
+| Requirement | Implementation Highlights |
+| --- | --- |
+| Chat-first interface with streaming responses【F:devloper_notes/README.md†L23-L35】 | React prototype in `app/web/components/VibInterface.tsx` drives chat, notes, reminders, calendar, and search panes with tool-call visualization.【F:app/web/components/VibInterface.tsx†L798-L880】 |
+| Simple authentication with API tokens (plus Stage 8 passkeys/TOTP)【F:devloper_notes/README.md†L25-L35】 | API validates bearer tokens and issues hashed session tokens via the auth service; passkey/TOTP routes extend login flows.【F:app/api/dependencies.py†L39-L101】【F:app/api/services/auth_service.py†L197-L257】 |
+| Time-based reminders with deduplication【F:devloper_notes/README.md†L27-L35】 | Reminder service creates RRULE-aware reminders, links calendar events, and prevents duplicates via metrics-backed safeguards.【F:app/api/services/reminder_service.py†L15-L159】 |
+| Notes stored as Markdown and exposed via unified vector search【F:devloper_notes/README.md†L28-L35】 | Note endpoints persist Markdown files and queue embeddings that feed semantic search through the vector service and RAG pipeline.【F:app/api/main.py†L717-L825】【F:app/api/services/rag_service.py†L12-L84】 |
+| Document ingestion pipeline with deduping and background jobs【F:devloper_notes/README.md†L29-L35】 | Document router stores uploads under `/app/uploads`, deduplicates by SHA-256, and enqueues Celery jobs for embedding.【F:app/api/routers/documents.py†L1-L110】【F:app/api/services/document_service.py†L11-L139】 |
+| Push notifications across Web/FCM/APNs with TTL + collapse keys【F:devloper_notes/README.md†L31-L35】 | Notification service fans out to Web Push, FCM, and APNs adapters, handling TTL, collapse IDs, and structured payloads.【F:app/api/services/notification_service.py†L1-L366】 |
+| Metrics/observability for ingestion, reminders, chat, and health【F:devloper_notes/README.md†L32-L35】 | Prometheus registry exports business SLOs, ingestion counters, and infrastructure gauges via `/api/v1/metrics`.【F:app/api/metrics.py†L1-L198】 |
+
 ## Architecture
 
 VIB consists of several microservices orchestrated with Docker Compose:
