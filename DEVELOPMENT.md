@@ -23,14 +23,28 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ## Daily Development Workflow
 
 ### For Code Changes (Most Common - FAST!)
-When you change Python or JavaScript code:
 
+#### If editing code directly on the server:
 ```bash
 # Just save your files - changes auto-reload!
 # No need to rebuild or restart anything!
 ```
 
-That's it! The development setup mounts your code as volumes with hot-reload enabled:
+#### If using GitHub workflow (Edit → Commit → Pull):
+```bash
+# 1. Edit code on your local machine
+# 2. Commit and push to GitHub
+# 3. On the server, pull and restart:
+./scripts/pull-and-restart.sh
+```
+
+This script:
+- Pulls latest changes from GitHub
+- Detects if dependencies changed (auto-suggests rebuild)
+- Restarts containers (takes ~10 seconds for code-only changes)
+- No rebuild needed unless dependencies changed!
+
+The development setup mounts your code as volumes, so pulled changes are immediately available:
 - **FastAPI**: Auto-reloads on Python file changes
 - **Celery Worker**: Restarts tasks on code changes
 - **Frontend**: npm handles hot-reload
@@ -45,8 +59,17 @@ When you modify `requirements.txt` or `package.json`:
 This rebuilds containers but uses cache, taking ~2-5 minutes instead of 20+ minutes.
 
 ### For Git Updates (When Pulling Changes)
+
+**Recommended: Use the smart pull script**
 ```bash
-./scripts/dev-update.sh
+./scripts/pull-and-restart.sh
+```
+This automatically detects dependency changes and suggests rebuild if needed.
+
+**Alternative: Manual approach**
+```bash
+git pull origin your-branch
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart
 ```
 
 This pulls latest code and restarts containers (no rebuild needed unless dependencies changed).
