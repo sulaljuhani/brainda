@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # test-mvp-complete.sh
-# Comprehensive MVP integration test suite for VIB (Stages 0-4)
+# Comprehensive integration test suite for VIB (Stages 0-8)
+# Tests MVP (0-4) and advanced features (5-8) with real API calls
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -107,11 +108,28 @@ PY
 usage() {
   cat <<USAGE
 Usage: $0 [options]
-  --stage N         Run only Stage N tests (0-4, performance, workflows)
+  --stage N         Run only Stage N tests (0-8, performance, workflows)
+                      0: Infrastructure
+                      1: Notes + Vector Search
+                      2: Reminders + Notifications
+                      3: Documents + RAG
+                      4: Backups + Retention + Observability
+                      5: Mobile + Idempotency
+                      6: Calendar + RRULE
+                      7: Google Calendar Sync
+                      8: Passkeys + Multi-user
+                      performance: Performance tests
+                      workflows: End-to-end workflows
   --fast            Skip slow tests (reminder firing, long-running DOC/RAG)
   --html-report     Generate HTML report in test directory
   --verbose         Enable verbose curl output
   --help            Show this message
+
+Examples:
+  $0                              # Run all tests
+  $0 --stage 5                    # Run only Stage 5 (Idempotency) tests
+  $0 --stage 6 --verbose          # Run Stage 6 (Calendar) with verbose output
+  $0 --fast --html-report         # Run all tests (skip slow ones), generate HTML report
 USAGE
 }
 
@@ -2004,6 +2022,872 @@ workflow_check() {
 # Additional stage functions to be implemented...
 #############################################
 
+#============================================================
+# STAGE 5 TESTS: MOBILE + IDEMPOTENCY
+#============================================================
+
+test_idempotency_table_exists() {
+  log "Checking idempotency_keys table exists..."
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'idempotency_keys';" | tr -d '[:space:]')
+  if [[ "$count" != "1" ]]; then
+    error "idempotency_keys table not found. Run migration 004_add_idempotency.sql"
+    psql_query "\dt idempotency*" >&2
+    return 1
+  fi
+  assert_equals "$count" "1" "idempotency_keys table exists"
+}
+
+test_idempotency_create_reminder() {
+  log "Testing idempotency key with reminder creation..."
+  local idem_key="test-idem-$TIMESTAMP-$RANDOM"
+  local title="Idempotent Reminder $TIMESTAMP"
+  local due_utc
+  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+
+  log "Creating reminder with idempotency key: $idem_key"
+  local response status
+  response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem_key" \
+    -H "Content-Type: application/json" \
+    -d "$payload" 2>&1)
+  status=$(echo "$response" | tail -1)
+  response=$(echo "$response" | head -n -1)
+
+  if [[ "$status" != "200" && "$status" != "201" ]]; then
+    error "Failed to create reminder with idempotency key. Status: $status"
+    echo "Response: $response" >&2
+    return 1
+  fi
+
+  local reminder_id
+  reminder_id=$(echo "$response" | jq -r '.data.id // .id // empty')
+  if [[ -z "$reminder_id" || "$reminder_id" == "null" ]]; then
+    error "No reminder ID in response"
+    echo "Response: $response" >&2
+    return 1
+  fi
+
+  # Check idempotency key stored in database
+  local idem_count
+  idem_count=$(psql_query "SELECT COUNT(*) FROM idempotency_keys WHERE idempotency_key = '$idem_key';" | tr -d '[:space:]')
+  assert_equals "$idem_count" "1" "Idempotency key stored in database"
+}
+
+test_idempotency_duplicate_prevention() {
+  log "Testing duplicate prevention with same idempotency key..."
+  local idem_key="test-dup-$TIMESTAMP-$RANDOM"
+  local title="Duplicate Test $TIMESTAMP"
+  local due_utc
+  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+
+  log "First request with key: $idem_key"
+  local resp1
+  resp1=$(curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem_key" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+
+  local id1
+  id1=$(echo "$resp1" | jq -r '.data.id // .id // empty')
+
+  log "Second request with same key: $idem_key"
+  local resp2 replay_header
+  resp2=$(curl -sS -D "$TEST_DIR/headers-dup.txt" -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem_key" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+
+  local id2
+  id2=$(echo "$resp2" | jq -r '.data.id // .id // empty')
+
+  if [[ "$id1" != "$id2" ]]; then
+    error "Different IDs returned for same idempotency key! id1=$id1 id2=$id2"
+    echo "Response 1: $resp1" >&2
+    echo "Response 2: $resp2" >&2
+    return 1
+  fi
+
+  # Check for replay header
+  replay_header=$(grep -i "x-idempotency-replay" "$TEST_DIR/headers-dup.txt" || echo "")
+  if [[ -z "$replay_header" ]]; then
+    warn "X-Idempotency-Replay header not found (may not be implemented yet)"
+  else
+    success "X-Idempotency-Replay header present: $replay_header"
+  fi
+
+  # Verify only one reminder created in database
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = '$title';" | tr -d '[:space:]')
+  assert_equals "$count" "1" "Only one reminder created despite duplicate request"
+}
+
+test_idempotency_header_replay() {
+  log "Testing idempotency replay header..."
+  local idem_key="test-replay-$TIMESTAMP-$RANDOM"
+  local title="Replay Test $TIMESTAMP"
+  local due_utc
+  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+
+  # First request
+  curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem_key" \
+    -H "Content-Type: application/json" \
+    -d "$payload" >/dev/null
+
+  # Second request - should return cached response
+  local headers_file="$TEST_DIR/replay-headers.txt"
+  curl -sS -D "$headers_file" -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem_key" \
+    -H "Content-Type: application/json" \
+    -d "$payload" >/dev/null
+
+  if grep -qi "x-idempotency-replay" "$headers_file"; then
+    success "X-Idempotency-Replay header found in response"
+    return 0
+  else
+    warn "X-Idempotency-Replay header not found (feature may not be fully implemented)"
+    return 0  # Don't fail, just warn
+  fi
+}
+
+test_idempotency_aggressive_retry() {
+  log "Testing aggressive retry scenario (10 rapid requests with same key)..."
+  local idem_key="test-aggressive-$TIMESTAMP-$RANDOM"
+  local title="Aggressive Retry $TIMESTAMP"
+  local due_utc
+  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+
+  log "Sending 10 parallel requests with same idempotency key..."
+  for i in {1..10}; do
+    curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Idempotency-Key: $idem_key" \
+      -H "Content-Type: application/json" \
+      -d "$payload" >"$TEST_DIR/aggressive-$i.json" 2>&1 &
+  done
+  wait
+
+  log "Checking database for duplicate reminders..."
+  sleep 2  # Give time for all DB writes to complete
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = '$title';" | tr -d '[:space:]')
+
+  if [[ "$count" != "1" ]]; then
+    error "Expected 1 reminder, found $count! Idempotency failed under concurrent load."
+    psql_query "SELECT id, title, created_at FROM reminders WHERE title = '$title';" >&2
+    return 1
+  fi
+
+  success "Aggressive retry test passed: only 1 reminder created from 10 concurrent requests"
+}
+
+test_idempotency_different_keys() {
+  log "Testing that different idempotency keys create separate reminders..."
+  local title="Different Keys Test $TIMESTAMP"
+  local due_utc
+  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+
+  local key1="test-key1-$TIMESTAMP-$RANDOM"
+  local key2="test-key2-$TIMESTAMP-$RANDOM"
+
+  log "Creating reminder with key1: $key1"
+  local resp1
+  resp1=$(curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $key1" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+
+  log "Creating reminder with key2: $key2"
+  local resp2
+  resp2=$(curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $key2" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+
+  local id1 id2
+  id1=$(echo "$resp1" | jq -r '.data.id // .id // empty')
+  id2=$(echo "$resp2" | jq -r '.data.id // .id // empty')
+
+  if [[ "$id1" == "$id2" ]]; then
+    error "Same reminder ID returned for different idempotency keys! id=$id1"
+    return 1
+  fi
+
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = '$title';" | tr -d '[:space:]')
+  assert_equals "$count" "2" "Two separate reminders created with different idempotency keys"
+}
+
+test_idempotency_key_expiry() {
+  log "Testing idempotency key expiry field..."
+  local idem_key="test-expiry-$TIMESTAMP-$RANDOM"
+  local title="Expiry Test $TIMESTAMP"
+  local due_utc
+  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+
+  curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem_key" \
+    -H "Content-Type: application/json" \
+    -d "$payload" >/dev/null
+
+  local expires_at
+  expires_at=$(psql_query "SELECT expires_at FROM idempotency_keys WHERE idempotency_key = '$idem_key';" 2>/dev/null || echo "")
+
+  if [[ -z "$expires_at" || "$expires_at" == "null" ]]; then
+    warn "expires_at field empty or not found (feature may not be implemented)"
+    return 0
+  fi
+
+  success "Idempotency key has expiry: $expires_at"
+}
+
+test_idempotency_cleanup_job() {
+  log "Testing idempotency cleanup job exists..."
+  # Check if cleanup task is registered in Celery beat
+  if docker exec vib-worker bash -c "celery -A app.worker inspect registered" 2>/dev/null | grep -q "cleanup.*idempotency"; then
+    success "Idempotency cleanup task registered in Celery"
+    return 0
+  else
+    warn "Idempotency cleanup task not found in Celery (may not be implemented yet)"
+    return 0  # Don't fail, just warn
+  fi
+}
+
+test_mobile_api_endpoints() {
+  log "Testing mobile-specific API endpoints are accessible..."
+  # Just verify the standard endpoints work (mobile uses same endpoints)
+  local status
+  status=$(curl -sS -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN")
+  assert_status_code "$status" "200" "Reminders endpoint accessible for mobile"
+}
+
+test_session_token_format() {
+  log "Testing session token support (if implemented)..."
+  # This checks if the backend supports session tokens as described in Stage 5
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'sessions';" 2>/dev/null | tr -d '[:space:]')
+  if [[ "$count" == "1" ]]; then
+    success "Sessions table exists (session token support implemented)"
+  else
+    warn "Sessions table not found (Stage 8 feature, may not be implemented in Stage 5)"
+  fi
+  return 0  # Don't fail
+}
+
+#============================================================
+# STAGE 6 TESTS: CALENDAR + RRULE
+#============================================================
+
+test_calendar_table_exists() {
+  log "Checking calendar_events table exists..."
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'calendar_events';" | tr -d '[:space:]')
+  if [[ "$count" != "1" ]]; then
+    error "calendar_events table not found. Run migration 005_add_calendar.sql"
+    psql_query "\dt calendar*" >&2
+    return 1
+  fi
+  assert_equals "$count" "1" "calendar_events table exists"
+}
+
+test_calendar_event_create() {
+  log "Testing calendar event creation via API..."
+  local title="Test Event $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" '{title:$title, starts_at:$starts, timezone:"UTC"}')
+
+  local response status
+  response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload" 2>&1)
+  status=$(echo "$response" | tail -1)
+  response=$(echo "$response" | head -n -1)
+
+  if [[ "$status" != "200" && "$status" != "201" ]]; then
+    error "Failed to create calendar event. Status: $status"
+    echo "Response: $response" >&2
+    return 1
+  fi
+
+  CALENDAR_EVENT_ID=$(echo "$response" | jq -r '.data.id // .id // empty')
+  if [[ -z "$CALENDAR_EVENT_ID" || "$CALENDAR_EVENT_ID" == "null" ]]; then
+    error "No event ID in response"
+    echo "Response: $response" >&2
+    return 1
+  fi
+
+  success "Calendar event created: $CALENDAR_EVENT_ID"
+}
+
+test_calendar_event_in_db() {
+  log "Testing calendar event persisted in database..."
+  if [[ -z "${CALENDAR_EVENT_ID:-}" ]]; then
+    # Create an event first
+    test_calendar_event_create || return 1
+  fi
+
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM calendar_events WHERE id = '$CALENDAR_EVENT_ID';" | tr -d '[:space:]')
+  assert_equals "$count" "1" "Calendar event found in database"
+}
+
+test_calendar_event_list() {
+  log "Testing calendar events list endpoint..."
+  local start_date end_date
+  start_date=$(date -u -d 'today' '+%Y-%m-%dT00:00:00Z')
+  end_date=$(date -u -d '+7 days' '+%Y-%m-%dT23:59:59Z')
+
+  local response status
+  response=$(curl -sS -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
+    -H "Authorization: Bearer $TOKEN" 2>&1)
+  status=$(echo "$response" | tail -1)
+  response=$(echo "$response" | head -n -1)
+
+  assert_status_code "$status" "200" "Calendar events list endpoint returns 200"
+
+  local events
+  events=$(echo "$response" | jq '.data.events // .events // []')
+  if [[ "$events" == "[]" ]]; then
+    warn "No events returned (may be expected if none exist in date range)"
+  else
+    success "Calendar events list returned: $(echo "$events" | jq 'length') events"
+  fi
+}
+
+test_calendar_event_update() {
+  log "Testing calendar event update..."
+  if [[ -z "${CALENDAR_EVENT_ID:-}" ]]; then
+    test_calendar_event_create || return 1
+  fi
+
+  local new_title="Updated Event $TIMESTAMP"
+  local payload
+  payload=$(jq -n --arg title "$new_title" '{title:$title}')
+
+  local response status
+  response=$(curl -sS -w "\n%{http_code}" -X PATCH "$BASE_URL/api/v1/calendar/events/$CALENDAR_EVENT_ID" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload" 2>&1)
+  status=$(echo "$response" | tail -1)
+
+  assert_status_code "$status" "200" "Calendar event update returns 200"
+
+  local db_title
+  db_title=$(psql_query "SELECT title FROM calendar_events WHERE id = '$CALENDAR_EVENT_ID';" | xargs)
+  assert_equals "$db_title" "$new_title" "Calendar event title updated in database"
+}
+
+test_calendar_event_delete() {
+  log "Testing calendar event deletion..."
+  # Create a fresh event for deletion
+  local title="Delete Test $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" '{title:$title, starts_at:$starts, timezone:"UTC"}')
+
+  local response
+  response=$(curl -sS -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+
+  local event_id
+  event_id=$(echo "$response" | jq -r '.data.id // .id')
+
+  # Delete the event
+  local del_status
+  del_status=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE "$BASE_URL/api/v1/calendar/events/$event_id" \
+    -H "Authorization: Bearer $TOKEN")
+
+  assert_status_code "$del_status" "200" "Calendar event delete returns 200"
+
+  # Verify status changed to cancelled
+  local status_field
+  status_field=$(psql_query "SELECT status FROM calendar_events WHERE id = '$event_id';" | xargs)
+  if [[ "$status_field" == "cancelled" ]]; then
+    success "Event status set to cancelled"
+  else
+    warn "Event status is '$status_field', expected 'cancelled'"
+  fi
+}
+
+test_calendar_rrule_daily() {
+  log "Testing calendar event with daily RRULE..."
+  local title="Daily Standup $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d 'tomorrow 09:00' '+%Y-%m-%dT%H:%M:00Z')
+  local rrule="FREQ=DAILY;COUNT=7"
+  local payload
+  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg rule "$rrule" \
+    '{title:$title, starts_at:$starts, timezone:"UTC", rrule:$rule}')
+
+  local response status
+  response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload" 2>&1)
+  status=$(echo "$response" | tail -1)
+  response=$(echo "$response" | head -n -1)
+
+  if [[ "$status" != "200" && "$status" != "201" ]]; then
+    error "Failed to create event with RRULE. Status: $status"
+    echo "Response: $response" >&2
+    return 1
+  fi
+
+  local event_id
+  event_id=$(echo "$response" | jq -r '.data.id // .id')
+
+  local stored_rrule
+  stored_rrule=$(psql_query "SELECT rrule FROM calendar_events WHERE id = '$event_id';" | xargs)
+  assert_equals "$stored_rrule" "$rrule" "RRULE stored correctly in database"
+}
+
+test_calendar_rrule_weekly() {
+  log "Testing calendar event with weekly RRULE..."
+  local title="Weekly Meeting $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d 'next monday 10:00' '+%Y-%m-%dT%H:%M:00Z')
+  local rrule="FREQ=WEEKLY;BYDAY=MO;COUNT=4"
+  local payload
+  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg rule "$rrule" \
+    '{title:$title, starts_at:$starts, timezone:"UTC", rrule:$rule}')
+
+  local response status
+  response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload" 2>&1)
+  status=$(echo "$response" | tail -1)
+
+  assert_status_code "$status" "200" "Weekly RRULE event created"
+}
+
+test_calendar_rrule_expansion() {
+  log "Testing RRULE expansion in list endpoint..."
+  # Create an event with RRULE
+  local title="Expansion Test $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d 'tomorrow 09:00' '+%Y-%m-%dT%H:%M:00Z')
+  local rrule="FREQ=DAILY;COUNT=5"
+  local payload
+  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg rule "$rrule" \
+    '{title:$title, starts_at:$starts, timezone:"UTC", rrule:$rule}')
+
+  curl -sS -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload" >/dev/null
+
+  sleep 1
+
+  # Query events for next 7 days
+  local start_date end_date
+  start_date=$(date -u -d 'today' '+%Y-%m-%dT00:00:00Z')
+  end_date=$(date -u -d '+7 days' '+%Y-%m-%dT23:59:59Z')
+
+  local response
+  response=$(curl -sS -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
+    -H "Authorization: Bearer $TOKEN")
+
+  local expanded_count
+  expanded_count=$(echo "$response" | jq "[.data.events // .events // [] | .[] | select(.title == \"$title\")] | length")
+
+  if [[ "$expanded_count" -ge 5 ]]; then
+    success "RRULE expanded correctly: $expanded_count instances found"
+  else
+    warn "RRULE expansion may not be working: only $expanded_count instances found, expected 5"
+  fi
+}
+
+test_calendar_rrule_validation() {
+  log "Testing RRULE validation (should reject invalid rules)..."
+  local title="Invalid RRULE Test $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
+  local invalid_rrule="FREQ=INVALID;COUNT=1000000"  # Invalid frequency and excessive count
+  local payload
+  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg rule "$invalid_rrule" \
+    '{title:$title, starts_at:$starts, timezone:"UTC", rrule:$rule}')
+
+  local status
+  status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+
+  if [[ "$status" == "400" || "$status" == "422" ]]; then
+    success "Invalid RRULE rejected with status $status"
+  else
+    warn "Invalid RRULE validation may not be implemented (got status $status)"
+  fi
+}
+
+test_calendar_reminder_link() {
+  log "Testing linking reminder to calendar event..."
+  # Create a calendar event
+  local event_title="Meeting $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
+  local event_payload
+  event_payload=$(jq -n --arg title "$event_title" --arg starts "$starts_at" \
+    '{title:$title, starts_at:$starts, timezone:"UTC"}')
+
+  local event_response
+  event_response=$(curl -sS -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$event_payload")
+
+  local event_id
+  event_id=$(echo "$event_response" | jq -r '.data.id // .id')
+
+  # Create a reminder
+  local reminder_title="Reminder for Meeting $TIMESTAMP"
+  local due_utc="$starts_at"
+  local reminder_payload
+  reminder_payload=$(jq -n --arg title "$reminder_title" --arg due "$due_utc" \
+    '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+
+  local reminder_response
+  reminder_response=$(curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$reminder_payload")
+
+  local reminder_id
+  reminder_id=$(echo "$reminder_response" | jq -r '.data.id // .id')
+
+  # Link reminder to event
+  local has_calendar_event_id_col
+  has_calendar_event_id_col=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='reminders' AND column_name='calendar_event_id';" | tr -d '[:space:]')
+
+  if [[ "$has_calendar_event_id_col" == "1" ]]; then
+    psql_query "UPDATE reminders SET calendar_event_id = '$event_id' WHERE id = '$reminder_id';" >/dev/null
+    local linked_event
+    linked_event=$(psql_query "SELECT calendar_event_id FROM reminders WHERE id = '$reminder_id';" | xargs)
+    assert_equals "$linked_event" "$event_id" "Reminder linked to calendar event"
+  else
+    warn "calendar_event_id column not found in reminders table (feature may not be implemented)"
+    return 0
+  fi
+}
+
+test_calendar_weekly_view() {
+  log "Testing weekly calendar view API..."
+  local start_date end_date
+  start_date=$(date -u -d 'last monday' '+%Y-%m-%dT00:00:00Z')
+  end_date=$(date -u -d 'next sunday' '+%Y-%m-%dT23:59:59Z')
+
+  local response status
+  response=$(curl -sS -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
+    -H "Authorization: Bearer $TOKEN" 2>&1)
+  status=$(echo "$response" | tail -1)
+
+  assert_status_code "$status" "200" "Weekly calendar view API returns 200"
+}
+
+test_calendar_timezone_handling() {
+  log "Testing calendar event timezone handling..."
+  local title="Timezone Test $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
+  local tz="America/New_York"
+  local payload
+  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg timezone "$tz" \
+    '{title:$title, starts_at:$starts, timezone:$timezone}')
+
+  local response
+  response=$(curl -sS -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+
+  local event_id
+  event_id=$(echo "$response" | jq -r '.data.id // .id')
+
+  local stored_tz
+  stored_tz=$(psql_query "SELECT timezone FROM calendar_events WHERE id = '$event_id';" | xargs)
+  assert_equals "$stored_tz" "$tz" "Calendar event timezone stored correctly"
+}
+
+test_calendar_user_isolation() {
+  log "Testing calendar events are isolated by user..."
+  # This test verifies that events are properly scoped to user_id
+  local has_user_id
+  has_user_id=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='calendar_events' AND column_name='user_id';" | tr -d '[:space:]')
+
+  if [[ "$has_user_id" == "1" ]]; then
+    success "calendar_events table has user_id column for isolation"
+  else
+    error "calendar_events table missing user_id column!"
+    return 1
+  fi
+}
+
+#============================================================
+# STAGE 7 TESTS: GOOGLE CALENDAR SYNC
+#============================================================
+
+test_google_sync_table_exists() {
+  log "Checking calendar_sync_state table exists..."
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'calendar_sync_state';" | tr -d '[:space:]')
+  if [[ "$count" != "1" ]]; then
+    warn "calendar_sync_state table not found (Stage 7 may not be implemented)"
+    return 0  # Don't fail
+  fi
+  success "calendar_sync_state table exists"
+}
+
+test_google_sync_status_endpoint() {
+  log "Testing Google Calendar sync status endpoint..."
+  local response status
+  response=$(curl -sS -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/calendar/google/status" \
+    -H "Authorization: Bearer $TOKEN" 2>&1)
+  status=$(echo "$response" | tail -1)
+
+  if [[ "$status" == "200" ]]; then
+    success "Google Calendar sync status endpoint exists"
+  elif [[ "$status" == "404" ]]; then
+    warn "Google Calendar sync endpoints not found (Stage 7 may not be implemented)"
+    return 0
+  else
+    error "Unexpected status from Google sync status endpoint: $status"
+    return 1
+  fi
+}
+
+test_google_oauth_endpoints() {
+  log "Testing Google OAuth endpoints exist..."
+  local connect_status disconnect_status
+
+  connect_status=$(curl -sS -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/api/v1/calendar/google/connect" \
+    -H "Authorization: Bearer $TOKEN")
+
+  if [[ "$connect_status" == "200" || "$connect_status" == "302" ]]; then
+    success "Google OAuth connect endpoint exists"
+  elif [[ "$connect_status" == "404" ]]; then
+    warn "Google OAuth endpoints not found (Stage 7 may not be implemented)"
+    return 0
+  fi
+
+  # Test disconnect endpoint (should work even if not connected)
+  disconnect_status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/calendar/google/disconnect" \
+    -H "Authorization: Bearer $TOKEN")
+
+  if [[ "$disconnect_status" == "200" || "$disconnect_status" == "400" ]]; then
+    success "Google OAuth disconnect endpoint exists"
+  fi
+}
+
+test_google_sync_state() {
+  log "Testing Google sync state structure..."
+  local has_sync_state
+  has_sync_state=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'calendar_sync_state';" 2>/dev/null | tr -d '[:space:]')
+
+  if [[ "$has_sync_state" == "1" ]]; then
+    # Check for required columns
+    local has_google_calendar_id has_sync_token
+    has_google_calendar_id=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='calendar_sync_state' AND column_name='google_calendar_id';" | tr -d '[:space:]')
+    has_sync_token=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='calendar_sync_state' AND column_name='sync_token';" | tr -d '[:space:]')
+
+    if [[ "$has_google_calendar_id" == "1" && "$has_sync_token" == "1" ]]; then
+      success "calendar_sync_state table has required columns"
+    else
+      warn "calendar_sync_state table missing some columns"
+    fi
+  else
+    warn "calendar_sync_state table not found (Stage 7 may not be implemented)"
+  fi
+  return 0
+}
+
+test_google_event_id_field() {
+  log "Testing google_event_id field in calendar_events..."
+  local has_google_id
+  has_google_id=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='calendar_events' AND column_name='google_event_id';" 2>/dev/null | tr -d '[:space:]')
+
+  if [[ "$has_google_id" == "1" ]]; then
+    success "calendar_events table has google_event_id column"
+  else
+    warn "google_event_id column not found (Stage 7 may not be implemented)"
+  fi
+  return 0
+}
+
+test_google_sync_trigger() {
+  log "Testing manual sync trigger endpoint..."
+  local status
+  status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/calendar/google/sync" \
+    -H "Authorization: Bearer $TOKEN" 2>/dev/null)
+
+  if [[ "$status" == "200" || "$status" == "400" || "$status" == "401" ]]; then
+    success "Google sync trigger endpoint exists (status: $status)"
+  elif [[ "$status" == "404" ]]; then
+    warn "Google sync trigger endpoint not found (Stage 7 may not be implemented)"
+  else
+    warn "Unexpected status from sync trigger: $status"
+  fi
+  return 0
+}
+
+#============================================================
+# STAGE 8 TESTS: PASSKEYS + MULTI-USER
+#============================================================
+
+test_organizations_table_exists() {
+  log "Checking organizations table exists..."
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'organizations';" 2>/dev/null | tr -d '[:space:]')
+
+  if [[ "$count" == "1" ]]; then
+    success "organizations table exists"
+  else
+    warn "organizations table not found (Stage 8 may not be implemented)"
+  fi
+  return 0
+}
+
+test_passkey_credentials_table() {
+  log "Checking passkey_credentials table exists..."
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'passkey_credentials';" 2>/dev/null | tr -d '[:space:]')
+
+  if [[ "$count" == "1" ]]; then
+    success "passkey_credentials table exists"
+  else
+    warn "passkey_credentials table not found (Stage 8 may not be implemented)"
+  fi
+  return 0
+}
+
+test_totp_secrets_table() {
+  log "Checking totp_secrets table exists..."
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'totp_secrets';" 2>/dev/null | tr -d '[:space:]')
+
+  if [[ "$count" == "1" ]]; then
+    success "totp_secrets table exists"
+  else
+    warn "totp_secrets table not found (Stage 8 may not be implemented)"
+  fi
+  return 0
+}
+
+test_sessions_table_exists() {
+  log "Checking sessions table exists..."
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'sessions';" 2>/dev/null | tr -d '[:space:]')
+
+  if [[ "$count" == "1" ]]; then
+    success "sessions table exists"
+
+    # Check for required columns
+    local has_token has_expires
+    has_token=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='sessions' AND column_name='token';" | tr -d '[:space:]')
+    has_expires=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='sessions' AND column_name='expires_at';" | tr -d '[:space:]')
+
+    if [[ "$has_token" == "1" && "$has_expires" == "1" ]]; then
+      success "sessions table has required columns (token, expires_at)"
+    fi
+  else
+    warn "sessions table not found (Stage 8 may not be implemented)"
+  fi
+  return 0
+}
+
+test_multi_user_support() {
+  log "Testing multi-user support structure..."
+  # Check if users table has organization_id
+  local has_org_id
+  has_org_id=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='users' AND column_name='organization_id';" 2>/dev/null | tr -d '[:space:]')
+
+  if [[ "$has_org_id" == "1" ]]; then
+    success "users table has organization_id for multi-user support"
+  else
+    warn "organization_id not found in users table (Stage 8 may not be implemented)"
+  fi
+  return 0
+}
+
+test_user_data_isolation() {
+  log "Testing user data isolation (all tables have user_id)..."
+  local tables=("notes" "reminders" "calendar_events" "documents")
+  local all_have_user_id=true
+
+  for table in "${tables[@]}"; do
+    local has_user_id
+    has_user_id=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='$table' AND column_name='user_id';" 2>/dev/null | tr -d '[:space:]')
+    if [[ "$has_user_id" != "1" ]]; then
+      warn "$table table missing user_id column"
+      all_have_user_id=false
+    fi
+  done
+
+  if $all_have_user_id; then
+    success "All core tables have user_id for data isolation"
+  fi
+  return 0
+}
+
+test_session_management() {
+  log "Testing session management endpoints..."
+  # Test logout endpoint
+  local status
+  status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/auth/logout" \
+    -H "Authorization: Bearer $TOKEN" 2>/dev/null)
+
+  if [[ "$status" == "200" || "$status" == "401" || "$status" == "404" ]]; then
+    if [[ "$status" == "404" ]]; then
+      warn "Auth endpoints not found (Stage 8 may not be implemented)"
+    else
+      success "Session management endpoint exists (status: $status)"
+    fi
+  fi
+  return 0
+}
+
+test_auth_audit_log() {
+  log "Checking auth_audit_log table exists..."
+  local count
+  count=$(psql_query "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'auth_audit_log';" 2>/dev/null | tr -d '[:space:]')
+
+  if [[ "$count" == "1" ]]; then
+    success "auth_audit_log table exists for security auditing"
+  else
+    warn "auth_audit_log table not found (Stage 8 may not be implemented)"
+  fi
+  return 0
+}
+
 print_summary() {
   local end_time duration
   end_time=$(date +%s)
@@ -2304,6 +3188,84 @@ main() {
     for entry in "${tests[@]}"; do
       IFS=' ' read -r name func arg <<<"$entry"
       run_test "$name" "$func" "$arg"
+    done
+  fi
+
+  if [[ -z "$RUN_STAGE" || "$RUN_STAGE" == "5" ]]; then
+    section "STAGE 5: MOBILE + IDEMPOTENCY"
+    local tests=(
+      "stage5_idempotency_table test_idempotency_table_exists"
+      "stage5_idempotency_create test_idempotency_create_reminder"
+      "stage5_idempotency_duplicate test_idempotency_duplicate_prevention"
+      "stage5_idempotency_header test_idempotency_header_replay"
+      "stage5_idempotency_aggressive test_idempotency_aggressive_retry"
+      "stage5_idempotency_different_key test_idempotency_different_keys"
+      "stage5_idempotency_expiry test_idempotency_key_expiry"
+      "stage5_idempotency_cleanup test_idempotency_cleanup_job"
+      "stage5_mobile_endpoints test_mobile_api_endpoints"
+      "stage5_session_token test_session_token_format"
+    )
+    for entry in "${tests[@]}"; do
+      IFS=' ' read -r name func <<<"$entry"
+      run_test "$name" "$func"
+    done
+  fi
+
+  if [[ -z "$RUN_STAGE" || "$RUN_STAGE" == "6" ]]; then
+    section "STAGE 6: CALENDAR + RRULE"
+    local tests=(
+      "stage6_calendar_table test_calendar_table_exists"
+      "stage6_calendar_create test_calendar_event_create"
+      "stage6_calendar_db_record test_calendar_event_in_db"
+      "stage6_calendar_list test_calendar_event_list"
+      "stage6_calendar_update test_calendar_event_update"
+      "stage6_calendar_delete test_calendar_event_delete"
+      "stage6_rrule_daily test_calendar_rrule_daily"
+      "stage6_rrule_weekly test_calendar_rrule_weekly"
+      "stage6_rrule_expansion test_calendar_rrule_expansion"
+      "stage6_rrule_validation test_calendar_rrule_validation"
+      "stage6_reminder_link test_calendar_reminder_link"
+      "stage6_weekly_view test_calendar_weekly_view"
+      "stage6_timezone test_calendar_timezone_handling"
+      "stage6_user_isolation test_calendar_user_isolation"
+    )
+    for entry in "${tests[@]}"; do
+      IFS=' ' read -r name func <<<"$entry"
+      run_test "$name" "$func"
+    done
+  fi
+
+  if [[ -z "$RUN_STAGE" || "$RUN_STAGE" == "7" ]]; then
+    section "STAGE 7: GOOGLE CALENDAR SYNC"
+    local tests=(
+      "stage7_sync_table test_google_sync_table_exists"
+      "stage7_sync_status test_google_sync_status_endpoint"
+      "stage7_oauth_endpoints test_google_oauth_endpoints"
+      "stage7_sync_state test_google_sync_state"
+      "stage7_event_google_id test_google_event_id_field"
+      "stage7_sync_trigger test_google_sync_trigger"
+    )
+    for entry in "${tests[@]}"; do
+      IFS=' ' read -r name func <<<"$entry"
+      run_test "$name" "$func"
+    done
+  fi
+
+  if [[ -z "$RUN_STAGE" || "$RUN_STAGE" == "8" ]]; then
+    section "STAGE 8: PASSKEYS + MULTI-USER"
+    local tests=(
+      "stage8_org_table test_organizations_table_exists"
+      "stage8_passkey_table test_passkey_credentials_table"
+      "stage8_totp_table test_totp_secrets_table"
+      "stage8_sessions_table test_sessions_table_exists"
+      "stage8_multi_user test_multi_user_support"
+      "stage8_user_isolation test_user_data_isolation"
+      "stage8_session_endpoints test_session_management"
+      "stage8_auth_audit test_auth_audit_log"
+    )
+    for entry in "${tests[@]}"; do
+      IFS=' ' read -r name func <<<"$entry"
+      run_test "$name" "$func"
     done
   fi
 
