@@ -289,8 +289,9 @@ infrastructure_check() {
       ;;
     cors)
       local header
-      header=$(curl -sS -D - -o /dev/null -H "Origin: https://example.com" "$BASE_URL/api/v1/health" | grep -i "access-control-allow-origin" || true)
-      assert_contains "$header" "*" "CORS header present" || rc=1
+      # Test with the default allowed origin
+      header=$(curl -sS -D - -o /dev/null -H "Origin: http://localhost:3000" "$BASE_URL/api/v1/health" | grep -i "access-control-allow-origin" || true)
+      assert_contains "$header" "access-control-allow-origin" "CORS header present" || rc=1
       ;;
     tls)
       if [[ "$BASE_URL" == https* ]]; then

@@ -51,7 +51,7 @@ metric_value() {
   else
     payload=$(fetch_metrics_payload)
   fi
-  printf '%s\n' "$payload" | awk -v name="$metric" '$1 ~ ("^"name"\\{"|"^"name" ") {s+=$NF} END {print s}'
+  printf '%s\n' "$payload" | awk -v name="$metric" '$1 == name || $1 ~ "^"name"\\{" {s+=$NF} END {print s+0}'
 }
 
 cleanup_restore_db() {
