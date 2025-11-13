@@ -99,6 +99,7 @@ class ReminderService:
                 reminders_deduped_total.labels(user_id=str(user_id)).inc()
                 return {
                     "success": True,
+                    "deduplicated": True,
                     "data": dict(existing)
                 }
             else:
