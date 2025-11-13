@@ -4,6 +4,132 @@
 
 set -euo pipefail
 
+declare -a STAGE5_REMINDER_TITLES=()
+declare -a STAGE5_IDEMPOTENCY_KEYS=()
+declare -a STAGE5_TEMP_FILES=()
+
+stage5_sql_literal() {
+  local value="$1"
+  value=${value//\'/\'\'}
+  printf "'%s'" "$value"
+}
+
+stage5_register_temp_file() {
+  local file="$1"
+  STAGE5_TEMP_FILES+=("$file")
+}
+
+stage5_track_reminder() {
+  local title="$1"
+  if [[ -n "$title" ]]; then
+    STAGE5_REMINDER_TITLES+=("$title")
+  fi
+}
+
+stage5_track_idempotency_key() {
+  local key="$1"
+  if [[ -n "$key" ]]; then
+    STAGE5_IDEMPOTENCY_KEYS+=("$key")
+  fi
+}
+
+stage5_build_payload() {
+  local title="$1"
+  local due_utc="${2:-$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')}"
+  jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}'
+}
+
+stage5_post_reminder() {
+  local idem_key="$1"
+  local payload="$2"
+  local headers_file="${3:-}"
+  local curl_args=(
+    -sS
+    -w "\n%{http_code}"
+    -X POST "$BASE_URL/api/v1/reminders"
+    -H "Authorization: Bearer $TOKEN"
+    -H "Content-Type: application/json"
+    -d "$payload"
+  )
+  if [[ -n "$idem_key" ]]; then
+    curl_args+=(-H "Idempotency-Key: $idem_key")
+  fi
+  if [[ -n "$headers_file" ]]; then
+    stage5_register_temp_file "$headers_file"
+    curl_args=(
+      -sS
+      -D "$headers_file"
+      -w "\n%{http_code}"
+      -X POST "$BASE_URL/api/v1/reminders"
+      -H "Authorization: Bearer $TOKEN"
+      -H "Content-Type: application/json"
+      -d "$payload"
+    )
+    if [[ -n "$idem_key" ]]; then
+      curl_args+=(-H "Idempotency-Key: $idem_key")
+    fi
+  fi
+  local response
+  response=$(curl "${curl_args[@]}")
+  STAGE5_LAST_STATUS=$(echo "$response" | tail -1 | tr -d '\r')
+  STAGE5_LAST_BODY=$(echo "$response" | head -n -1)
+}
+
+stage5_assert_successful_post() {
+  local action="$1"
+  if [[ "$STAGE5_LAST_STATUS" != "200" && "$STAGE5_LAST_STATUS" != "201" ]]; then
+    error "$action failed (status=$STAGE5_LAST_STATUS)"
+    echo "Response: $STAGE5_LAST_BODY" >&2
+    return 1
+  fi
+  return 0
+}
+
+stage5_extract_id() {
+  local json="$1"
+  jq -r '.data.id // .id // empty' <<<"$json"
+}
+
+stage5_wait_for_reminder_count() {
+  local title="$1"
+  local expected="$2"
+  local timeout="${3:-10}"
+  local attempt=0
+  local safe_title
+  safe_title=$(stage5_sql_literal "$title")
+  while [[ $attempt -lt $timeout ]]; do
+    local count
+    count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = $safe_title;" | tr -d '[:space:]')
+    if [[ "$count" == "$expected" ]]; then
+      return 0
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+  error "Timed out waiting for reminder count $expected for title '$title'"
+  return 1
+}
+
+stage5_cleanup_artifacts() {
+  local title safe_title key safe_key file
+  for title in "${STAGE5_REMINDER_TITLES[@]}"; do
+    safe_title=$(stage5_sql_literal "$title")
+    psql_query "DELETE FROM reminders WHERE title = $safe_title;" >/dev/null 2>&1 || true
+  done
+  for key in "${STAGE5_IDEMPOTENCY_KEYS[@]}"; do
+    safe_key=$(stage5_sql_literal "$key")
+    psql_query "DELETE FROM idempotency_keys WHERE idempotency_key = $safe_key;" >/dev/null 2>&1 || true
+  done
+  for file in "${STAGE5_TEMP_FILES[@]}"; do
+    [[ -n "$file" ]] && rm -f "$file" 2>/dev/null || true
+  done
+}
+
+if [[ -z "${STAGE5_CLEANUP_REGISTERED:-}" ]]; then
+  STAGE5_CLEANUP_REGISTERED=1
+  trap stage5_cleanup_artifacts EXIT
+fi
+
 test_idempotency_table_exists() {
   log "Checking idempotency_keys table exists..."
   local count
@@ -20,38 +146,23 @@ test_idempotency_create_reminder() {
   log "Testing idempotency key with reminder creation..."
   local idem_key="test-idem-$TIMESTAMP-$RANDOM"
   local title="Idempotent Reminder $TIMESTAMP"
-  local due_utc
-  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
   local payload
-  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+  payload=$(stage5_build_payload "$title")
 
   log "Creating reminder with idempotency key: $idem_key"
-  local response status
-  response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/reminders" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Idempotency-Key: $idem_key" \
-    -H "Content-Type: application/json" \
-    -d "$payload" 2>&1)
-  status=$(echo "$response" | tail -1)
-  response=$(echo "$response" | head -n -1)
-
-  if [[ "$status" != "200" && "$status" != "201" ]]; then
-    error "Failed to create reminder with idempotency key. Status: $status"
-    echo "Response: $response" >&2
-    return 1
-  fi
+  stage5_post_reminder "$idem_key" "$payload"
+  stage5_assert_successful_post "Creating reminder" || return 1
+  stage5_track_reminder "$title"
+  stage5_track_idempotency_key "$idem_key"
 
   local reminder_id
-  reminder_id=$(echo "$response" | jq -r '.data.id // .id // empty')
-  if [[ -z "$reminder_id" || "$reminder_id" == "null" ]]; then
-    error "No reminder ID in response"
-    echo "Response: $response" >&2
-    return 1
-  fi
+  reminder_id=$(stage5_extract_id "$STAGE5_LAST_BODY")
+  assert_not_empty "$reminder_id" "Reminder ID returned" || return 1
 
-  # Check idempotency key stored in database
+  local safe_key
+  safe_key=$(stage5_sql_literal "$idem_key")
   local idem_count
-  idem_count=$(psql_query "SELECT COUNT(*) FROM idempotency_keys WHERE idempotency_key = '$idem_key';" | tr -d '[:space:]')
+  idem_count=$(psql_query "SELECT COUNT(*) FROM idempotency_keys WHERE idempotency_key = $safe_key;" | tr -d '[:space:]')
   assert_equals "$idem_count" "1" "Idempotency key stored in database"
 }
 
@@ -59,42 +170,36 @@ test_idempotency_duplicate_prevention() {
   log "Testing duplicate prevention with same idempotency key..."
   local idem_key="test-dup-$TIMESTAMP-$RANDOM"
   local title="Duplicate Test $TIMESTAMP"
-  local due_utc
-  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
   local payload
-  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+  payload=$(stage5_build_payload "$title")
 
   log "First request with key: $idem_key"
-  local resp1
-  resp1=$(curl -sS -X POST "$BASE_URL/api/v1/reminders" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Idempotency-Key: $idem_key" \
-    -H "Content-Type: application/json" \
-    -d "$payload")
-
+  stage5_post_reminder "$idem_key" "$payload"
+  stage5_assert_successful_post "First idempotent request" || return 1
   local id1
-  id1=$(echo "$resp1" | jq -r '.data.id // .id // empty')
+  id1=$(stage5_extract_id "$STAGE5_LAST_BODY")
+  assert_not_empty "$id1" "First response includes reminder ID" || return 1
+  stage5_track_reminder "$title"
+  stage5_track_idempotency_key "$idem_key"
 
   log "Second request with same key: $idem_key"
-  local resp2 replay_header
-  resp2=$(curl -sS -D "$TEST_DIR/headers-dup.txt" -X POST "$BASE_URL/api/v1/reminders" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Idempotency-Key: $idem_key" \
-    -H "Content-Type: application/json" \
-    -d "$payload")
+  local headers_file="$TEST_DIR/headers-dup.txt"
+  stage5_post_reminder "$idem_key" "$payload" "$headers_file"
+  stage5_assert_successful_post "Second idempotent request" || return 1
 
   local id2
-  id2=$(echo "$resp2" | jq -r '.data.id // .id // empty')
+  id2=$(stage5_extract_id "$STAGE5_LAST_BODY")
+  assert_not_empty "$id2" "Second response includes reminder ID" || return 1
 
   if [[ "$id1" != "$id2" ]]; then
     error "Different IDs returned for same idempotency key! id1=$id1 id2=$id2"
-    echo "Response 1: $resp1" >&2
-    echo "Response 2: $resp2" >&2
+    echo "Response 2: $STAGE5_LAST_BODY" >&2
     return 1
   fi
 
   # Check for replay header
-  replay_header=$(grep -i "x-idempotency-replay" "$TEST_DIR/headers-dup.txt" || echo "")
+  local replay_header
+  replay_header=$(grep -i "x-idempotency-replay" "$headers_file" || echo "")
   if [[ -z "$replay_header" ]]; then
     warn "X-Idempotency-Replay header not found (may not be implemented yet)"
   else
@@ -103,7 +208,9 @@ test_idempotency_duplicate_prevention() {
 
   # Verify only one reminder created in database
   local count
-  count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = '$title';" | tr -d '[:space:]')
+  local safe_title
+  safe_title=$(stage5_sql_literal "$title")
+  count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = $safe_title;" | tr -d '[:space:]')
   assert_equals "$count" "1" "Only one reminder created despite duplicate request"
 }
 
@@ -111,126 +218,137 @@ test_idempotency_header_replay() {
   log "Testing idempotency replay header..."
   local idem_key="test-replay-$TIMESTAMP-$RANDOM"
   local title="Replay Test $TIMESTAMP"
-  local due_utc
-  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
   local payload
-  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+  payload=$(stage5_build_payload "$title")
 
   # First request
-  curl -sS -X POST "$BASE_URL/api/v1/reminders" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Idempotency-Key: $idem_key" \
-    -H "Content-Type: application/json" \
-    -d "$payload" >/dev/null
+  stage5_post_reminder "$idem_key" "$payload"
+  stage5_assert_successful_post "Initial replay request" || return 1
+
+  stage5_track_reminder "$title"
+  stage5_track_idempotency_key "$idem_key"
 
   # Second request - should return cached response
   local headers_file="$TEST_DIR/replay-headers.txt"
-  curl -sS -D "$headers_file" -X POST "$BASE_URL/api/v1/reminders" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Idempotency-Key: $idem_key" \
-    -H "Content-Type: application/json" \
-    -d "$payload" >/dev/null
+  stage5_post_reminder "$idem_key" "$payload" "$headers_file"
+  stage5_assert_successful_post "Replay response" || return 1
 
   if grep -qi "x-idempotency-replay" "$headers_file"; then
     success "X-Idempotency-Replay header found in response"
     return 0
-  else
-    warn "X-Idempotency-Replay header not found (feature may not be fully implemented)"
-    return 0  # Don't fail, just warn
   fi
+
+  error "X-Idempotency-Replay header not found"
+  return 1
 }
 
 test_idempotency_aggressive_retry() {
   log "Testing aggressive retry scenario (10 rapid requests with same key)..."
   local idem_key="test-aggressive-$TIMESTAMP-$RANDOM"
   local title="Aggressive Retry $TIMESTAMP"
-  local due_utc
-  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
   local payload
-  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+  payload=$(stage5_build_payload "$title")
+  stage5_track_reminder "$title"
+  stage5_track_idempotency_key "$idem_key"
 
   log "Sending 10 parallel requests with same idempotency key..."
+  local files=()
+  local pids=()
   for i in {1..10}; do
-    curl -sS --max-time 30 -X POST "$BASE_URL/api/v1/reminders" \
-      -H "Authorization: Bearer $TOKEN" \
-      -H "Idempotency-Key: $idem_key" \
-      -H "Content-Type: application/json" \
-      -d "$payload" >"$TEST_DIR/aggressive-$i.json" 2>&1 &
+    local file="$TEST_DIR/aggressive-$i.json"
+    stage5_register_temp_file "$file"
+    (
+      curl -sS --max-time 30 -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/reminders" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Idempotency-Key: $idem_key" \
+        -H "Content-Type: application/json" \
+        -d "$payload"
+    ) >"$file" 2>&1 &
+    pids+=($!)
+    files+=("$file")
   done
 
-  # Wait for all background processes with timeout protection
-  local wait_timeout=60
-  local wait_start=$(date +%s)
-  while true; do
-    # Check if all background jobs are done
-    if ! jobs -r | grep -q .; then
-      break
+  local wait_rc=0
+  for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+      wait_rc=1
     fi
-
-    # Check for timeout
-    local wait_elapsed=$(($(date +%s) - wait_start))
-    if [[ $wait_elapsed -ge $wait_timeout ]]; then
-      error "Timeout waiting for parallel requests to complete (${wait_timeout}s)"
-      # Kill any remaining background jobs
-      jobs -p | xargs -r kill 2>/dev/null || true
-      return 1
-    fi
-
-    sleep 0.5
   done
 
-  log "Checking database for duplicate reminders..."
-  sleep 2  # Give time for all DB writes to complete
-  local count
-  count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = '$title';" | tr -d '[:space:]')
-
-  if [[ "$count" != "1" ]]; then
-    error "Expected 1 reminder, found $count! Idempotency failed under concurrent load."
-    psql_query "SELECT id, title, created_at FROM reminders WHERE title = '$title';" >&2
+  if [[ $wait_rc -ne 0 ]]; then
+    error "One or more concurrent reminder requests failed"
     return 1
   fi
 
+  local canonical_id=""
+  local file
+  for file in "${files[@]}"; do
+    local status
+    status=$(tail -n1 "$file" | tr -d '\r')
+    local body
+    body=$(sed '$d' "$file")
+    if [[ "$status" != "200" && "$status" != "201" ]]; then
+      error "Concurrent request returned status $status"
+      echo "Response: $body" >&2
+      return 1
+    fi
+    local rid
+    rid=$(echo "$body" | jq -r '.data.id // .id // empty')
+    if [[ -z "$rid" || "$rid" == "null" ]]; then
+      error "Concurrent request missing reminder ID"
+      echo "Response: $body" >&2
+      return 1
+    fi
+    if [[ -z "$canonical_id" ]]; then
+      canonical_id="$rid"
+    elif [[ "$canonical_id" != "$rid" ]]; then
+      error "Multiple reminder IDs returned under concurrent load"
+      return 1
+    fi
+  done
+
+  log "Checking database for duplicate reminders..."
+  if ! stage5_wait_for_reminder_count "$title" "1" 15; then
+    psql_query "SELECT id, title, created_at FROM reminders WHERE title = $(stage5_sql_literal "$title");" >&2
+    return 1
+  fi
   success "Aggressive retry test passed: only 1 reminder created from 10 concurrent requests"
 }
 
 test_idempotency_different_keys() {
   log "Testing that different idempotency keys create separate reminders..."
   local title="Different Keys Test $TIMESTAMP"
-  local due_utc
-  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
   local payload
-  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+  payload=$(stage5_build_payload "$title")
 
   local key1="test-key1-$TIMESTAMP-$RANDOM"
   local key2="test-key2-$TIMESTAMP-$RANDOM"
 
   log "Creating reminder with key1: $key1"
-  local resp1
-  resp1=$(curl -sS -X POST "$BASE_URL/api/v1/reminders" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Idempotency-Key: $key1" \
-    -H "Content-Type: application/json" \
-    -d "$payload")
+  stage5_post_reminder "$key1" "$payload"
+  stage5_assert_successful_post "Reminder with key1" || return 1
+  stage5_track_reminder "$title"
+  stage5_track_idempotency_key "$key1"
 
   log "Creating reminder with key2: $key2"
-  local resp2
-  resp2=$(curl -sS -X POST "$BASE_URL/api/v1/reminders" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Idempotency-Key: $key2" \
-    -H "Content-Type: application/json" \
-    -d "$payload")
+  local body_key1="$STAGE5_LAST_BODY"
+  stage5_post_reminder "$key2" "$payload"
+  stage5_assert_successful_post "Reminder with key2" || return 1
+  stage5_track_idempotency_key "$key2"
 
   local id1 id2
-  id1=$(echo "$resp1" | jq -r '.data.id // .id // empty')
-  id2=$(echo "$resp2" | jq -r '.data.id // .id // empty')
+  id1=$(stage5_extract_id "$body_key1")
+  id2=$(stage5_extract_id "$STAGE5_LAST_BODY")
 
   if [[ "$id1" == "$id2" ]]; then
     error "Same reminder ID returned for different idempotency keys! id=$id1"
     return 1
   fi
 
+  local safe_title
+  safe_title=$(stage5_sql_literal "$title")
   local count
-  count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = '$title';" | tr -d '[:space:]')
+  count=$(psql_query "SELECT COUNT(*) FROM reminders WHERE title = $safe_title;" | tr -d '[:space:]')
   assert_equals "$count" "2" "Two separate reminders created with different idempotency keys"
 }
 
@@ -238,23 +356,22 @@ test_idempotency_key_expiry() {
   log "Testing idempotency key expiry field..."
   local idem_key="test-expiry-$TIMESTAMP-$RANDOM"
   local title="Expiry Test $TIMESTAMP"
-  local due_utc
-  due_utc=$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:00Z')
   local payload
-  payload=$(jq -n --arg title "$title" --arg due "$due_utc" '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
+  payload=$(stage5_build_payload "$title")
 
-  curl -sS -X POST "$BASE_URL/api/v1/reminders" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Idempotency-Key: $idem_key" \
-    -H "Content-Type: application/json" \
-    -d "$payload" >/dev/null
+  stage5_post_reminder "$idem_key" "$payload"
+  stage5_assert_successful_post "Creating reminder for expiry" || return 1
+  stage5_track_reminder "$title"
+  stage5_track_idempotency_key "$idem_key"
 
   local expires_at
-  expires_at=$(psql_query "SELECT expires_at FROM idempotency_keys WHERE idempotency_key = '$idem_key';" 2>/dev/null || echo "")
+  local safe_key
+  safe_key=$(stage5_sql_literal "$idem_key")
+  expires_at=$(psql_query "SELECT expires_at FROM idempotency_keys WHERE idempotency_key = $safe_key;" 2>/dev/null || echo "")
 
   if [[ -z "$expires_at" || "$expires_at" == "null" ]]; then
-    warn "expires_at field empty or not found (feature may not be implemented)"
-    return 0
+    error "expires_at field empty or not found"
+    return 1
   fi
 
   success "Idempotency key has expiry: $expires_at"
