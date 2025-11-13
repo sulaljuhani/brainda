@@ -5,24 +5,94 @@
 set -euo pipefail
 
 #############################################
+# Constants
+#############################################
+readonly RATE_LIMIT_REQUESTS=32
+readonly RATE_LIMIT_WINDOW=60
+readonly RATE_LIMIT_WAIT_TIMEOUT=30
+readonly RATE_LIMIT_RESET_WAIT=65
+readonly CURL_TIMEOUT=10
+
+#############################################
+# Dependency Validation
+#############################################
+check_dependencies() {
+  local missing=()
+  local deps=(curl jq docker)
+
+  for cmd in "${deps[@]}"; do
+    if ! command -v "$cmd" &>/dev/null; then
+      missing+=("$cmd")
+    fi
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    error "Missing required dependencies: ${missing[*]}"
+    return 1
+  fi
+  return 0
+}
+
+#############################################
+# Environment Validation
+#############################################
+validate_environment() {
+  local missing=()
+  local required_vars=(TEST_DIR HEALTH_URL METRICS_URL BASE_URL TOKEN)
+
+  for var in "${required_vars[@]}"; do
+    if [[ -z "${!var:-}" ]]; then
+      missing+=("$var")
+    fi
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    error "Missing required environment variables: ${missing[*]}"
+    return 1
+  fi
+  return 0
+}
+
+#############################################
 # Stage 0: Infrastructure
 #############################################
 
+# infrastructure_check - Execute a specific infrastructure test
+# Arguments:
+#   $1 - check: The name of the infrastructure check to perform
+# Returns:
+#   0 on success, 1 on failure
+# Description:
+#   Performs various infrastructure checks including container health,
+#   service connectivity, authentication, rate limiting, and monitoring.
 infrastructure_check() {
-  local check="$1"
+  local check="${1:-}"
   local rc=0
+
+  # Validate input parameter
+  if [[ -z "$check" ]]; then
+    error "infrastructure_check: check parameter is required"
+    return 1
+  fi
   case "$check" in
     containers)
       local containers=(vib-orchestrator vib-worker vib-beat vib-postgres vib-redis vib-qdrant)
       for c in "${containers[@]}"; do
         if ! docker inspect "$c" &>/dev/null; then
-          error "Container $c missing"
+          error "Container $c is missing (not found in docker inspect)"
           rc=1
           continue
         fi
         local running
         running=$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null || echo "false")
-        assert_equals "$running" "true" "Container $c running" || rc=1
+        if [[ "$running" != "true" ]]; then
+          local status
+          status=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo "unknown")
+          error "Container $c is not running (status: $status)"
+          rc=1
+        else
+          assert_equals "$running" "true" "Container $c running" || rc=1
+        fi
       done
       ;;
     health_status)
@@ -53,23 +123,47 @@ infrastructure_check() {
       ;;
     metrics_help)
       local body="$TEST_DIR/metrics.prom"
-      [[ -f "$body" ]] || body=$(curl -sS "$METRICS_URL")
-      assert_contains "$(cat "$body")" "api_request_duration_seconds" "api_request_duration_seconds metric present" || rc=1
+      local content
+      if [[ -f "$body" ]]; then
+        content=$(cat "$body")
+      else
+        content=$(curl -sS "$METRICS_URL" 2>/dev/null || echo "")
+        if [[ -z "$content" ]]; then
+          error "Failed to fetch metrics from $METRICS_URL"
+          rc=1
+        fi
+      fi
+      assert_contains "$content" "api_request_duration_seconds" "api_request_duration_seconds metric present" || rc=1
       ;;
     database)
       local result
-      result=$(psql_query "SELECT 1;" | tr -d "[:space:]")
-      assert_equals "$result" "1" "Database responds" || rc=1
+      result=$(psql_query "SELECT 1;" 2>/dev/null | tr -d "[:space:]" || echo "")
+      if [[ "$result" != "1" ]]; then
+        error "Database connectivity failed (psql_query returned: '$result', expected '1')"
+        rc=1
+      else
+        assert_equals "$result" "1" "Database responds" || rc=1
+      fi
       ;;
     redis)
       local pong
       pong=$(redis_cmd ping 2>/dev/null || echo "")
-      assert_equals "$pong" "PONG" "Redis responds" || rc=1
+      if [[ "$pong" != "PONG" ]]; then
+        error "Redis connectivity failed (redis_cmd ping returned: '$pong', expected 'PONG')"
+        rc=1
+      else
+        assert_equals "$pong" "PONG" "Redis responds" || rc=1
+      fi
       ;;
     qdrant_collection)
       local response
-      response=$(curl -sS http://localhost:6333/collections || echo "")
-      assert_contains "$response" "knowledge_base" "Qdrant collection available" || rc=1
+      response=$(curl -sS http://localhost:6333/collections 2>/dev/null || echo "")
+      if [[ ! "$response" =~ knowledge_base ]]; then
+        error "Qdrant collection 'knowledge_base' not found in response: ${response:0:100}"
+        rc=1
+      else
+        assert_contains "$response" "knowledge_base" "Qdrant collection available" || rc=1
+      fi
       ;;
     auth_valid)
       local status
@@ -88,21 +182,31 @@ infrastructure_check() {
       ;;
     rate_limit)
       # Make parallel requests to properly test burst rate limiting
-      # Limit: 30 requests per 60 seconds
-      # Use 32 requests to trigger limit while avoiding connection pool exhaustion
-      local i status count_429=0 total_requests=32
+      # Limit: 30 requests per $RATE_LIMIT_WINDOW seconds
+      # Use $RATE_LIMIT_REQUESTS to trigger limit while avoiding connection pool exhaustion
+      local i status count_429=0
       local tmpdir=$(mktemp -d)
 
+      # Setup cleanup trap for this test
+      local cleanup_done=0
+      cleanup_rate_limit() {
+        if [[ $cleanup_done -eq 0 ]]; then
+          cleanup_done=1
+          jobs -p | xargs -r kill 2>/dev/null || true
+          [[ -d "$tmpdir" ]] && rm -rf "$tmpdir"
+        fi
+      }
+      trap cleanup_rate_limit EXIT INT TERM
+
       # Launch parallel requests with timeout
-      for i in $(seq 1 $total_requests); do
+      for i in $(seq 1 $RATE_LIMIT_REQUESTS); do
         (
-          status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat" 2>/dev/null || echo "000")
+          status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat" 2>/dev/null || echo "000")
           echo "$status" > "$tmpdir/status_$i"
         ) &
       done
 
       # Wait for all requests to complete with timeout protection
-      local wait_timeout=30
       local wait_start=$(date +%s)
       while true; do
         # Check if all background jobs are done
@@ -112,11 +216,10 @@ infrastructure_check() {
 
         # Check for timeout
         local wait_elapsed=$(($(date +%s) - wait_start))
-        if [[ $wait_elapsed -ge $wait_timeout ]]; then
-          error "Timeout waiting for parallel rate limit requests to complete (${wait_timeout}s)"
-          # Kill any remaining background jobs
-          jobs -p | xargs -r kill 2>/dev/null || true
-          rm -rf "$tmpdir"
+        if [[ $wait_elapsed -ge $RATE_LIMIT_WAIT_TIMEOUT ]]; then
+          error "Timeout waiting for parallel rate limit requests to complete (${RATE_LIMIT_WAIT_TIMEOUT}s elapsed)"
+          cleanup_rate_limit
+          trap - EXIT INT TERM
           return 1
         fi
 
@@ -124,33 +227,39 @@ infrastructure_check() {
       done
 
       # Count 429 responses
-      for i in $(seq 1 $total_requests); do
+      for i in $(seq 1 $RATE_LIMIT_REQUESTS); do
         if [[ -f "$tmpdir/status_$i" ]]; then
           status=$(cat "$tmpdir/status_$i")
           [[ "$status" == "429" ]] && count_429=$((count_429 + 1))
         fi
       done
 
-      # Cleanup temp files
-      rm -rf "$tmpdir"
+      # Cleanup and remove trap
+      cleanup_rate_limit
+      trap - EXIT INT TERM
 
       if [[ $count_429 -gt 0 ]]; then
-        success "Rate limit triggered ($count_429/$total_requests responses)"
+        success "Rate limit triggered ($count_429/$RATE_LIMIT_REQUESTS responses were rate-limited)"
       else
-        error "Rate limit did not trigger"
+        error "Rate limit did not trigger (0/$RATE_LIMIT_REQUESTS were rate-limited, expected at least 2)"
         rc=1
       fi
       ;;
     rate_limit_reset)
-      if $FAST_MODE; then
+      if ${FAST_MODE:-false}; then
         warn "Skipping rate limit reset in fast mode"
         return 0
       fi
-      log "Waiting for rate limit window reset"
-      sleep 65
+      log "Waiting ${RATE_LIMIT_RESET_WAIT}s for rate limit window to reset"
+      sleep $RATE_LIMIT_RESET_WAIT
       local status
-      status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat")
-      assert_equals "$status" "200" "Requests succeed after window reset" || rc=1
+      status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat" 2>/dev/null || echo "000")
+      if [[ "$status" != "200" ]]; then
+        error "Request failed after rate limit window reset (HTTP $status, expected 200)"
+        rc=1
+      else
+        assert_equals "$status" "200" "Requests succeed after window reset" || rc=1
+      fi
       ;;
     logs)
       local line
@@ -209,7 +318,7 @@ infrastructure_check() {
       assert_not_empty "$content" "Qdrant gauge exported" || rc=1
       ;;
     *)
-      error "Unknown infrastructure check $check"
+      error "Unknown infrastructure check: '$check' (valid checks: containers, health_status, health_services, metrics_endpoint, etc.)"
       rc=1
       ;;
   esac
@@ -218,6 +327,18 @@ infrastructure_check() {
 
 run_stage0() {
   section "STAGE 0: INFRASTRUCTURE"
+
+  # Validate dependencies and environment before running tests
+  if ! check_dependencies; then
+    error "Dependency validation failed - cannot proceed with stage 0 tests"
+    return 1
+  fi
+
+  if ! validate_environment; then
+    error "Environment validation failed - cannot proceed with stage 0 tests"
+    return 1
+  fi
+
   local tests=(
     "infra_containers infrastructure_check containers"
     "infra_health_status infrastructure_check health_status"
