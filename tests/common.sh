@@ -19,6 +19,7 @@ RUN_STAGE="${RUN_STAGE:-}"
 FAST_MODE="${FAST_MODE:-false}"
 HTML_REPORT="${HTML_REPORT:-false}"
 VERBOSE="${VERBOSE:-false}"
+HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-60}"
 
 TOTAL_TESTS="${TOTAL_TESTS:-0}"
 PASSED_TESTS="${PASSED_TESTS:-0}"
@@ -26,6 +27,7 @@ FAILED_TESTS="${FAILED_TESTS:-0}"
 WARNINGS="${WARNINGS:-0}"
 declare -a FAILED_TEST_NAMES=()
 declare -a TEST_RECORDS=()
+LAST_TEST_DURATION=0
 
 API_LATENCY_THRESHOLD=${API_LATENCY_THRESHOLD:-500}
 SEARCH_LATENCY_THRESHOLD=${SEARCH_LATENCY_THRESHOLD:-200}
@@ -350,6 +352,23 @@ compose_cmd() {
   fi
 }
 
+# Internal helper to track execution duration without duplicating logic across
+# different runners (standard vs retry).
+_execute_test_func() {
+  local test_func="$1"
+  shift
+  local start_ts end_ts rc=0
+  start_ts=$(date +%s)
+  if "$test_func" "$@"; then
+    rc=0
+  else
+    rc=$?
+  fi
+  end_ts=$(date +%s)
+  LAST_TEST_DURATION=$((end_ts - start_ts))
+  return $rc
+}
+
 # Test framework
 run_test() {
   local test_name="$1"
@@ -370,15 +389,13 @@ run_test() {
 
   TOTAL_TESTS=$((TOTAL_TESTS + 1))
   log "Running test: $test_name"
-  local start_ts end_ts duration rc=0
-  start_ts=$(date +%s)
-  if "$test_func" "${test_args[@]}"; then
+  local rc=0 duration=0
+  if _execute_test_func "$test_func" "${test_args[@]}"; then
     rc=0
   else
     rc=$?
   fi
-  end_ts=$(date +%s)
-  duration=$((end_ts - start_ts))
+  duration=$LAST_TEST_DURATION
   if [[ $rc -eq 0 ]]; then
     PASSED_TESTS=$((PASSED_TESTS + 1))
     success "$test_name passed (${duration}s)"
@@ -399,15 +416,43 @@ run_test_with_retry() {
   local attempt=1
   shift 2
   local args=("$@")
+  if [[ -n "${SKIP_TEST_MAP[$test_name]:-}" ]]; then
+    warn "Skipping $test_name (per config)"
+    TEST_RECORDS+=("$test_name|SKIPPED|0s|Skipped per config")
+    return 0
+  fi
+
+  TOTAL_TESTS=$((TOTAL_TESTS + 1))
+  local rc=1
+  local overall_start overall_end duration
+  overall_start=$(date +%s)
   while [[ $attempt -le $max_attempts ]]; do
-    if run_test "$test_name" "$test_func" "${args[@]}"; then
-      return 0
+    log "Running test: $test_name (attempt $attempt/$max_attempts)"
+    if _execute_test_func "$test_func" "${args[@]}"; then
+      rc=0
+      break
+    fi
+    rc=$?
+    if [[ $attempt -lt $max_attempts ]]; then
+      warn "$test_name attempt $attempt failed (rc=$rc). Retrying..."
+      sleep 5
     fi
     attempt=$((attempt + 1))
-    log "Retrying $test_name ($attempt/$max_attempts)"
-    sleep 5
   done
-  return 1
+  overall_end=$(date +%s)
+  duration=$((overall_end - overall_start))
+
+  if [[ $rc -eq 0 ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    success "$test_name passed (${duration}s, attempt $attempt/$max_attempts)"
+    TEST_RECORDS+=("$test_name|PASS|${duration}s|${attempt} attempt(s)")
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    FAILED_TEST_NAMES+=("$test_name")
+    error "$test_name failed after $max_attempts attempt(s)"
+    TEST_RECORDS+=("$test_name|FAIL|${duration}s|exhausted retries")
+  fi
+  return $rc
 }
 
 # Configuration loaders
@@ -425,7 +470,11 @@ load_config_json() {
   if [[ -f "$CONFIG_FILE" ]]; then
     log "Loading config from $CONFIG_FILE"
     BASE_URL=$(jq -r '.base_url // empty' "$CONFIG_FILE" || echo "$BASE_URL")
-    HEATH_TIMEOUT=$(jq -r '.timeout.health_check // empty' "$CONFIG_FILE" || true)
+    local configured_health_timeout
+    configured_health_timeout=$(jq -r '.timeout.health_check // empty' "$CONFIG_FILE" || true)
+    if [[ -n "$configured_health_timeout" && "$configured_health_timeout" != "null" ]]; then
+      HEALTH_TIMEOUT="$configured_health_timeout"
+    fi
     local skip_list
     mapfile -t skip_list < <(jq -r '.skip_tests[]?' "$CONFIG_FILE")
     for name in "${skip_list[@]}"; do
@@ -631,10 +680,24 @@ for line in text.split('\n'):
 pdf.output('tests/fixtures/test-document.pdf')
 PY
   fi || true
-  local response
-  response=$(curl -sS -X POST "$BASE_URL/api/v1/ingest" -H "Authorization: Bearer $TOKEN" -F "file=@tests/fixtures/$DOC_FILENAME")
+  local response tmp_file http_status
+  tmp_file=$(mktemp)
+  http_status=$(curl -sS -o "$tmp_file" -w "%{http_code}" -X POST \
+    "$BASE_URL/api/v1/ingest" -H "Authorization: Bearer $TOKEN" \
+    -F "file=@tests/fixtures/$DOC_FILENAME")
+  response=$(cat "$tmp_file")
+  rm -f "$tmp_file"
+  if [[ $http_status -lt 200 || $http_status -ge 300 ]]; then
+    error "Document ingestion failed with status $http_status: $response"
+    return 1
+  fi
   DOC_ID=$(echo "$response" | jq -r '.document_id // .data.document_id')
   DOC_JOB_ID=$(echo "$response" | jq -r '.job_id')
+  if [[ -z "$DOC_ID" || "$DOC_ID" == "null" ]]; then
+    error "Document ingestion did not return a document_id. Response: $response"
+    return 1
+  fi
+  log "Document ingestion request succeeded (document_id=$DOC_ID job_id=${DOC_JOB_ID:-none})"
   if [[ "$DOC_JOB_ID" != "null" && -n "$DOC_JOB_ID" ]]; then
     wait_for "curl -sS -H 'Authorization: Bearer $TOKEN' $BASE_URL/api/v1/jobs/$DOC_JOB_ID | jq -r '.status' | grep -q completed" 180 "document ingestion completion"
   fi
@@ -682,7 +745,7 @@ setup() {
     exit 1
   fi
   log "Using base URL: $BASE_URL"
-  wait_for "curl -sS $HEALTH_URL >/dev/null" 60 "orchestrator health endpoint"
+  wait_for "curl -sS $HEALTH_URL >/dev/null" "$HEALTH_TIMEOUT" "orchestrator health endpoint"
   local status
   status=$(curl -sS "$HEALTH_URL" | jq -r '.status' || echo "")
   assert_equals "$status" "healthy" "Health endpoint reports healthy" || true
