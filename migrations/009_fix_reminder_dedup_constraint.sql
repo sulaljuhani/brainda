@@ -8,4 +8,4 @@
 -- This migration removes the content-based deduplication constraint and relies
 -- solely on the idempotency middleware for duplicate prevention.
 
-DROP INDEX IF EXISTS idx_reminders_dedup;
+DROP INDEX IF EXISTS idx_reminders_unique;

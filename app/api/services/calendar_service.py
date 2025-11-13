@@ -18,6 +18,25 @@ class CalendarService:
     def __init__(self, db):
         self.db = db
 
+    @staticmethod
+    def _serialize_event(record) -> dict:
+        """Convert database record to JSON-serializable dict."""
+        return {
+            "id": str(record["id"]),
+            "user_id": str(record["user_id"]),
+            "title": record["title"],
+            "description": record["description"],
+            "starts_at": record["starts_at"].isoformat() if record["starts_at"] else None,
+            "ends_at": record["ends_at"].isoformat() if record["ends_at"] else None,
+            "timezone": record["timezone"],
+            "location_text": record["location_text"],
+            "rrule": record["rrule"],
+            "status": record["status"],
+            "source": record["source"],
+            "created_at": record["created_at"].isoformat() if record["created_at"] else None,
+            "updated_at": record["updated_at"].isoformat() if record["updated_at"] else None,
+        }
+
     async def create_event(self, user_id: UUID, data: CalendarEventCreate) -> dict:
         """Create a new calendar event for a user."""
         starts_at = data.starts_at
@@ -83,7 +102,7 @@ class CalendarService:
             rrule=data.rrule,
         )
 
-        return {"success": True, "data": dict(record)}
+        return {"success": True, "data": self._serialize_event(record)}
 
     async def get_event(self, event_id: UUID) -> Optional[dict]:
         record = await self.db.fetchrow(
@@ -116,7 +135,7 @@ class CalendarService:
         update_payload.pop("schema_version", None)
 
         if not update_payload:
-            return {"success": True, "data": dict(existing)}
+            return {"success": True, "data": self._serialize_event(existing)}
 
         starts_at = update_payload.get("starts_at", existing["starts_at"])
         ends_at = update_payload.get("ends_at", existing["ends_at"])
@@ -203,7 +222,7 @@ class CalendarService:
             fields=list(update_payload.keys()),
         )
 
-        return {"success": True, "data": dict(record)}
+        return {"success": True, "data": self._serialize_event(record)}
 
     async def cancel_event(self, event_id: UUID, user_id: UUID) -> dict:
         result = await self.update_event(
