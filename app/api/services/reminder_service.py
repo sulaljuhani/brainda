@@ -75,41 +75,27 @@ class ReminderService:
             return {"success": True, "data": dict(reminder)}
 
         except UniqueViolationError as e:
-            # DB constraint caught a duplicate - this is a safety net
-            # Primary duplicate prevention is handled by idempotency middleware
-            logger.info(
-                "duplicate_reminder_prevented_by_constraint",
+            # DB constraint caught a duplicate
+            # Let idempotency middleware handle this by re-raising as HTTP 409
+            # The middleware will cache the first successful response and replay it
+            logger.warning(
+                "duplicate_reminder_constraint_violated",
                 user_id=str(user_id),
                 title=data.title,
+                due_at=data.due_at_utc.isoformat(),
                 error=str(e)
             )
+            reminders_deduped_total.labels(user_id=str(user_id)).inc()
 
-            # Fetch the existing reminder
-            existing = await self.db.fetchrow("""
-                SELECT * FROM reminders
-                WHERE user_id = $1
-                AND title = $2
-                AND due_at_utc = $3
-                AND status = 'active'
-                ORDER BY created_at DESC
-                LIMIT 1
-            """, user_id, data.title, data.due_at_utc)
-
-            if existing:
-                reminders_deduped_total.labels(user_id=str(user_id)).inc()
-                return {
-                    "success": True,
-                    "deduplicated": True,
-                    "data": dict(existing)
+            # Return error response instead of existing reminder
+            # This allows different idempotency keys to create separate reminders
+            return {
+                "success": False,
+                "error": {
+                    "code": "DUPLICATE_REMINDER",
+                    "message": f"A reminder with title '{data.title}' and due time '{data.due_at_utc.isoformat()}' already exists"
                 }
-            else:
-                # This shouldn't happen, but handle it gracefully
-                logger.error(
-                    "duplicate_reminder_constraint_but_not_found",
-                    user_id=str(user_id),
-                    title=data.title
-                )
-                raise ValueError("Failed to create reminder due to duplicate constraint")
+            }
     
     def _time_ago(self, dt: datetime) -> str:
         """Human readable time difference"""

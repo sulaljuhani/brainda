@@ -592,10 +592,19 @@ async def _cleanup_expired_idempotency_keys_async():
 
 @celery_app.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    # Start the file watcher in a background thread
+    """Configure periodic tasks - called when Celery app is configured"""
+    logger.info("periodic_tasks_configured")
+
+# Use worker_ready signal for more reliable file watcher startup
+from celery.signals import worker_ready
+
+@worker_ready.connect
+def start_file_watcher_on_worker_ready(sender, **kwargs):
+    """Start file watcher when Celery worker is fully ready"""
     import threading
     watcher_thread = threading.Thread(target=start_file_watcher, daemon=True)
     watcher_thread.start()
+    logger.info("file_watcher_thread_started_from_worker_ready")
 
 
 async def _load_google_credentials(
