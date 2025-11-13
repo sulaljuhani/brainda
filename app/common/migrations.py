@@ -117,9 +117,42 @@ async def run_migrations(db_url: str, migrations_dir: str = "/app/migrations"):
         else:
             logger.info("no_new_migrations_to_apply")
 
+        # Ensure seed user exists if API_TOKEN is configured
+        await ensure_seed_user(conn)
+
     except Exception as e:
         logger.error("migration_runner_failed", error=str(e))
         raise
     finally:
         if conn:
             await conn.close()
+
+
+async def ensure_seed_user(conn: asyncpg.Connection):
+    """
+    Ensure a seed user exists with the API_TOKEN environment variable.
+    This is needed for legacy API token authentication to work.
+    """
+    import os
+
+    api_token = os.getenv("API_TOKEN")
+
+    if not api_token:
+        logger.info("no_api_token_configured_skipping_seed_user")
+        return
+
+    try:
+        # Call the ensure_seed_user function created by migration 008
+        user_id = await conn.fetchval(
+            "SELECT ensure_seed_user($1)",
+            api_token
+        )
+
+        if user_id:
+            logger.info("seed_user_ensured", user_id=str(user_id))
+        else:
+            logger.info("seed_user_already_exists")
+    except Exception as e:
+        logger.error("ensure_seed_user_failed", error=str(e))
+        # Don't raise - this is not critical for the application to start
+        # The function might not exist if migration 008 hasn't run yet
