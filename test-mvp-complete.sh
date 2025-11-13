@@ -850,8 +850,27 @@ infrastructure_check() {
         ) &
       done
 
-      # Wait for all requests to complete (with timeout protection via curl --max-time)
-      wait
+      # Wait for all requests to complete with timeout protection
+      local wait_timeout=30
+      local wait_start=$(date +%s)
+      while true; do
+        # Check if all background jobs are done
+        if ! jobs -r | grep -q .; then
+          break
+        fi
+
+        # Check for timeout
+        local wait_elapsed=$(($(date +%s) - wait_start))
+        if [[ $wait_elapsed -ge $wait_timeout ]]; then
+          error "Timeout waiting for parallel rate limit requests to complete (${wait_timeout}s)"
+          # Kill any remaining background jobs
+          jobs -p | xargs -r kill 2>/dev/null || true
+          rm -rf "$tmpdir"
+          return 1
+        fi
+
+        sleep 0.5
+      done
 
       # Count 429 responses
       for i in $(seq 1 $total_requests); do
@@ -1458,7 +1477,7 @@ document_upload_file() {
   local file_path="$1"
   local mime="$2"
   local response doc_id job_id
-  response=$(curl -sS -X POST "$BASE_URL/api/v1/ingest" -H "Authorization: Bearer $TOKEN" -F "file=@$file_path;type=$mime")
+  response=$(curl -sS --max-time 60 -X POST "$BASE_URL/api/v1/ingest" -H "Authorization: Bearer $TOKEN" -F "file=@$file_path;type=$mime")
   doc_id=$(echo "$response" | jq -r '.document_id // .data.id')
   job_id=$(echo "$response" | jq -r '.job_id // empty')
   echo "$doc_id|$job_id"
@@ -1695,7 +1714,29 @@ documents_check() {
           [[ -z "${response%%|*}" ]] && echo "fail" > "$TEST_DIR/concurrent-$i.status"
         ) &
       done
-      wait
+
+      # Wait for all uploads to complete with timeout protection
+      local wait_timeout=120
+      local wait_start=$(date +%s)
+      while true; do
+        # Check if all background jobs are done
+        if ! jobs -r | grep -q .; then
+          break
+        fi
+
+        # Check for timeout
+        local wait_elapsed=$(($(date +%s) - wait_start))
+        if [[ $wait_elapsed -ge $wait_timeout ]]; then
+          error "Timeout waiting for concurrent uploads to complete (${wait_timeout}s)"
+          # Kill any remaining background jobs
+          jobs -p | xargs -r kill 2>/dev/null || true
+          rc=1
+          break
+        fi
+
+        sleep 0.5
+      done
+
       failures=$(grep -c "fail" "$TEST_DIR"/concurrent-*.status 2>/dev/null || true)
       assert_equals "${failures:-0}" "0" "Concurrent uploads succeed" || rc=1
       ;;
@@ -2205,13 +2246,33 @@ test_idempotency_aggressive_retry() {
 
   log "Sending 10 parallel requests with same idempotency key..."
   for i in {1..10}; do
-    curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+    curl -sS --max-time 30 -X POST "$BASE_URL/api/v1/reminders" \
       -H "Authorization: Bearer $TOKEN" \
       -H "Idempotency-Key: $idem_key" \
       -H "Content-Type: application/json" \
       -d "$payload" >"$TEST_DIR/aggressive-$i.json" 2>&1 &
   done
-  wait
+
+  # Wait for all background processes with timeout protection
+  local wait_timeout=60
+  local wait_start=$(date +%s)
+  while true; do
+    # Check if all background jobs are done
+    if ! jobs -r | grep -q .; then
+      break
+    fi
+
+    # Check for timeout
+    local wait_elapsed=$(($(date +%s) - wait_start))
+    if [[ $wait_elapsed -ge $wait_timeout ]]; then
+      error "Timeout waiting for parallel requests to complete (${wait_timeout}s)"
+      # Kill any remaining background jobs
+      jobs -p | xargs -r kill 2>/dev/null || true
+      return 1
+    fi
+
+    sleep 0.5
+  done
 
   log "Checking database for duplicate reminders..."
   sleep 2  # Give time for all DB writes to complete
