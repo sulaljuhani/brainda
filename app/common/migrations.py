@@ -7,7 +7,7 @@ Ensures migrations are applied in order and only once.
 
 import asyncpg
 import structlog
-import os
+import asyncio
 from pathlib import Path
 
 logger = structlog.get_logger()
@@ -22,7 +22,30 @@ async def run_migrations(db_url: str, migrations_dir: str = "/app/migrations"):
     """
     conn = None
     try:
-        conn = await asyncpg.connect(db_url)
+        # Retry database connection with exponential backoff
+        max_retries = 5
+        retry_delay = 1  # Start with 1 second
+
+        for attempt in range(max_retries):
+            try:
+                logger.info("attempting_database_connection", attempt=attempt + 1, max_retries=max_retries)
+                conn = await asyncpg.connect(db_url)
+                logger.info("database_connection_successful")
+                break
+            except (asyncpg.exceptions.PostgresConnectionError, OSError, ConnectionRefusedError) as e:
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        "database_connection_failed_retrying",
+                        attempt=attempt + 1,
+                        max_retries=max_retries,
+                        retry_delay=retry_delay,
+                        error=str(e)
+                    )
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error("database_connection_failed_all_retries_exhausted", error=str(e))
+                    raise
 
         # Create migrations tracking table if it doesn't exist
         await conn.execute("""

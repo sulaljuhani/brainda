@@ -30,9 +30,12 @@ services:
       timeout: 10s
       retries: 5
     depends_on:
-      - postgres
-      - redis
-      - qdrant
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
 
   postgres:
     image: postgres:15
@@ -109,8 +112,10 @@ services:
       - API_TOKEN=${API_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   beat:
     build: .
@@ -126,8 +131,10 @@ services:
       - API_TOKEN=${API_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # ollama:
   #   image: ollama/ollama:latest
