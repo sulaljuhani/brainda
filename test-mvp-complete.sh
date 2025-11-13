@@ -1756,7 +1756,9 @@ stage4_restore_temp_db() {
 
 metric_value() {
   local metric="$1"
-  curl -sS "$METRICS_URL" | awk -v name="$metric" '$1==name {print $2}' | tail -n1
+  # Handle both labeled metrics (metric{label="value"} 123) and unlabeled (metric 123)
+  # Sum all values for metrics with multiple labels
+  curl -sS "$METRICS_URL" | grep "^${metric}[{ ]" | awk '{print $NF}' | awk '{s+=$1} END {print s}'
 }
 
 stage4_check() {

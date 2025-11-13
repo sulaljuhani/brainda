@@ -94,9 +94,17 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         # Cache response (only for successful state changes)
         if 200 <= response.status_code < 300:
-            await self.cache_response(
+            response_body = await self.cache_response(
                 user_id, idempotency_key, endpoint, body, response
             )
+            # Reconstruct response with the cached body
+            if response_body is not None:
+                return Response(
+                    content=response_body,
+                    status_code=response.status_code,
+                    headers=dict(response.headers),
+                    media_type=response.media_type or "application/json",
+                )
 
         return response
 
@@ -130,7 +138,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
     async def cache_response(
         self, user_id, key: str, endpoint: str, request_body: bytes, response: Response
     ):
-        """Store response in cache for 24 hours"""
+        """Store response in cache for 24 hours and return the response body"""
         conn = None
         try:
             request_hash = hashlib.sha256(request_body).hexdigest()
@@ -148,7 +156,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                     "idempotency_cache_json_decode_failed",
                     response_body=response_body.decode()[:200],
                 )
-                return
+                return response_body
 
             conn = await connect_with_json_codec(DATABASE_URL)
             query = """
@@ -174,8 +182,11 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 endpoint=endpoint,
             )
 
+            return response_body
+
         except Exception as e:
             logger.error("idempotency_cache_store_failed", error=str(e))
+            return None
         finally:
             if conn:
                 await conn.close()

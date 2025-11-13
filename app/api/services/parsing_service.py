@@ -52,8 +52,11 @@ class ParsingService:
                 if not text:
                     continue
 
-                metadata = getattr(chunk, "metadata", {}) or {}
-                page_number = metadata.get("page_number") or metadata.get("page")
+                metadata = getattr(chunk, "metadata", None)
+                # ElementMetadata uses attribute access, not dictionary access
+                page_number = None
+                if metadata is not None:
+                    page_number = getattr(metadata, "page_number", None) or getattr(metadata, "page", None)
                 processed.append(
                     {
                         "text": text,

@@ -268,6 +268,7 @@ async def create_note_record(
             notes_deduped_total.labels(user_id=str(user_id)).inc()
             return {
                 "success": True,
+                "deduplicated": True,
                 "data": {
                     "id": str(existing["id"]),
                     "title": existing["title"],
