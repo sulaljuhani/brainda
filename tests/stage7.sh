@@ -131,7 +131,7 @@ test_google_sync_status_endpoint() {
     return $?
   fi
 
-  if ! validation_error=$(python3 - <<'PY' "$body" 2>&1); then
+  validation_error=$(python3 - "$body" 2>&1 <<'PY'
 import json, sys
 body = sys.argv[1]
 try:
@@ -148,7 +148,8 @@ if not isinstance(data["connected"], bool):
     sys.stderr.write("'connected' must be boolean")
     sys.exit(1)
 PY
-  then
+)
+  if [[ $? -ne 0 ]]; then
     error "Invalid google sync status response: $validation_error"
     return 1
   fi
@@ -170,7 +171,7 @@ test_google_oauth_endpoints() {
     return $?
   fi
 
-  if ! validation_error=$(python3 - <<'PY' "$body" 2>&1); then
+  validation_error=$(python3 - "$body" 2>&1 <<'PY'
 import json, sys
 data = json.loads(sys.argv[1])
 url = data.get("authorization_url")
@@ -182,7 +183,8 @@ if not state or len(state) < 10:
     sys.stderr.write("state token missing or too short")
     sys.exit(1)
 PY
-  then
+)
+  if [[ $? -ne 0 ]]; then
     error "Invalid google connect response: $validation_error"
     return 1
   fi
@@ -199,7 +201,7 @@ PY
     return $?
   fi
 
-  if ! validation_error=$(python3 - <<'PY' "$body" 2>&1); then
+  validation_error=$(python3 - "$body" 2>&1 <<'PY'
 import json, sys
 data = json.loads(sys.argv[1])
 if not data.get("success"):
@@ -209,7 +211,8 @@ if not data.get("message"):
     sys.stderr.write("disconnect message missing")
     sys.exit(1)
 PY
-  then
+)
+  if [[ $? -ne 0 ]]; then
     error "Invalid google disconnect response: $validation_error"
     return 1
   fi
@@ -244,20 +247,20 @@ test_google_sync_trigger() {
 
   case "$status" in
     200)
-      if ! python3 - <<'PY' "$body" >/dev/null 2>&1; then
+      python3 - "$body" >/dev/null 2>&1 <<'PY'
 import json, sys
 data = json.loads(sys.argv[1])
 if not data.get("success"):
     raise SystemExit("success flag missing or false")
 PY
-      then
+      if [[ $? -ne 0 ]]; then
         error "Manual sync trigger response missing success flag"
         return 1
       fi
       success "Manual sync trigger accepted request"
       ;;
     400)
-      detail=$(python3 - <<'PY' "$body" 2>/dev/null || true)
+      detail=$(python3 - "$body" 2>/dev/null <<'PY' || true
 import json, sys
 try:
     data = json.loads(sys.argv[1])
@@ -265,6 +268,7 @@ except json.JSONDecodeError:
     sys.exit(0)
 print(data.get("detail", ""))
 PY
+)
       if [[ -n "$detail" ]]; then
         warn "Manual sync trigger returned 400: $detail"
       else
@@ -301,7 +305,7 @@ test_google_sync_settings_endpoint() {
     return $?
   fi
 
-  if ! validation_error=$(python3 - <<'PY' "$body" 2>&1); then
+  validation_error=$(python3 - "$body" 2>&1 <<'PY'
 import json, sys
 data = json.loads(sys.argv[1])
 if not data.get("success"):
@@ -311,7 +315,8 @@ if "state" not in data:
     sys.stderr.write("state payload missing")
     sys.exit(1)
 PY
-  then
+)
+  if [[ $? -ne 0 ]]; then
     error "Invalid google settings response: $validation_error"
     return 1
   fi
