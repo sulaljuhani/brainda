@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils tessera
 # Copy and install Python dependencies (change occasionally)
 COPY app/api/requirements.txt /app/api/requirements.txt
 COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Use BuildKit cache mount for faster rebuilds even without Docker layer cache
 RUN --mount=type=cache,target=/root/.cache/pip \
