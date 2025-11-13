@@ -838,22 +838,23 @@ infrastructure_check() {
     rate_limit)
       # Make parallel requests to properly test burst rate limiting
       # Limit: 30 requests per 60 seconds
-      local i status count_429=0
+      # Use 32 requests to trigger limit while avoiding connection pool exhaustion
+      local i status count_429=0 total_requests=32
       local tmpdir=$(mktemp -d)
 
-      # Launch 35 parallel requests
-      for i in {1..35}; do
+      # Launch parallel requests with timeout
+      for i in $(seq 1 $total_requests); do
         (
-          status=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat" 2>/dev/null || echo "000")
+          status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat" 2>/dev/null || echo "000")
           echo "$status" > "$tmpdir/status_$i"
         ) &
       done
 
-      # Wait for all requests to complete (with timeout)
+      # Wait for all requests to complete (with timeout protection via curl --max-time)
       wait
 
       # Count 429 responses
-      for i in {1..35}; do
+      for i in $(seq 1 $total_requests); do
         if [[ -f "$tmpdir/status_$i" ]]; then
           status=$(cat "$tmpdir/status_$i")
           [[ "$status" == "429" ]] && count_429=$((count_429 + 1))
@@ -864,7 +865,7 @@ infrastructure_check() {
       rm -rf "$tmpdir"
 
       if [[ $count_429 -gt 0 ]]; then
-        success "Rate limit triggered ($count_429/35 responses)"
+        success "Rate limit triggered ($count_429/$total_requests responses)"
       else
         error "Rate limit did not trigger"
         rc=1
@@ -878,7 +879,7 @@ infrastructure_check() {
       log "Waiting for rate limit window reset"
       sleep 65
       local status
-      status=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat")
+      status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat")
       assert_equals "$status" "200" "Requests succeed after window reset" || rc=1
       ;;
     logs)
