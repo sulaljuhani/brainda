@@ -28,11 +28,68 @@ create_unique_reminder() {
   echo "$reminder_id|$title"
 }
 
+stage2_log_count() {
+  local keyword="$1"
+  local logs
+  if ! logs=$(docker logs vib-orchestrator --tail 400 2>&1); then
+    error "Unable to read orchestrator logs for '$keyword'"
+    return 1
+  fi
+  echo "$logs" | grep -c "$keyword" || true
+}
+
 stage2_wait_for_log() {
   local keyword="$1"
-  local hits
-  hits=$(docker logs vib-orchestrator --tail 400 2>&1 | grep -c "$keyword" || true)
+  local baseline="${2:-0}"
+  local timeout="${3:-30}"
+  local interval="${4:-3}"
+  local deadline=$((SECONDS + timeout))
+  local hits="0"
+  while (( SECONDS <= deadline )); do
+    if ! hits=$(stage2_log_count "$keyword"); then
+      return 1
+    fi
+    if (( hits > baseline )); then
+      echo "$hits"
+      return 0
+    fi
+    sleep "$interval"
+  done
+  error "Timed out waiting for logs containing '$keyword'"
   echo "$hits"
+  return 1
+}
+
+get_metric_value() {
+  local metric="$1"
+  local metrics
+  if ! metrics=$(curl -sS "$METRICS_URL"); then
+    error "Unable to scrape metrics endpoint"
+    return 1
+  fi
+  echo "$metrics" | awk -v name="$metric" '$1 == name {print $NF; found=1; exit} END { if (!found) print 0 }'
+}
+
+wait_for_metric_increment() {
+  local metric="$1"
+  local baseline="$2"
+  local timeout="${3:-60}"
+  local interval="${4:-5}"
+  local deadline=$((SECONDS + timeout))
+  local current="$baseline"
+  while (( SECONDS <= deadline )); do
+    if ! current=$(get_metric_value "$metric"); then
+      return 1
+    fi
+    if float_greater_than "$current" "$baseline"; then
+      echo "$current"
+      return 0
+    fi
+    sleep "$interval"
+  done
+  error "Metric $metric did not increment within ${timeout}s"
+  echo "$current"
+  return 1
 }
 
 test_reminder_create_api() {
@@ -48,10 +105,18 @@ test_reminder_in_database() {
 }
 
 test_reminder_scheduler_entry() {
-  ensure_reminder_fixture
-  local hits
-  hits=$(stage2_wait_for_log "$REMINDER_ID")
-  assert_greater_than "${hits:-0}" "0" "Reminder scheduled in APScheduler" || return 1
+  local pair reminder_id baseline
+  pair=$(create_unique_reminder 15)
+  reminder_id=${pair%%|*}
+  if ! baseline=$(stage2_log_count "$reminder_id"); then
+    return 1
+  fi
+  if stage2_wait_for_log "$reminder_id" "$baseline" 60 3 >/dev/null; then
+    success "Reminder $reminder_id scheduled in APScheduler"
+    return 0
+  fi
+  error "Reminder $reminder_id did not produce scheduler log"
+  return 1
 }
 
 test_reminder_chat_flow() {
@@ -134,9 +199,20 @@ test_reminder_snooze_updates_due() {
 }
 
 test_reminder_snooze_reschedules() {
-  local hits
-  hits=$(stage2_wait_for_log "reminder_snoozed")
-  assert_greater_than "${hits:-0}" "0" "Snooze events logged" || return 1
+  local pair reminder_id baseline
+  pair=$(create_unique_reminder 10)
+  reminder_id=${pair%%|*}
+  if ! baseline=$(stage2_log_count "reminder_snoozed"); then
+    return 1
+  fi
+  curl -sS -X POST "$BASE_URL/api/v1/reminders/$reminder_id/snooze" -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" -d '{"duration_minutes":10}' >/dev/null
+  if stage2_wait_for_log "reminder_snoozed" "$baseline" 60 3 >/dev/null; then
+    success "Snooze reschedule logged"
+    return 0
+  fi
+  error "Snooze event not observed in logs"
+  return 1
 }
 
 test_reminder_cancel_endpoint() {
@@ -206,8 +282,8 @@ test_device_test_notification() {
   local status
   status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/devices/test" -H "Authorization: Bearer $TOKEN")
   if [[ "$status" == "404" ]]; then
-    warn "Test notification endpoint reports no devices"
-    return 0
+    error "Test notification endpoint reports no registered devices"
+    return 1
   fi
   assert_status_code "$status" "200" "Test notification endpoint" || return 1
 }
@@ -262,10 +338,16 @@ test_notification_delivery_record() {
 }
 
 test_reminder_metrics_created_total() {
-  local before after pair
-  before=$(curl -sS "$METRICS_URL" | awk '/^reminders_created_total/ {print $NF; found=1; exit} END {if (!found) print 0}')
+  local before after pair reminder_id
+  if ! before=$(get_metric_value "reminders_created_total"); then
+    return 1
+  fi
   pair=$(create_unique_reminder 45)
-  after=$(curl -sS "$METRICS_URL" | awk '/^reminders_created_total/ {print $NF; found=1; exit} END {if (!found) print 0}')
+  reminder_id=${pair%%|*}
+  if ! after=$(wait_for_metric_increment "reminders_created_total" "$before" 60 5); then
+    error "reminders_created_total failed to increment for $reminder_id"
+    return 1
+  fi
   assert_greater_than "$after" "$before" "reminders_created_total increments" || return 1
 }
 
@@ -274,10 +356,15 @@ test_reminder_metrics_deduped_total() {
   due=$(date -u -d '+50 minutes' '+%Y-%m-%dT%H:%M:00Z')
   local=$(date -d '+50 minutes' '+%H:%M:00')
   payload=$(jq -n --arg title "Metric Dedup" --arg due "$due" --arg local "$local" '{title:$title,due_at_utc:$due,due_at_local:$local,timezone:"UTC"}')
-  before=$(curl -sS "$METRICS_URL" | awk '/^reminders_deduped_total/ {print $NF; found=1; exit} END {if (!found) print 0}')
+  if ! before=$(get_metric_value "reminders_deduped_total"); then
+    return 1
+  fi
   curl -sS -X POST "$BASE_URL/api/v1/reminders" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload" >/dev/null
   curl -sS -X POST "$BASE_URL/api/v1/reminders" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload" >/dev/null
-  after=$(curl -sS "$METRICS_URL" | awk '/^reminders_deduped_total/ {print $NF; found=1; exit} END {if (!found) print 0}')
+  if ! after=$(wait_for_metric_increment "reminders_deduped_total" "$before" 60 5); then
+    error "reminders_deduped_total failed to increment"
+    return 1
+  fi
   assert_greater_than "$after" "$before" "reminders_deduped_total increments" || return 1
 }
 
