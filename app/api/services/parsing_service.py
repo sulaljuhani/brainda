@@ -16,6 +16,21 @@ class ParsingService:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
+    def _validate_pdf(self, file_path: Path) -> None:
+        """Validate that a file is a proper PDF by checking its header."""
+        try:
+            with open(file_path, 'rb') as f:
+                header = f.read(5)
+                if header != b'%PDF-':
+                    raise ValueError(f"Invalid PDF file: missing PDF header signature")
+        except Exception as e:
+            logger.error(
+                "pdf_validation_failed",
+                file_path=str(file_path),
+                error=str(e),
+            )
+            raise ValueError(f"Failed to validate PDF file: {str(e)}")
+
     async def parse_document(
         self, file_path: Path, mime_type: str
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -27,6 +42,10 @@ class ParsingService:
     def _parse_sync(
         self, file_path: Path, mime_type: str
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        # Validate PDF files before parsing
+        if mime_type == "application/pdf":
+            self._validate_pdf(file_path)
+
         try:
             from unstructured.chunking.title import chunk_by_title
             from unstructured.partition.auto import partition
