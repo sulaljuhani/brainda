@@ -34,11 +34,22 @@ async def create_calendar_event(
     user_id: UUID = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    service = CalendarService(db)
-    result = await service.create_event(user_id, payload)
-    if not result.get("success"):
-        raise HTTPException(status_code=400, detail=result["error"])
-    return result
+    import structlog
+    logger = structlog.get_logger()
+    try:
+        service = CalendarService(db)
+        result = await service.create_event(user_id, payload)
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("calendar_create_error", error=str(e), error_type=type(e).__name__, user_id=str(user_id))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
+        )
 
 
 @router.patch("/events/{event_id}", response_model=dict)
