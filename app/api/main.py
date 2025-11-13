@@ -468,7 +468,7 @@ async def health_check():
     try:
         from celery import Celery
         celery_app = Celery(broker=os.getenv("REDIS_URL"))
-        inspector = celery_app.control.inspect()
+        inspector = celery_app.control.inspect(timeout=5.0)
         stats = inspector.stats()
         if stats:
             health["services"]["celery_worker"] = "ok"
