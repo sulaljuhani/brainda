@@ -802,6 +802,30 @@ async def chat_status(
 ):
     """Support lightweight GET access for health/rate-limit probes."""
     normalized = (message or "status check").strip()
+
+    # Lightweight probe path: check rate limit but skip expensive processing
+    if not message or normalized.lower() == "status check":
+        allowed, retry_after = await chat_rate_limiter.allow(str(user_id))
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": {
+                        "code": "RATE_LIMITED",
+                        "message": "Too many chat requests. Try again in a moment.",
+                        "retry_after": retry_after,
+                    }
+                },
+            )
+        return ChatResponse(
+            mode="status",
+            message="Chat endpoint is available",
+            conversation_id=None,
+            data=None,
+            citations=None,
+        )
+
+    # Full chat flow for actual messages
     return await _run_chat_flow(normalized, None, user_id, db)
 
 

@@ -836,13 +836,35 @@ infrastructure_check() {
       assert_status_code "$status" "401" "Missing token rejected" || rc=1
       ;;
     rate_limit)
+      # Make parallel requests to properly test burst rate limiting
+      # Limit: 30 requests per 60 seconds
       local i status count_429=0
+      local tmpdir=$(mktemp -d)
+
+      # Launch 35 parallel requests
       for i in {1..35}; do
-        status=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat") || true
-        [[ "$status" == "429" ]] && count_429=$((count_429 + 1))
+        (
+          status=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/chat" 2>/dev/null || echo "000")
+          echo "$status" > "$tmpdir/status_$i"
+        ) &
       done
+
+      # Wait for all requests to complete (with timeout)
+      wait
+
+      # Count 429 responses
+      for i in {1..35}; do
+        if [[ -f "$tmpdir/status_$i" ]]; then
+          status=$(cat "$tmpdir/status_$i")
+          [[ "$status" == "429" ]] && count_429=$((count_429 + 1))
+        fi
+      done
+
+      # Cleanup temp files
+      rm -rf "$tmpdir"
+
       if [[ $count_429 -gt 0 ]]; then
-        success "Rate limit triggered ($count_429 responses)"
+        success "Rate limit triggered ($count_429/35 responses)"
       else
         error "Rate limit did not trigger"
         rc=1
