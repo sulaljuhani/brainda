@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
 BASE_URL=${BASE_URL:-"http://localhost:8000"}
 QDRANT_URL=${QDRANT_URL:-"http://localhost:6333"}
 

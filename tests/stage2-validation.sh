@@ -1,5 +1,10 @@
 #!/bin/bash
 set -euo pipefail
+
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
 IFS=$'\n\t'
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)

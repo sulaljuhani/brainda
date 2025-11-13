@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
 create_chat_reminder() {
   local marker="Smart Chat Reminder $TIMESTAMP-$RANDOM"
   local payload

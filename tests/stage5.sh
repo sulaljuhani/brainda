@@ -3,6 +3,11 @@
 # Tests idempotency keys, mobile endpoints, and concurrent request handling
 
 set -euo pipefail
+
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
 IFS=$'\n\t'
 
 declare -a STAGE5_REMINDER_TITLES=()

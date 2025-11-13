@@ -6,6 +6,12 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+# Enable debug mode with DEBUG=1
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+  echo "[DEBUG] Debug mode enabled for common.sh" >&2
+fi
+
 # These will be set by the test runner before sourcing
 # SCRIPT_ROOT, TIMESTAMP, START_TIME, TEST_DIR, etc.
 
@@ -105,7 +111,22 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
+
+# Debug logging helper
+debug() {
+  if [[ "${DEBUG:-0}" == "1" ]]; then
+    echo -e "${CYAN}[DEBUG $(date '+%H:%M:%S')] $*${NC}" >&2
+  fi
+}
+
+# Verbose logging helper
+log_verbose() {
+  if [[ "${VERBOSE:-false}" == "true" ]]; then
+    echo -e "${BLUE}[VERBOSE $(date '+%H:%M:%S')] $*${NC}" >&2
+  fi
+}
 
 log() {
   echo "[$(date '+%H:%M:%S')] $1"
@@ -117,11 +138,13 @@ success() {
 
 error() {
   echo -e "${RED}[$(date '+%H:%M:%S')] ✗ $1${NC}" >&2
+  debug "Error called from: ${BASH_SOURCE[1]:-unknown}:${BASH_LINENO[0]:-unknown}"
 }
 
 warn() {
   echo -e "${YELLOW}[$(date '+%H:%M:%S')] ⚠ $1${NC}"
   WARNINGS=$((WARNINGS + 1))
+  debug "Warning called from: ${BASH_SOURCE[1]:-unknown}:${BASH_LINENO[0]:-unknown}"
 }
 
 section() {
@@ -130,6 +153,7 @@ section() {
   echo "$1"
   echo "======================================"
   echo ""
+  debug "Starting section: $1"
 }
 
 # Assertion helpers
@@ -137,11 +161,13 @@ assert_equals() {
   local actual="$1"
   local expected="$2"
   local message="$3"
+  debug "assert_equals: comparing actual='$actual' with expected='$expected'"
   if [[ "$actual" == "$expected" ]]; then
     success "$message (expected=$expected, actual=$actual)"
     return 0
   else
     error "$message (expected=$expected, actual=$actual)"
+    debug "Assertion failed at: ${BASH_SOURCE[1]:-unknown}:${BASH_LINENO[0]:-unknown}"
     return 1
   fi
 }
@@ -337,14 +363,39 @@ psql_query() {
   local sql="$1"
   local user="${POSTGRES_USER:-vib}"
   local db="${POSTGRES_DB:-vib}"
-  docker exec vib-postgres psql -U "$user" -d "$db" -At -c "$sql"
+  debug "psql_query: user=$user db=$db sql='${sql:0:100}...'"
+
+  # Check if container is running
+  if ! docker inspect vib-postgres >/dev/null 2>&1; then
+    error "vib-postgres container not found"
+    return 1
+  fi
+
+  if ! docker exec vib-postgres psql -U "$user" -d "$db" -At -c "$sql" 2>/dev/null; then
+    error "psql_query failed: $sql"
+    debug "Check if vib-postgres container is running and database '$db' exists"
+    return 1
+  fi
 }
 
 redis_cmd() {
-  docker exec vib-redis redis-cli "$@"
+  debug "redis_cmd: $*"
+
+  # Check if container is running
+  if ! docker inspect vib-redis >/dev/null 2>&1; then
+    error "vib-redis container not found"
+    return 1
+  fi
+
+  if ! docker exec vib-redis redis-cli "$@" 2>/dev/null; then
+    error "redis_cmd failed: $*"
+    debug "Check if vib-redis container is running"
+    return 1
+  fi
 }
 
 compose_cmd() {
+  debug "compose_cmd: $*"
   if command -v docker-compose >/dev/null 2>&1; then
     docker-compose "$@"
   else
@@ -489,17 +540,28 @@ load_config_json() {
 }
 
 ensure_prereqs() {
+  local missing=()
   for bin in curl jq docker; do
     if ! command -v "$bin" >/dev/null 2>&1; then
-      error "Missing dependency: $bin"
-      exit 1
+      missing+=("$bin")
     fi
   done
 
   if [[ "$HAS_BC" == false && "$HAS_PYTHON" == false ]]; then
-    error "Missing dependency: need 'python3' or 'bc'"
+    missing+=("python3 or bc")
+  fi
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    error "Missing required dependencies: ${missing[*]}"
+    echo "" >&2
+    echo "Installation instructions:" >&2
+    echo "  Ubuntu/Debian: sudo apt-get install curl jq docker.io python3" >&2
+    echo "  RHEL/CentOS:   sudo yum install curl jq docker python3" >&2
+    echo "  macOS:         brew install curl jq docker python3" >&2
     exit 1
   fi
+
+  debug "All prerequisites available: curl, jq, docker, ${HAS_PYTHON:+python3}${HAS_BC:+bc}"
 }
 
 # Fixture state

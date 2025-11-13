@@ -3,6 +3,11 @@
 # Tests calendar events, recurrence rules, and timezone handling
 
 set -euo pipefail
+
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
 IFS=$'\n\t'
 
 STAGE6_CREATED_EVENTS=()

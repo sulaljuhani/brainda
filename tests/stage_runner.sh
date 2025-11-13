@@ -45,7 +45,14 @@ Usage: $0 [options]
   --fast            Skip slow tests (reminder firing, long-running DOC/RAG)
   --html-report     Generate HTML report in test directory
   --verbose         Enable verbose curl output
+  --debug           Enable debug mode with set -x
   --help            Show this message
+
+Environment Variables:
+  DEBUG=1           Enable debug mode (same as --debug)
+  VERBOSE=1         Enable verbose mode (same as --verbose)
+  BASE_URL          API base URL (default: http://localhost:8000)
+  API_TOKEN         Authentication token for API requests
 
 Examples:
   $0                              # Run all tests
@@ -73,6 +80,11 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
+    --debug)
+      export DEBUG=1
+      set -x
+      shift
+      ;;
     --help)
       usage
       exit 0
@@ -84,6 +96,12 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Enable debug mode if requested via environment variable
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+  echo "[DEBUG] Debug mode enabled for stage_runner.sh" >&2
+fi
 
 # Validate stage selection early to avoid silent no-op runs
 validate_stage_selection() {
