@@ -3,6 +3,11 @@
 # Tests document ingestion, chunking, vector search, and RAG responses
 
 set -euo pipefail
+
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
 IFS=$'\n\t'
 
 generate_pdf_with_pages() {

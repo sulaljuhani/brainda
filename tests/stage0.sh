@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
 #############################################
 # Constants
 #############################################

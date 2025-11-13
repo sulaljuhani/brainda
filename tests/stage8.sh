@@ -3,6 +3,11 @@
 # Tests authentication, sessions, organizations, and data isolation
 
 set -euo pipefail
+
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
 IFS=$'\n\t'
 
 CURRENT_USER_ID=""

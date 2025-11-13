@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
 RESTORE_DB_NAME="${RESTORE_DB_NAME:-vib_restore_test}"
 METRIC_RETRY_ATTEMPTS=${METRIC_RETRY_ATTEMPTS:-5}
 METRIC_RETRY_DELAY=${METRIC_RETRY_DELAY:-3}

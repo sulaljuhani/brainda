@@ -14,6 +14,11 @@
 
 set -euo pipefail
 
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
 LATENCY_SAMPLES=${LATENCY_SAMPLES:-10}
 CURL_BURST_SIZE=${CURL_BURST_SIZE:-10}
 DOC_JOB_WAIT_TIMEOUT=${DOC_JOB_WAIT_TIMEOUT:-300}

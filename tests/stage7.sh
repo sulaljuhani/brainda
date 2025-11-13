@@ -13,6 +13,11 @@
 
 set -euo pipefail
 
+# Enable debug mode if requested
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
 STAGE7_OPTIONAL="${STAGE7_OPTIONAL:-false}"
 
 stage7_fail_or_skip() {
