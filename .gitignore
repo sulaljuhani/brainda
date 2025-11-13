@@ -15,3 +15,6 @@ backups/data/
 
 # Submodules
 brainda/
+
+# Backup files
+*.backup
