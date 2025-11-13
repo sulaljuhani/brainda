@@ -47,6 +47,9 @@ async def get_user_id_from_token(token: str, db: asyncpg.Connection) -> uuid.UUI
     now = datetime.now(timezone.utc)
     if session:
         expires_at: datetime = session["expires_at"]
+        # Ensure expires_at is timezone-aware for proper comparison
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
         if expires_at <= now:
             await auth_service.delete_session(token)
             await auth_service.log_auth_event(
