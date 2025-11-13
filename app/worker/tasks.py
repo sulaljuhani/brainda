@@ -525,7 +525,7 @@ async def _cleanup_old_data_async():
 
 # --- File Watcher ---
 class VaultWatcher(FileSystemEventHandler):
-    def __init__(self, debounce_seconds=30):
+    def __init__(self, debounce_seconds=5):
         self.debounce_seconds = debounce_seconds
         self.pending_changes = {}
     

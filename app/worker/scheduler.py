@@ -40,6 +40,12 @@ def schedule_reminder(reminder_id: str, due_at: datetime):
         logger.info(
             "reminder_scheduled", reminder_id=reminder_id, due_at=due_at.isoformat()
         )
+    else:
+        logger.warning(
+            "reminder_not_scheduled_scheduler_unavailable",
+            reminder_id=reminder_id,
+            due_at=due_at.isoformat()
+        )
 
 
 async def fire_reminder(reminder_id: str):

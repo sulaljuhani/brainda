@@ -269,13 +269,13 @@ except json.JSONDecodeError:
 print(data.get("detail", ""))
 PY
 )
-      if [[ -n "$detail" ]]; then
-        warn "Manual sync trigger returned 400: $detail"
+      if [[ "$detail" == *"not connected"* ]]; then
+        success "Manual sync trigger correctly rejects requests when Google Calendar is not connected"
+        return 0
       else
-        warn "Manual sync trigger returned 400 without detail"
+        error "Manual sync trigger returned unexpected 400 response: $detail"
+        return 1
       fi
-      stage7_fail_or_skip "Manual sync trigger is unavailable while Google Calendar is disconnected"
-      return $?
       ;;
     401)
       log_http_failure "$status" "$body"

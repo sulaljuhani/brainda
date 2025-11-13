@@ -225,6 +225,11 @@ async def create_note_record(
                 md_path,
             )
 
+            # Increment metric immediately after successful DB insert
+            # This ensures the metric reflects notes created in the database,
+            # even if subsequent operations (markdown file, embedding) fail
+            notes_created_total.labels(user_id=str(user_id)).inc()
+
             create_markdown_file(
                 inserted_note["id"],
                 note.title,
@@ -233,7 +238,6 @@ async def create_note_record(
                 md_path,
             )
             await queue_embedding_task(inserted_note["id"])
-            notes_created_total.labels(user_id=str(user_id)).inc()
 
             logger.info(
                 "create_note_endpoint_success",
@@ -667,16 +671,26 @@ async def _handle_reminder_chat(
 
 
 async def _handle_rag_chat(message: str, user_id: uuid.UUID) -> Dict[str, Any]:
-    vector_service = VectorService()
-    rag_service = RAGService(vector_service, get_llm_adapter())
-    answer = await rag_service.answer_question(message, user_id)
-    tool_calls_total.labels("rag_answer", "success").inc()
-    return {
-        "mode": "rag",
-        "message": answer.get("answer", "No response available."),
-        "data": {"sources_used": answer.get("sources_used", 0)},
-        "citations": answer.get("citations", []),
-    }
+    try:
+        vector_service = VectorService()
+        rag_service = RAGService(vector_service, get_llm_adapter())
+        answer = await rag_service.answer_question(message, user_id)
+        tool_calls_total.labels("rag_answer", "success").inc()
+        return {
+            "mode": "rag",
+            "message": answer.get("answer", "No response available."),
+            "data": {"sources_used": answer.get("sources_used", 0)},
+            "citations": answer.get("citations", []),
+        }
+    except Exception as exc:
+        logger.exception("rag_chat_failed", error=str(exc), user_id=str(user_id))
+        tool_calls_total.labels("rag_answer", "error").inc()
+        return {
+            "mode": "rag",
+            "message": f"I encountered an error while processing your request: {str(exc)}",
+            "data": {"error": str(exc), "sources_used": 0},
+            "citations": [],
+        }
 
 
 async def _dispatch_chat(
