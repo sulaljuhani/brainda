@@ -243,43 +243,7 @@
 4. **Refactoring Opportunities:** Larger structural improvements
 5. **Follow-up Actions:** Items requiring additional investigation
 
----
+### Action
+ask for user approval to start impelemnting the fixes
 
-## How to Use This Plan
 
-1. Replace `[FILENAME_PLACEHOLDER]` with the specific test file you want to review
-2. Execute phases sequentially, documenting findings as you go
-3. For each phase, read the file with specific review criteria in mind
-4. Note issues, concerns, and recommendations in each category
-5. Compile final summary with prioritized action items
-
----
-
-## Available Test Files
-
-The following test scripts are available for review:
-
-- `check-metrics.sh` - Metrics checking functionality
-- `common.sh` - Shared utilities and functions
-- `performance.sh` - Performance testing
-- `stage0.sh` - Stage 0 tests
-- `stage1.sh` - Stage 1 tests
-- `stage2.sh` - Stage 2 tests
-- `stage2-validation.sh` - Stage 2 validation
-- `stage3.sh` - Stage 3 tests
-- `stage3-validation.sh` - Stage 3 validation
-- `stage4.sh` - Stage 4 tests
-- `stage5.sh` - Stage 5 tests
-- `stage6.sh` - Stage 6 tests
-- `stage7.sh` - Stage 7 tests
-- `stage8.sh` - Stage 8 tests
-- `stage_runner.sh` - Stage runner orchestration
-- `workflows.sh` - Workflow tests
-
----
-
-## Usage Example
-
-To review a specific file, specify: "Review `stage0.sh` using the test review plan"
-
-The review will systematically go through all 10 phases and provide a comprehensive analysis with actionable recommendations.
