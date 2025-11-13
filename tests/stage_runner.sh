@@ -85,6 +85,22 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Validate stage selection early to avoid silent no-op runs
+validate_stage_selection() {
+  [[ -z "$RUN_STAGE" ]] && return
+  case "$RUN_STAGE" in
+    0|1|2|3|4|5|6|7|8|performance|workflows)
+      ;;
+    *)
+      echo "Invalid stage: $RUN_STAGE" >&2
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+validate_stage_selection
+
 # Export variables for sourced scripts
 export BASE_URL RUN_STAGE FAST_MODE HTML_REPORT VERBOSE
 
@@ -197,6 +213,15 @@ generate_json_report() {
 
 generate_html_report() {
   local report="$TEST_DIR/report.html"
+  html_escape() {
+    local input="$1"
+    input=${input//&/&amp;}
+    input=${input//</&lt;}
+    input=${input//>/&gt;}
+    input=${input//\"/&quot;}
+    input=${input//\'/&#39;}
+    printf '%s' "$input"
+  }
   cat > "$report" <<HTML
 <!DOCTYPE html>
 <html>
@@ -227,8 +252,13 @@ HTML
     local class="pass"
     [[ "$status" == "FAIL" ]] && class="fail"
     [[ "$status" == "SKIPPED" ]] && class="warn"
+    local escaped_name escaped_status escaped_duration escaped_message
+    escaped_name="$(html_escape "$name")"
+    escaped_status="$(html_escape "$status")"
+    escaped_duration="$(html_escape "$duration")"
+    escaped_message="$(html_escape "$message")"
     cat >> "$report" <<ROW
-    <tr class="$class"><td>${name}</td><td>${status}</td><td>${duration}</td><td>${message}</td></tr>
+    <tr class="$class"><td>${escaped_name}</td><td>${escaped_status}</td><td>${escaped_duration}</td><td>${escaped_message}</td></tr>
 ROW
   done
   cat >> "$report" <<HTML
@@ -287,12 +317,15 @@ main() {
     run_workflow_tests
   fi
 
-  cleanup_test_data
   print_summary
   generate_json_report
   if $HTML_REPORT; then
     generate_html_report
   fi
+
+  # Perform cleanup after reports are generated to retain artifacts
+  trap - EXIT
+  cleanup_test_data
 
   if [[ $FAILED_TESTS -gt 0 ]]; then
     exit 1
