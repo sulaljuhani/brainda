@@ -133,7 +133,9 @@ stage4_check() {
       # Create a note to ensure metric increments
       local before
       before=$(metric_value "notes_created_total" refresh || echo 0)
-      local payload='{"title":"Metrics Test Note","body":"Testing metrics","tags":[]}'
+      local unique_title="Metrics Test Note $(date +%s)-$RANDOM"
+      local payload
+      payload=$(jq -n --arg title "$unique_title" '{title:$title, body:"Testing metrics", tags:[]}')
       curl -sS -X POST "$BASE_URL/api/v1/notes" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
