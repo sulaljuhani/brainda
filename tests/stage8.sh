@@ -3,6 +3,7 @@
 # Tests authentication, sessions, organizations, and data isolation
 
 set -euo pipefail
+IFS=$'\n\t'
 
 CURRENT_USER_ID=""
 TOTP_SECRET=""

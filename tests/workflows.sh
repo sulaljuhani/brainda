@@ -3,6 +3,7 @@
 # Tests complete workflows combining multiple features
 
 set -euo pipefail
+IFS=$'\n\t'
 
 workflow_check() {
   local check="$1"

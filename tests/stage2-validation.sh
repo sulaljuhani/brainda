@@ -21,7 +21,7 @@ if [[ -z "$TOKEN" ]]; then
     exit 1
 fi
 
-BASE_URL="http://localhost:8003"
+BASE_URL="${BASE_URL:-http://localhost:8000}"
 
 echo "======================================"
 echo "Stage 2 Validation Test"

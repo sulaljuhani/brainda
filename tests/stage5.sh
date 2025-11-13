@@ -3,6 +3,7 @@
 # Tests idempotency keys, mobile endpoints, and concurrent request handling
 
 set -euo pipefail
+IFS=$'\n\t'
 
 declare -a STAGE5_REMINDER_TITLES=()
 declare -a STAGE5_IDEMPOTENCY_KEYS=()
