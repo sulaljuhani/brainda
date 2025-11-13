@@ -1,12 +1,62 @@
 #!/bin/bash
 set -euo pipefail
 
-TOKEN=$(grep -m1 API_TOKEN .env | cut -d= -f2)
-BASE_URL="http://localhost:8000"
+BASE_URL=${BASE_URL:-"http://localhost:8000"}
+QDRANT_URL=${QDRANT_URL:-"http://localhost:6333"}
 
 log() {
     echo "[$(date '+%H:%M:%S')] $1"
 }
+
+fail() {
+    log "✗ $1"
+    exit 1
+}
+
+require_command() {
+    local cmd=$1
+    command -v "$cmd" >/dev/null 2>&1 || fail "Missing required dependency: $cmd"
+}
+
+ensure_dependencies() {
+    for cmd in curl jq docker; do
+        require_command "$cmd"
+    done
+    if ! docker ps --format '{{.Names}}' | grep -q '^vib-postgres$'; then
+        fail "vib-postgres container is not running"
+    fi
+}
+
+ensure_env_token() {
+    if [ ! -f .env ]; then
+        fail ".env file not found; copy .env.example and configure API_TOKEN"
+    fi
+    local token_line
+    token_line=$(grep -m1 '^API_TOKEN=' .env || true)
+    if [ -z "$token_line" ]; then
+        fail "API_TOKEN not configured in .env"
+    fi
+    TOKEN=${token_line#API_TOKEN=}
+    TOKEN=$(printf '%s' "$TOKEN" | tr -d '\r')
+    TOKEN=${TOKEN%"}
+    TOKEN=${TOKEN#"}
+    if [ -z "$TOKEN" ]; then
+        fail "API_TOKEN value is empty"
+    fi
+}
+
+ensure_services() {
+    if ! curl -sf "$BASE_URL/api/v1/health" >/dev/null; then
+        fail "API service at $BASE_URL is unreachable"
+    fi
+    if ! curl -sf "$QDRANT_URL/collections" >/dev/null; then
+        fail "Qdrant service at $QDRANT_URL is unreachable"
+    fi
+}
+
+ensure_dependencies
+ensure_env_token
+ensure_services
 
 wait_with_log() {
     local seconds=$1
@@ -113,11 +163,19 @@ fi
 log "✓ Document uploaded (job_id=$JOB_ID, document_id=$DOC_ID)"
 
 log "Test 3: Verifying document exists in database..."
-DOC_COUNT=$(docker exec vib-postgres psql -U postgres -d vib -t -c \
-  "SELECT COUNT(*) FROM documents WHERE id = '$DOC_ID';" | tr -d '[:space:]')
-if [ "$DOC_COUNT" != "1" ]; then
-    log "✗ Document not found in database"
-    exit 1
+DOC_PRESENT=0
+for attempt in {1..5}; do
+    DOC_COUNT=$(docker exec vib-postgres psql -U postgres -d vib -t -c \
+      "SELECT COUNT(*) FROM documents WHERE id = '$DOC_ID';" | tr -d '[:space:]')
+    if [ "$DOC_COUNT" = "1" ]; then
+        DOC_PRESENT=1
+        break
+    fi
+    log "  Document row not visible yet (attempt $attempt/5), retrying..."
+    sleep 3
+done
+if [ "$DOC_PRESENT" -ne 1 ]; then
+    fail "Document not found in database"
 fi
 log "✓ Document row present"
 
@@ -146,11 +204,20 @@ fi
 log "✓ Job completed"
 
 log "Test 5: Checking chunks..."
-CHUNK_COUNT=$(docker exec vib-postgres psql -U postgres -d vib -t -c \
-  "SELECT COUNT(*) FROM chunks WHERE document_id = '$DOC_ID';" | tr -d '[:space:]')
-if [ "${CHUNK_COUNT:-0}" -lt 1 ]; then
-    log "✗ No chunks stored"
-    exit 1
+CHUNK_READY=0
+CHUNK_COUNT=0
+for attempt in {1..5}; do
+    CHUNK_COUNT=$(docker exec vib-postgres psql -U postgres -d vib -t -c \
+      "SELECT COUNT(*) FROM chunks WHERE document_id = '$DOC_ID';" | tr -d '[:space:]')
+    if [ "${CHUNK_COUNT:-0}" -ge 1 ]; then
+        CHUNK_READY=1
+        break
+    fi
+    log "  No chunks yet (attempt $attempt/5), waiting..."
+    sleep 3
+done
+if [ "$CHUNK_READY" -ne 1 ]; then
+    fail "No chunks stored"
 fi
 log "✓ $CHUNK_COUNT chunks stored"
 
@@ -165,29 +232,68 @@ log "✓ Document indexed"
 
 log "Test 7: Vector payloads exist..."
 wait_with_log 5 "Waiting for Qdrant sync"
-VECTOR_COUNT=$(curl -s "http://localhost:6333/collections/knowledge_base" | jq '.result.points_count')
-if [ "$VECTOR_COUNT" == "null" ] || [ "$VECTOR_COUNT" -lt 1 ]; then
-    log "⚠ No vectors found in Qdrant (collection may be empty)"
-else
-    log "✓ Qdrant points count: $VECTOR_COUNT"
+VECTOR_COUNT=0
+VECTOR_READY=0
+for attempt in {1..5}; do
+    VECTOR_COUNT=$(curl -s -X POST "$QDRANT_URL/collections/knowledge_base/points/count" \
+      -H "Content-Type: application/json" \
+      -d '{"exact":true,"filter":{"must":[{"key":"parent_document_id","match":{"value":"'"$DOC_ID"'"}}]}}' | jq -r '.result.count // 0')
+    if [ "${VECTOR_COUNT:-0}" -gt 0 ]; then
+        VECTOR_READY=1
+        break
+    fi
+    log "  No vectors yet for document (attempt $attempt/5), waiting..."
+    sleep 5
+done
+if [ "$VECTOR_READY" -ne 1 ]; then
+    fail "No vectors found in Qdrant for document $DOC_ID"
 fi
+log "✓ Qdrant stored $VECTOR_COUNT vectors for document"
 
 log "Test 8: Search endpoint returns document chunks..."
-SEARCH_RESPONSE=$(curl -s "$BASE_URL/api/v1/search?q=test%20document&content_type=document_chunk" \
-  -H "Authorization: Bearer $TOKEN")
-RESULT_COUNT=$(printf '%s' "$SEARCH_RESPONSE" | jq '.results | length')
-if [ "$RESULT_COUNT" -lt 1 ]; then
-    log "⚠ No search results yet"
-else
-    log "✓ Search returned $RESULT_COUNT results"
+SEARCH_FOUND=0
+SEARCH_RESPONSE=""
+for attempt in {1..5}; do
+    SEARCH_RESPONSE=$(curl -s "$BASE_URL/api/v1/search?q=test%20document&content_type=document_chunk" \
+      -H "Authorization: Bearer $TOKEN")
+    RESULT_COUNT=$(printf '%s' "$SEARCH_RESPONSE" | jq '.results | length')
+    MATCHING_COUNT=$(printf '%s' "$SEARCH_RESPONSE" | jq --arg doc "$DOC_ID" '[((.results // [])[] | select(.metadata.parent_document_id == $doc))] | length')
+    if [ "${RESULT_COUNT:-0}" -gt 0 ] && [ "${MATCHING_COUNT:-0}" -gt 0 ]; then
+        SEARCH_FOUND=1
+        log "✓ Search returned $RESULT_COUNT results (${MATCHING_COUNT} from document)"
+        break
+    fi
+    log "  Search results not ready yet (attempt $attempt/5), waiting..."
+    sleep 3
+done
+if [ "$SEARCH_FOUND" -ne 1 ]; then
+    log "Search response: $SEARCH_RESPONSE"
+    fail "Search endpoint did not return chunks for document $DOC_ID"
 fi
 
 log "Test 9: RAG answer via chat endpoint..."
-CHAT_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/chat" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"message":"What does the test document say?"}')
-echo "$CHAT_RESPONSE" | grep -q "test document" || log "⚠ Chat response may not reference document"
+CHAT_SUCCESS=0
+CHAT_RESPONSE=""
+for attempt in {1..3}; do
+    CHAT_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/chat" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"message":"What does the test document say?"}')
+    CHAT_MODE=$(printf '%s' "$CHAT_RESPONSE" | jq -r '.mode // empty')
+    CITATION_MATCH=$(printf '%s' "$CHAT_RESPONSE" | jq --arg doc "$DOC_ID" '[.citations[]? | select(.id == $doc)] | length')
+    CHAT_MESSAGE=$(printf '%s' "$CHAT_RESPONSE" | jq -r '.message // ""' | tr '[:upper:]' '[:lower:]')
+    if [ "$CHAT_MODE" = "rag" ] && [ "${CITATION_MATCH:-0}" -gt 0 ] && grep -q "test document" <<<"$CHAT_MESSAGE"; then
+        CHAT_SUCCESS=1
+        log "✓ Chat response referenced document with $CITATION_MATCH citation(s)"
+        break
+    fi
+    log "  Chat response not referencing document yet (attempt $attempt/3), waiting..."
+    sleep 5
+done
+if [ "$CHAT_SUCCESS" -ne 1 ]; then
+    log "Chat response: $CHAT_RESPONSE"
+    fail "Chat endpoint did not return a RAG answer citing the uploaded document"
+fi
 
 log "Test 10: Duplicate upload prevention..."
 RESPONSE2=$(curl -s -X POST "$BASE_URL/api/v1/ingest" \
