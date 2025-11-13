@@ -4,6 +4,136 @@
 
 set -euo pipefail
 
+STAGE6_CREATED_EVENTS=()
+STAGE6_CREATED_REMINDERS=()
+STAGE6_LAST_EVENT_RESPONSE=""
+
+stage6_require_dependencies() {
+  local missing=()
+  for bin in curl jq; do
+    if ! command -v "$bin" >/dev/null 2>&1; then
+      missing+=("$bin")
+    fi
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    error "Missing required tools for Stage 6: ${missing[*]}"
+    return 1
+  fi
+}
+
+stage6_register_event_cleanup() {
+  local event_id="$1"
+  if [[ -n "$event_id" ]]; then
+    STAGE6_CREATED_EVENTS+=("$event_id")
+  fi
+}
+
+stage6_register_reminder_cleanup() {
+  local reminder_id="$1"
+  if [[ -n "$reminder_id" ]]; then
+    STAGE6_CREATED_REMINDERS+=("$reminder_id")
+  fi
+}
+
+stage6_cleanup_resources() {
+  if [[ ${#STAGE6_CREATED_REMINDERS[@]} -gt 0 ]]; then
+    for reminder_id in "${STAGE6_CREATED_REMINDERS[@]}"; do
+      curl -sS -o /dev/null -X DELETE "$BASE_URL/api/v1/reminders/$reminder_id" \
+        -H "Authorization: Bearer $TOKEN" || true
+    done
+    STAGE6_CREATED_REMINDERS=()
+  fi
+
+  if [[ ${#STAGE6_CREATED_EVENTS[@]} -gt 0 ]]; then
+    for event_id in "${STAGE6_CREATED_EVENTS[@]}"; do
+      curl -sS -o /dev/null -X DELETE "$BASE_URL/api/v1/calendar/events/$event_id" \
+        -H "Authorization: Bearer $TOKEN" || true
+    done
+    STAGE6_CREATED_EVENTS=()
+  fi
+}
+
+build_calendar_payload() {
+  local title="$1"
+  local starts_at="$2"
+  local timezone="${3:-UTC}"
+  local rrule="${4:-}"
+
+  jq -n --arg title "$title" --arg starts "$starts_at" --arg tz "$timezone" --arg rrule "$rrule" '
+    ({title:$title, starts_at:$starts, timezone:$tz}) as $base |
+    if ($rrule | length) > 0 then $base + {rrule:$rrule} else $base end
+  '
+}
+
+create_calendar_event() {
+  local payload="$1"
+  local response status body
+  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload" 2>&1)
+  status=$(echo "$response" | tail -1)
+  body=$(echo "$response" | head -n -1)
+
+  if [[ "$status" != "200" && "$status" != "201" ]]; then
+    error "Calendar event creation failed (status $status)"
+    echo "Response: $body" >&2
+    return 1
+  fi
+
+  local event_id
+  event_id=$(echo "$body" | jq -r '.data.id // .id // empty')
+  assert_not_empty "$event_id" "Calendar event ID returned" || return 1
+  STAGE6_LAST_EVENT_RESPONSE="$body"
+  stage6_register_event_cleanup "$event_id"
+  echo "$event_id"
+}
+
+create_reminder() {
+  local payload="$1"
+  local response status body
+  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/reminders" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload" 2>&1)
+  status=$(echo "$response" | tail -1)
+  body=$(echo "$response" | head -n -1)
+  if [[ "$status" != "200" && "$status" != "201" ]]; then
+    error "Reminder creation failed (status $status)"
+    echo "Response: $body" >&2
+    return 1
+  fi
+  local reminder_id
+  reminder_id=$(echo "$body" | jq -r '.data.id // .id // empty')
+  assert_not_empty "$reminder_id" "Reminder ID returned" || return 1
+  stage6_register_reminder_cleanup "$reminder_id"
+  echo "$reminder_id"
+}
+
+fetch_calendar_events() {
+  local start_date="$1"
+  local end_date="$2"
+  local response status body
+  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
+    -H "Authorization: Bearer $TOKEN" 2>&1)
+  status=$(echo "$response" | tail -1)
+  body=$(echo "$response" | head -n -1)
+  assert_status_code "$status" "200" "Calendar events list request succeeded" || return 1
+  echo "$body"
+}
+
+count_events_by_title() {
+  local json="$1"
+  local title="$2"
+  echo "$json" | jq --arg title "$title" '[.data.events // .events // [] | .[] | select(.title == $title)] | length'
+}
+
+event_exists_in_list() {
+  local json="$1"
+  local event_id="$2"
+  echo "$json" | jq -e --arg id "$event_id" '(.data.events // .events // []) | map(select(.id == $id)) | length > 0' >/dev/null
+}
+
 test_calendar_table_exists() {
   log "Checking calendar_events table exists..."
   local count
@@ -22,108 +152,94 @@ test_calendar_event_create() {
   local starts_at
   starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
   local payload
-  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" '{title:$title, starts_at:$starts, timezone:"UTC"}')
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC")
 
-  local response status
-  response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "$payload" 2>&1)
-  status=$(echo "$response" | tail -1)
-  response=$(echo "$response" | head -n -1)
-
-  if [[ "$status" != "200" && "$status" != "201" ]]; then
-    error "Failed to create calendar event. Status: $status"
-    echo "Response: $response" >&2
-    return 1
-  fi
-
-  CALENDAR_EVENT_ID=$(echo "$response" | jq -r '.data.id // .id // empty')
-  if [[ -z "$CALENDAR_EVENT_ID" || "$CALENDAR_EVENT_ID" == "null" ]]; then
-    error "No event ID in response"
-    echo "Response: $response" >&2
-    return 1
-  fi
-
-  success "Calendar event created: $CALENDAR_EVENT_ID"
+  local event_id
+  event_id=$(create_calendar_event "$payload") || return 1
+  assert_json_field "$STAGE6_LAST_EVENT_RESPONSE" '.data.title // .title' "$title" "Calendar event title returned" || return 1
+  local stored_title
+  stored_title=$(psql_query "SELECT title FROM calendar_events WHERE id = '$event_id';" | xargs)
+  assert_equals "$stored_title" "$title" "Calendar event persisted with correct title"
 }
 
 test_calendar_event_in_db() {
   log "Testing calendar event persisted in database..."
-  if [[ -z "${CALENDAR_EVENT_ID:-}" ]]; then
-    # Create an event first
-    test_calendar_event_create || return 1
-  fi
+  local title="DB Check $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d '+1 hour' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC")
+  local event_id
+  event_id=$(create_calendar_event "$payload") || return 1
 
   local count
-  count=$(psql_query "SELECT COUNT(*) FROM calendar_events WHERE id = '$CALENDAR_EVENT_ID';" | tr -d '[:space:]')
+  count=$(psql_query "SELECT COUNT(*) FROM calendar_events WHERE id = '$event_id';" | tr -d '[:space:]')
   assert_equals "$count" "1" "Calendar event found in database"
 }
 
 test_calendar_event_list() {
   log "Testing calendar events list endpoint..."
+  local title="List Event $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d 'today +3 hours' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC")
+  local event_id
+  event_id=$(create_calendar_event "$payload") || return 1
+
   local start_date end_date
   start_date=$(date -u -d 'today' '+%Y-%m-%dT00:00:00Z')
   end_date=$(date -u -d '+7 days' '+%Y-%m-%dT23:59:59Z')
-
-  local response status
-  response=$(curl -sS -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
-    -H "Authorization: Bearer $TOKEN" 2>&1)
-  status=$(echo "$response" | tail -1)
-  response=$(echo "$response" | head -n -1)
-
-  assert_status_code "$status" "200" "Calendar events list endpoint returns 200"
-
-  local events
-  events=$(echo "$response" | jq '.data.events // .events // []')
-  if [[ "$events" == "[]" ]]; then
-    warn "No events returned (may be expected if none exist in date range)"
+  local response_json
+  response_json=$(fetch_calendar_events "$start_date" "$end_date") || return 1
+  if event_exists_in_list "$response_json" "$event_id"; then
+    success "Calendar list endpoint returned created event"
   else
-    success "Calendar events list returned: $(echo "$events" | jq 'length') events"
+    error "Created event $event_id not returned by list endpoint"
+    echo "$response_json" | jq '.' >&2
+    return 1
   fi
 }
 
 test_calendar_event_update() {
   log "Testing calendar event update..."
-  if [[ -z "${CALENDAR_EVENT_ID:-}" ]]; then
-    test_calendar_event_create || return 1
-  fi
+  local title="Updatable Event $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d '+3 hours' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC")
+  local event_id
+  event_id=$(create_calendar_event "$payload") || return 1
 
   local new_title="Updated Event $TIMESTAMP"
-  local payload
-  payload=$(jq -n --arg title "$new_title" '{title:$title}')
+  local update_payload
+  update_payload=$(jq -n --arg title "$new_title" '{title:$title}')
 
   local response status
-  response=$(curl -sS -w "\n%{http_code}" -X PATCH "$BASE_URL/api/v1/calendar/events/$CALENDAR_EVENT_ID" \
+  response=$(curl -sS -w "\n%{http_code}" -X PATCH "$BASE_URL/api/v1/calendar/events/$event_id" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    -d "$payload" 2>&1)
+    -d "$update_payload" 2>&1)
   status=$(echo "$response" | tail -1)
+  response=$(echo "$response" | head -n -1)
 
   assert_status_code "$status" "200" "Calendar event update returns 200"
+  assert_json_field "$response" '.data.title // .title' "$new_title" "Calendar update echoed new title" || return 1
 
   local db_title
-  db_title=$(psql_query "SELECT title FROM calendar_events WHERE id = '$CALENDAR_EVENT_ID';" | xargs)
+  db_title=$(psql_query "SELECT title FROM calendar_events WHERE id = '$event_id';" | xargs)
   assert_equals "$db_title" "$new_title" "Calendar event title updated in database"
 }
 
 test_calendar_event_delete() {
   log "Testing calendar event deletion..."
-  # Create a fresh event for deletion
   local title="Delete Test $TIMESTAMP"
   local starts_at
   starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
   local payload
-  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" '{title:$title, starts_at:$starts, timezone:"UTC"}')
-
-  local response
-  response=$(curl -sS -X POST "$BASE_URL/api/v1/calendar/events" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "$payload")
-
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC")
   local event_id
-  event_id=$(echo "$response" | jq -r '.data.id // .id')
+  event_id=$(create_calendar_event "$payload") || return 1
 
   # Delete the event
   local del_status
@@ -135,11 +251,7 @@ test_calendar_event_delete() {
   # Verify status changed to cancelled
   local status_field
   status_field=$(psql_query "SELECT status FROM calendar_events WHERE id = '$event_id';" | xargs)
-  if [[ "$status_field" == "cancelled" ]]; then
-    success "Event status set to cancelled"
-  else
-    warn "Event status is '$status_field', expected 'cancelled'"
-  fi
+  assert_equals "$status_field" "cancelled" "Event status set to cancelled"
 }
 
 test_calendar_rrule_daily() {
@@ -149,25 +261,10 @@ test_calendar_rrule_daily() {
   starts_at=$(date -u -d 'tomorrow 09:00' '+%Y-%m-%dT%H:%M:00Z')
   local rrule="FREQ=DAILY;COUNT=7"
   local payload
-  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg rule "$rrule" \
-    '{title:$title, starts_at:$starts, timezone:"UTC", rrule:$rule}')
-
-  local response status
-  response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "$payload" 2>&1)
-  status=$(echo "$response" | tail -1)
-  response=$(echo "$response" | head -n -1)
-
-  if [[ "$status" != "200" && "$status" != "201" ]]; then
-    error "Failed to create event with RRULE. Status: $status"
-    echo "Response: $response" >&2
-    return 1
-  fi
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC" "$rrule")
 
   local event_id
-  event_id=$(echo "$response" | jq -r '.data.id // .id')
+  event_id=$(create_calendar_event "$payload") || return 1
 
   local stored_rrule
   stored_rrule=$(psql_query "SELECT rrule FROM calendar_events WHERE id = '$event_id';" | xargs)
@@ -181,17 +278,14 @@ test_calendar_rrule_weekly() {
   starts_at=$(date -u -d 'next monday 10:00' '+%Y-%m-%dT%H:%M:00Z')
   local rrule="FREQ=WEEKLY;BYDAY=MO;COUNT=4"
   local payload
-  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg rule "$rrule" \
-    '{title:$title, starts_at:$starts, timezone:"UTC", rrule:$rule}')
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC" "$rrule")
 
-  local response status
-  response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "$payload" 2>&1)
-  status=$(echo "$response" | tail -1)
+  local event_id
+  event_id=$(create_calendar_event "$payload") || return 1
 
-  assert_status_code "$status" "200" "Weekly RRULE event created"
+  local stored_rrule
+  stored_rrule=$(psql_query "SELECT rrule FROM calendar_events WHERE id = '$event_id';" | xargs)
+  assert_equals "$stored_rrule" "$rrule" "Weekly RRULE stored correctly"
 }
 
 test_calendar_rrule_expansion() {
@@ -202,33 +296,30 @@ test_calendar_rrule_expansion() {
   starts_at=$(date -u -d 'tomorrow 09:00' '+%Y-%m-%dT%H:%M:00Z')
   local rrule="FREQ=DAILY;COUNT=5"
   local payload
-  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg rule "$rrule" \
-    '{title:$title, starts_at:$starts, timezone:"UTC", rrule:$rule}')
-
-  curl -sS -X POST "$BASE_URL/api/v1/calendar/events" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "$payload" >/dev/null
-
-  sleep 1
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC" "$rrule")
+  create_calendar_event "$payload" >/dev/null || return 1
 
   # Query events for next 7 days
   local start_date end_date
   start_date=$(date -u -d 'today' '+%Y-%m-%dT00:00:00Z')
   end_date=$(date -u -d '+7 days' '+%Y-%m-%dT23:59:59Z')
 
-  local response
-  response=$(curl -sS -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
-    -H "Authorization: Bearer $TOKEN")
-
-  local expanded_count
-  expanded_count=$(echo "$response" | jq "[.data.events // .events // [] | .[] | select(.title == \"$title\")] | length")
-
-  if [[ "$expanded_count" -ge 5 ]]; then
-    success "RRULE expanded correctly: $expanded_count instances found"
-  else
-    warn "RRULE expansion may not be working: only $expanded_count instances found, expected 5"
-  fi
+  local expanded_count=0
+  local attempts=0
+  local response_json
+  while [[ $attempts -lt 10 ]]; do
+    response_json=$(fetch_calendar_events "$start_date" "$end_date") || return 1
+    expanded_count=$(count_events_by_title "$response_json" "$title")
+    if [[ "$expanded_count" -ge 5 ]]; then
+      success "RRULE expanded correctly: $expanded_count instances found"
+      return 0
+    fi
+    sleep 1
+    attempts=$((attempts + 1))
+  done
+  error "RRULE expansion may not be working: only $expanded_count instances found after waiting"
+  echo "$response_json" | jq '.' >&2
+  return 1
 }
 
 test_calendar_rrule_validation() {
@@ -250,7 +341,8 @@ test_calendar_rrule_validation() {
   if [[ "$status" == "400" || "$status" == "422" ]]; then
     success "Invalid RRULE rejected with status $status"
   else
-    warn "Invalid RRULE validation may not be implemented (got status $status)"
+    error "Invalid RRULE validation may not be implemented (got status $status)"
+    return 1
   fi
 }
 
@@ -261,17 +353,10 @@ test_calendar_reminder_link() {
   local starts_at
   starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
   local event_payload
-  event_payload=$(jq -n --arg title "$event_title" --arg starts "$starts_at" \
-    '{title:$title, starts_at:$starts, timezone:"UTC"}')
-
-  local event_response
-  event_response=$(curl -sS -X POST "$BASE_URL/api/v1/calendar/events" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "$event_payload")
+  event_payload=$(build_calendar_payload "$event_title" "$starts_at" "UTC")
 
   local event_id
-  event_id=$(echo "$event_response" | jq -r '.data.id // .id')
+  event_id=$(create_calendar_event "$event_payload") || return 1
 
   # Create a reminder
   local reminder_title="Reminder for Meeting $TIMESTAMP"
@@ -280,42 +365,49 @@ test_calendar_reminder_link() {
   reminder_payload=$(jq -n --arg title "$reminder_title" --arg due "$due_utc" \
     '{title:$title, due_at_utc:$due, due_at_local:"10:00:00", timezone:"UTC"}')
 
-  local reminder_response
-  reminder_response=$(curl -sS -X POST "$BASE_URL/api/v1/reminders" \
+  local reminder_id
+  reminder_id=$(create_reminder "$reminder_payload") || return 1
+
+  local patch_payload
+  patch_payload=$(jq -n --arg event_id "$event_id" '{calendar_event_id:$event_id}')
+  local patch_response status body
+  patch_response=$(curl -sS -w "\n%{http_code}" -X PATCH "$BASE_URL/api/v1/reminders/$reminder_id" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    -d "$reminder_payload")
+    -d "$patch_payload" 2>&1)
+  status=$(echo "$patch_response" | tail -1)
+  body=$(echo "$patch_response" | head -n -1)
+  assert_status_code "$status" "200" "Reminder update returned 200" || return 1
+  assert_json_field "$body" '.data.calendar_event_id // .calendar_event_id' "$event_id" "Reminder response reflects linked event" || return 1
 
-  local reminder_id
-  reminder_id=$(echo "$reminder_response" | jq -r '.data.id // .id')
-
-  # Link reminder to event
-  local has_calendar_event_id_col
-  has_calendar_event_id_col=$(psql_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='reminders' AND column_name='calendar_event_id';" | tr -d '[:space:]')
-
-  if [[ "$has_calendar_event_id_col" == "1" ]]; then
-    psql_query "UPDATE reminders SET calendar_event_id = '$event_id' WHERE id = '$reminder_id';" >/dev/null
-    local linked_event
-    linked_event=$(psql_query "SELECT calendar_event_id FROM reminders WHERE id = '$reminder_id';" | xargs)
-    assert_equals "$linked_event" "$event_id" "Reminder linked to calendar event"
-  else
-    warn "calendar_event_id column not found in reminders table (feature may not be implemented)"
-    return 0
-  fi
+  local linked_event
+  linked_event=$(psql_query "SELECT calendar_event_id FROM reminders WHERE id = '$reminder_id';" | xargs)
+  assert_equals "$linked_event" "$event_id" "Reminder linked to calendar event"
 }
 
 test_calendar_weekly_view() {
   log "Testing weekly calendar view API..."
+  local title="Weekly View $TIMESTAMP"
+  local starts_at
+  starts_at=$(date -u -d 'next tuesday 13:00' '+%Y-%m-%dT%H:%M:00Z')
+  local payload
+  payload=$(build_calendar_payload "$title" "$starts_at" "UTC")
+  local event_id
+  event_id=$(create_calendar_event "$payload") || return 1
+
   local start_date end_date
   start_date=$(date -u -d 'last monday' '+%Y-%m-%dT00:00:00Z')
   end_date=$(date -u -d 'next sunday' '+%Y-%m-%dT23:59:59Z')
 
-  local response status
-  response=$(curl -sS -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
-    -H "Authorization: Bearer $TOKEN" 2>&1)
-  status=$(echo "$response" | tail -1)
-
-  assert_status_code "$status" "200" "Weekly calendar view API returns 200"
+  local response_json
+  response_json=$(fetch_calendar_events "$start_date" "$end_date") || return 1
+  if event_exists_in_list "$response_json" "$event_id"; then
+    success "Weekly calendar view returned the created event"
+  else
+    error "Weekly view missing expected event"
+    echo "$response_json" | jq '.' >&2
+    return 1
+  fi
 }
 
 test_calendar_timezone_handling() {
@@ -325,17 +417,10 @@ test_calendar_timezone_handling() {
   starts_at=$(date -u -d '+2 hours' '+%Y-%m-%dT%H:%M:00Z')
   local tz="America/New_York"
   local payload
-  payload=$(jq -n --arg title "$title" --arg starts "$starts_at" --arg timezone "$tz" \
-    '{title:$title, starts_at:$starts, timezone:$timezone}')
-
-  local response
-  response=$(curl -sS -X POST "$BASE_URL/api/v1/calendar/events" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "$payload")
+  payload=$(build_calendar_payload "$title" "$starts_at" "$tz")
 
   local event_id
-  event_id=$(echo "$response" | jq -r '.data.id // .id')
+  event_id=$(create_calendar_event "$payload") || return 1
 
   local stored_tz
   stored_tz=$(psql_query "SELECT timezone FROM calendar_events WHERE id = '$event_id';" | xargs)
@@ -359,6 +444,8 @@ test_calendar_user_isolation() {
 
 run_stage6() {
   section "STAGE 6: CALENDAR + RRULE"
+  stage6_require_dependencies || return 1
+  stage6_cleanup_resources
   local tests=(
     "stage6_calendar_table test_calendar_table_exists"
     "stage6_calendar_create test_calendar_event_create"
@@ -379,4 +466,5 @@ run_stage6() {
     IFS=' ' read -r name func <<<"$entry"
     run_test "$name" "$func"
   done
+  stage6_cleanup_resources
 }
