@@ -368,6 +368,33 @@ npm run dev
 
 ### Running Tests
 
+#### Test Prerequisites
+
+The test suite requires the following additional dependencies:
+
+- **jq** - Command-line JSON processor
+- **curl** - HTTP client (usually pre-installed)
+- **docker** - For database and service access
+- **python3** or **bc** - For numeric comparisons
+
+Install jq on your system:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install jq
+
+# RHEL/CentOS/Fedora
+sudo yum install jq
+
+# macOS
+brew install jq
+
+# Windows (via Chocolatey)
+choco install jq
+```
+
+#### Running the Test Suite
+
 Execute the comprehensive test suite:
 
 ```bash
