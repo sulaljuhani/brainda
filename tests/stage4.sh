@@ -4,8 +4,60 @@
 
 set -euo pipefail
 
+RESTORE_DB_NAME="${RESTORE_DB_NAME:-vib_restore_test}"
+METRIC_RETRY_ATTEMPTS=${METRIC_RETRY_ATTEMPTS:-5}
+METRIC_RETRY_DELAY=${METRIC_RETRY_DELAY:-3}
+METRICS_CACHE_TTL=${METRICS_CACHE_TTL:-5}
+
+require_env_vars() {
+  local missing=()
+  for var in "$@"; do
+    if [[ -z "${!var:-}" ]]; then
+      missing+=("$var")
+    fi
+  done
+  if (( ${#missing[@]} > 0 )); then
+    error "Missing required environment variables: ${missing[*]}"
+    exit 1
+  fi
+}
+
+fetch_metrics_payload() {
+  local now ttl refresh
+  refresh="${1:-}"
+  ttl="$METRICS_CACHE_TTL"
+  now=$(date +%s)
+  if [[ -z "${METRICS_CACHE_TIMESTAMP:-}" || -z "${METRICS_PAYLOAD:-}" ]]; then
+    refresh="force"
+  fi
+  if [[ "$refresh" == "force" || $(( now - METRICS_CACHE_TIMESTAMP )) -ge "$ttl" ]]; then
+    METRICS_PAYLOAD=$(curl -sS "$METRICS_URL")
+    METRICS_CACHE_TIMESTAMP=$now
+  fi
+  printf '%s\n' "$METRICS_PAYLOAD"
+}
+
+metric_value() {
+  local metric="$1"
+  local refresh="${2:-}"
+  local payload
+  if [[ "$refresh" == "refresh" ]]; then
+    payload=$(fetch_metrics_payload force)
+  else
+    payload=$(fetch_metrics_payload)
+  fi
+  printf '%s\n' "$payload" | awk -v name="$metric" '$1 ~ ("^"name"\\{"|"^"name" ") {s+=$NF} END {print s}'
+}
+
+cleanup_restore_db() {
+  docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -c "DROP DATABASE IF EXISTS \"$RESTORE_DB_NAME\";" >/dev/null 2>&1 || true
+}
 
 discover_latest_backup() {
+  local force="${1:-}"
+  if [[ -n "${LATEST_BACKUP_TS:-}" && "$force" != "force" ]]; then
+    return
+  fi
   local latest
   latest=$(ls -1 "$BACKUP_ROOT"/postgres/backup-*.dump 2>/dev/null | sort | tail -n1 || true)
   if [[ -n "$latest" ]]; then
@@ -18,7 +70,7 @@ discover_latest_backup() {
 run_backup_job() {
   mkdir -p "$BACKUP_ROOT"
   BACKUP_DIR="$BACKUP_ROOT" bash backups/backup.sh >/tmp/backup-run.log 2>&1
-  discover_latest_backup
+  discover_latest_backup force
 }
 
 stage4_restore_temp_db() {
@@ -28,7 +80,8 @@ stage4_restore_temp_db() {
     ts="$LATEST_BACKUP_TS"
   fi
   [[ -z "$ts" ]] && return 1
-  POSTGRES_DB="vib_restore_test" \
+  cleanup_restore_db
+  POSTGRES_DB="$RESTORE_DB_NAME" \
   POSTGRES_CONTAINER="vib-postgres" \
   SERVICES_TO_STOP="" \
   COMPOSE_CMD="true" \
@@ -36,11 +89,22 @@ stage4_restore_temp_db() {
   bash backups/restore.sh "$ts" </dev/null >/tmp/restore-run.log 2>&1
 }
 
-metric_value() {
+wait_for_metric_increase() {
   local metric="$1"
-  # Handle both labeled metrics (metric{label="value"} 123) and unlabeled (metric 123)
-  # Sum all values for metrics with multiple labels
-  curl -sS "$METRICS_URL" | grep "^${metric}[{ ]" | awk '{print $NF}' | awk '{s+=$1} END {print s}'
+  local before="$2"
+  local description="$3"
+  local attempt=1
+  local current="$before"
+  while (( attempt <= METRIC_RETRY_ATTEMPTS )); do
+    current=$(metric_value "$metric" refresh || echo 0)
+    if float_greater_than "${current:-0}" "${before:-0}"; then
+      success "$description"
+      return 0
+    fi
+    sleep "$METRIC_RETRY_DELAY"
+    ((attempt++))
+  done
+  assert_greater_than "${current:-0}" "${before:-0}" "$description" || return 1
 }
 
 stage4_check() {
@@ -49,9 +113,11 @@ stage4_check() {
   case "$check" in
     metrics_defined)
       local required=(reminder_fire_lag_seconds push_delivery_success_total document_ingestion_duration_seconds vector_search_duration_seconds retention_cleanup_total)
+      local payload
+      payload=$(fetch_metrics_payload force)
       for metric in "${required[@]}"; do
         local count
-        count=$(curl -sS "$METRICS_URL" | grep -c "$metric" || true)
+        count=$(printf '%s\n' "$payload" | grep -Fc "$metric" || true)
         if [[ "${count:-0}" -eq 0 ]]; then
           error "Metric $metric missing"
           rc=1
@@ -60,19 +126,20 @@ stage4_check() {
       ;;
     metrics_non_zero)
       # Create a note to ensure metric increments
-      local before after
-      before=$(metric_value "notes_created_total" || echo 0)
+      local before
+      before=$(metric_value "notes_created_total" refresh || echo 0)
       local payload='{"title":"Metrics Test Note","body":"Testing metrics","tags":[]}'
       curl -sS -X POST "$BASE_URL/api/v1/notes" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$payload" >/dev/null 2>&1 || true
-      after=$(metric_value "notes_created_total" || echo 0)
-      assert_greater_than "${after:-0}" "${before:-0}" "Notes created metric non-zero" || rc=1
+      if ! wait_for_metric_increase "notes_created_total" "${before:-0}" "Notes created metric non-zero"; then
+        rc=1
+      fi
       ;;
     metrics_histograms)
       local content
-      content=$(curl -sS "$METRICS_URL" | grep 'reminder_fire_lag_seconds_bucket' || true)
+      content=$(fetch_metrics_payload | grep -F 'reminder_fire_lag_seconds_bucket' || true)
       assert_not_empty "$content" "Reminder fire lag histogram exported" || rc=1
       ;;
     metrics_gauges)
@@ -87,15 +154,16 @@ stage4_check() {
       done
       ;;
     metrics_counters)
-      local before after
-      before=$(metric_value "api_request_duration_seconds_count" || echo 0)
+      local before
+      before=$(metric_value "api_request_duration_seconds_count" refresh || echo 0)
       curl -sS "$BASE_URL/api/v1/health" >/dev/null
-      after=$(metric_value "api_request_duration_seconds_count" || echo 0)
-      assert_greater_than "${after:-0}" "${before:-0}" "API request counter increments" || rc=1
+      if ! wait_for_metric_increase "api_request_duration_seconds_count" "${before:-0}" "API request counter increments"; then
+        rc=1
+      fi
       ;;
     slo_reminder_fire_lag)
       local metrics
-      metrics=$(curl -sS "$METRICS_URL")
+      metrics=$(fetch_metrics_payload force)
       export METRIC_NAME="reminder_fire_lag_seconds"
       export METRIC_QUANTILE="0.95"
       REMINDER_FIRE_LAG_P95=$(echo "$metrics" | histogram_quantile_from_metrics)
@@ -124,7 +192,7 @@ stage4_check() {
       ;;
     slo_document_ingestion)
       local metrics
-      metrics=$(curl -sS "$METRICS_URL")
+      metrics=$(fetch_metrics_payload force)
       export METRIC_NAME="document_ingestion_duration_seconds"
       export METRIC_QUANTILE="0.95"
       DOC_INGESTION_P95=$(echo "$metrics" | histogram_quantile_from_metrics)
@@ -137,7 +205,7 @@ stage4_check() {
     slo_vector_search)
       if [[ -z "$VECTOR_SEARCH_P95" || "$VECTOR_SEARCH_P95" == "unknown" ]]; then
         local metrics
-        metrics=$(curl -sS "$METRICS_URL")
+        metrics=$(fetch_metrics_payload force)
         export METRIC_NAME="vector_search_duration_seconds"
         export METRIC_QUANTILE="0.95"
         VECTOR_SEARCH_P95=$(echo "$metrics" | histogram_quantile_from_metrics)
@@ -183,10 +251,13 @@ stage4_check() {
       ;;
     restore_temp_db)
       discover_latest_backup
+      trap cleanup_restore_db EXIT
       stage4_restore_temp_db "$LATEST_BACKUP_TS" || rc=1
       local exists
-      exists=$(docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -t -c "SELECT COUNT(*) FROM pg_database WHERE datname = 'vib_restore_test';" | tr -d '[:space:]')
+      exists=$(docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -t -c "SELECT COUNT(*) FROM pg_database WHERE datname = '$RESTORE_DB_NAME';" | tr -d '[:space:]')
       assert_equals "$exists" "1" "Temp database restored" || rc=1
+      cleanup_restore_db
+      trap - EXIT
       ;;
     retention_scheduler)
       docker exec vib-beat pgrep -f "celery" >/dev/null 2>&1 || rc=1
@@ -198,6 +269,7 @@ stage4_check() {
       ;;
     retention_cleanup_manual)
       local output
+      # Task can exit non-zero when no eligible rows exist; capture output but don't fail immediately.
       output=$(docker exec vib-worker celery -A worker.tasks call worker.tasks.cleanup_old_data 2>&1 || true)
       assert_contains "$output" "SUCCESS" "Retention cleanup task invoked" || rc=1
       ;;
@@ -217,14 +289,14 @@ stage4_check() {
       ;;
     metrics_prometheus_format)
       local content
-      content=$(curl -sS "$METRICS_URL" | head -n 1)
+      content=$(fetch_metrics_payload | head -n 1)
       assert_contains "$content" "# HELP" "Metrics endpoint in Prometheus format" || rc=1
       ;;
     backup_manifest_counts)
       discover_latest_backup
       local manifest="$BACKUP_ROOT/manifest-$LATEST_BACKUP_TS.txt"
       local counts
-      counts=$(grep -c "Postgres" "$manifest" || true)
+      counts=$(grep -Fc "Postgres" "$manifest" || true)
       assert_greater_than "${counts:-0}" "0" "Manifest lists artifacts" || rc=1
       ;;
     *)
@@ -237,6 +309,7 @@ stage4_check() {
 
 run_stage4() {
   section "STAGE 4: BACKUPS + RETENTION + OBSERVABILITY"
+  require_env_vars METRICS_URL BASE_URL TOKEN BACKUP_ROOT REMINDER_FIRE_LAG_TARGET PUSH_SUCCESS_TARGET DOC_INGESTION_TARGET SEARCH_LATENCY_THRESHOLD
   local tests=(
     "stage4_metrics_defined stage4_check metrics_defined"
     "stage4_metrics_non_zero stage4_check metrics_non_zero"
