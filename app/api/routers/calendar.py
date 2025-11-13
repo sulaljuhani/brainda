@@ -36,16 +36,41 @@ async def create_calendar_event(
 ):
     import structlog
     logger = structlog.get_logger()
+
+    logger.info(
+        "calendar_create_request",
+        user_id=str(user_id),
+        title=payload.title,
+        starts_at=payload.starts_at.isoformat() if payload.starts_at else None,
+        has_rrule=bool(payload.rrule)
+    )
+
     try:
         service = CalendarService(db)
         result = await service.create_event(user_id, payload)
         if not result.get("success"):
+            logger.warning(
+                "calendar_create_validation_failed",
+                user_id=str(user_id),
+                error=result.get("error")
+            )
             raise HTTPException(status_code=400, detail=result["error"])
+
+        logger.info(
+            "calendar_create_success",
+            user_id=str(user_id),
+            event_id=result.get("data", {}).get("id")
+        )
         return result
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("calendar_create_error", error=str(e), error_type=type(e).__name__, user_id=str(user_id))
+        logger.error(
+            "calendar_create_error",
+            error=str(e),
+            error_type=type(e).__name__,
+            user_id=str(user_id)
+        )
         raise HTTPException(
             status_code=500,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}

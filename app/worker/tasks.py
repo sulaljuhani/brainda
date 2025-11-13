@@ -237,33 +237,73 @@ def schedule_embedding_check(filepath):
     """Check if file needs re-embedding after debounce period"""
     async def _async_check():
         relative_path = filepath.replace('/vault/', '')
-        
+
+        logger.info(
+            "schedule_embedding_check_started",
+            filepath=filepath,
+            relative_path=relative_path
+        )
+
         try:
             with open(filepath, 'r') as f:
                 content = f.read()
         except FileNotFoundError:
             logger.warning("file_watcher_missing_file", path=filepath)
             return
-        
+        except Exception as e:
+            logger.error(
+                "file_watcher_read_error",
+                path=filepath,
+                error=str(e),
+                error_type=type(e).__name__
+            )
+            return
+
         content_hash = hashlib.sha256(content.encode()).hexdigest()
-        
+
         conn = await _connect_db()
         try:
             existing = await conn.fetchrow("""
-                SELECT content_hash, last_embedded_at 
-                FROM file_sync_state 
+                SELECT content_hash, last_embedded_at
+                FROM file_sync_state
                 WHERE file_path = $1
             """, relative_path)
-            
-            if not existing or existing['content_hash'] != content_hash:
-                logger.info("file_changed_externally", path=relative_path)
-                
+
+            if not existing:
+                logger.info(
+                    "file_not_in_sync_state",
+                    path=relative_path,
+                    content_hash=content_hash
+                )
+            elif existing['content_hash'] != content_hash:
+                logger.info(
+                    "file_changed_externally",
+                    path=relative_path,
+                    old_hash=existing['content_hash'][:8],
+                    new_hash=content_hash[:8]
+                )
+
                 note_id = extract_note_id_from_frontmatter(content)
-                
+
                 if note_id:
+                    logger.info(
+                        "queuing_embed_task_for_changed_file",
+                        path=relative_path,
+                        note_id=str(note_id)
+                    )
                     embed_note_task.delay(str(note_id))
                 else:
-                    logger.warning("no_note_id_in_frontmatter", path=relative_path)
+                    logger.warning(
+                        "no_note_id_in_frontmatter",
+                        path=relative_path,
+                        content_preview=content[:200]
+                    )
+            else:
+                logger.debug(
+                    "file_unchanged_skipping_embed",
+                    path=relative_path,
+                    content_hash=content_hash[:8]
+                )
         finally:
             await conn.close()
     asyncio.run(_async_check())
@@ -528,18 +568,41 @@ class VaultWatcher(FileSystemEventHandler):
     def __init__(self, debounce_seconds=5):
         self.debounce_seconds = debounce_seconds
         self.pending_changes = {}
-    
+
     def on_modified(self, event):
-        if event.is_directory or not event.src_path.endswith('.md'):
+        if event.is_directory:
             return
-        
+
+        if not event.src_path.endswith('.md'):
+            return
+
         filepath = event.src_path
         self.pending_changes[filepath] = time.time()
-        
-        schedule_embedding_check.apply_async(
-            args=[filepath],
-            countdown=self.debounce_seconds
+
+        logger.info(
+            "file_watcher_detected_change",
+            path=filepath,
+            event_type="modified",
+            debounce_seconds=self.debounce_seconds
         )
+
+        try:
+            task = schedule_embedding_check.apply_async(
+                args=[filepath],
+                countdown=self.debounce_seconds
+            )
+            logger.info(
+                "file_watcher_task_queued",
+                path=filepath,
+                task_id=str(task.id) if hasattr(task, 'id') else 'unknown'
+            )
+        except Exception as e:
+            logger.error(
+                "file_watcher_task_queue_failed",
+                path=filepath,
+                error=str(e),
+                error_type=type(e).__name__
+            )
 
 def start_file_watcher():
     path = "/vault"

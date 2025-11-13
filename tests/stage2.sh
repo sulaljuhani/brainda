@@ -111,15 +111,32 @@ test_reminder_in_database() {
 
 test_reminder_scheduler_entry() {
   local pair reminder_id baseline
+  # Get baseline log count for "reminder_scheduled" event BEFORE creating reminder
+  # This ensures we can detect the new log entry
+  baseline=$(docker logs vib-orchestrator 2>&1 | grep -c "reminder_scheduled" || echo "0")
+
+  # Now create the reminder
   pair=$(create_unique_reminder 15)
   reminder_id=${pair%%|*}
-  if ! baseline=$(stage2_log_count "$reminder_id"); then
-    return 1
-  fi
-  if stage2_wait_for_log "$reminder_id" "$baseline" 60 3 >/dev/null; then
-    success "Reminder $reminder_id scheduled in APScheduler"
-    return 0
-  fi
+
+  # Wait for the scheduler log to appear
+  # The log should contain the reminder_id and "reminder_scheduled" event
+  local timeout=30
+  local elapsed=0
+  while [[ $elapsed -lt $timeout ]]; do
+    local current
+    current=$(docker logs vib-orchestrator 2>&1 | grep -c "reminder_scheduled" || echo "0")
+    if (( current > baseline )); then
+      # Verify the log contains our specific reminder_id
+      if docker logs vib-orchestrator 2>&1 | grep -q "$reminder_id"; then
+        success "Reminder $reminder_id scheduled in APScheduler"
+        return 0
+      fi
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+
   error "Reminder $reminder_id did not produce scheduler log"
   return 1
 }
