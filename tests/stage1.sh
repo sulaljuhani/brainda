@@ -97,15 +97,22 @@ notes_check() {
       mkdir -p vault/notes
       local collision="vault/notes/collision.md"
       echo "collision" > "$collision"
-      local response path
+      local response path note_id
       response=$(curl -sS -X POST "$BASE_URL/api/v1/notes" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"title":"Collision","body":"slug"}')
-      path=$(echo "$response" | jq -r '.data.md_path')
+      path=$(echo "$response" | jq -r '.data.md_path // empty')
+      note_id=$(echo "$response" | jq -r '.data.id // empty')
       if [[ "$path" =~ collision-[a-z0-9]{8}\.md ]]; then
         success "Slug collision resolved with suffix"
       else
         error "Slug collision not handled ($path)"
         rc=1
       fi
+      if [[ -n "$note_id" ]]; then
+        psql_query "DELETE FROM file_sync_state WHERE file_path = '$path';" >/dev/null 2>&1 || true
+        psql_query "DELETE FROM notes WHERE id = '$note_id';" >/dev/null 2>&1 || true
+        rm -f "vault/$path" >/dev/null 2>&1 || true
+      fi
+      rm -f "$collision"
       ;;
     file_sync_state)
       local count
@@ -113,24 +120,43 @@ notes_check() {
       assert_equals "$count" "1" "file_sync_state entry exists" || rc=1
       ;;
     external_edit)
-      local before after file="vault/$NOTE_FIXTURE_MD_PATH"
+      local before after file="vault/$NOTE_FIXTURE_MD_PATH" backup="$TEST_DIR/external-edit-$TIMESTAMP.md"
+      cp "$file" "$backup"
       before=$(psql_query "SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';")
       echo "\nUpdated $(date)" >> "$file"
       wait_for "psql_query \"SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';\" | awk -v before=$before 'NF && \$1 > before { exit 0 } END { exit 1 }'" 180 "re-embedding after external edit"
       after=$(psql_query "SELECT extract(epoch FROM last_embedded_at) FROM file_sync_state WHERE file_path = '$NOTE_FIXTURE_MD_PATH';")
       assert_greater_than "${after:-0}" "${before:-0}" "Embedding timestamp advanced" || rc=1
+      cp "$backup" "$file"
+      rm -f "$backup"
       ;;
     chat_create)
-      local payload response
-      payload='{"message":"Add a note titled Chat Driven with body Chat body"}'
-      response=$(curl -sS -X POST "$BASE_URL/api/v1/chat" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload")
-      assert_contains "$response" "note" "Chat endpoint responded" || rc=1
+      mkdir -p "$TEST_DIR"
+      local payload status response note_id md_path
+      payload=$(jq -n --arg msg "Add a note titled Chat Driven with body Chat body" '{message:$msg}')
+      status=$(curl -sS -o "$TEST_DIR/chat-note.json" -w "%{http_code}" -X POST "$BASE_URL/api/v1/chat" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload" || echo "000")
+      response=$(cat "$TEST_DIR/chat-note.json" 2>/dev/null || echo "")
+      assert_status_code "$status" "200" "Chat endpoint responded" || rc=1
+      assert_json_field "$response" '.mode' 'note' "Chat note mode returned" || rc=1
+      assert_json_field "$response" '.data.id' '' "Chat note ID present" || rc=1
+      note_id=$(echo "$response" | jq -r '.data.id // empty')
+      md_path=$(echo "$response" | jq -r '.data.md_path // empty')
+      if [[ -n "$note_id" ]]; then
+        psql_query "DELETE FROM file_sync_state WHERE file_path = '$md_path';" >/dev/null 2>&1 || true
+        psql_query "DELETE FROM notes WHERE id = '$note_id';" >/dev/null 2>&1 || true
+        rm -f "vault/$md_path" >/dev/null 2>&1 || true
+      fi
       ;;
     chat_search)
-      local payload response
-      payload='{"message":"Search my notes for VIB"}'
-      response=$(curl -sS -X POST "$BASE_URL/api/v1/chat" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload")
-      assert_contains "$response" "search" "Chat search tool invoked" || rc=1
+      mkdir -p "$TEST_DIR"
+      local payload status response result_count
+      payload=$(jq -n --arg msg "Search my notes for VIB" '{message:$msg}')
+      status=$(curl -sS -o "$TEST_DIR/chat-search.json" -w "%{http_code}" -X POST "$BASE_URL/api/v1/chat" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload" || echo "000")
+      response=$(cat "$TEST_DIR/chat-search.json" 2>/dev/null || echo "")
+      assert_status_code "$status" "200" "Chat search endpoint responded" || rc=1
+      assert_json_field "$response" '.mode' 'search' "Chat search mode returned" || rc=1
+      result_count=$(echo "$response" | jq '.data.results | length' 2>/dev/null || echo 0)
+      assert_greater_than "$result_count" "0" "Chat search returned results" || rc=1
       ;;
     list_endpoint)
       local status
