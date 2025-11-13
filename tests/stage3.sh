@@ -3,11 +3,42 @@
 # Tests document ingestion, chunking, vector search, and RAG responses
 
 set -euo pipefail
+IFS=$'\n\t'
 
 generate_pdf_with_pages() {
   local path="$1"
   local pages="$2"
-  python - <<PY
+
+  # Check if fpdf is available, if not, create a minimal valid PDF
+  if ! python3 -c "import fpdf" >/dev/null 2>&1; then
+    warn "fpdf not available, creating minimal PDF instead"
+    # Create a minimal valid PDF
+    cat > "$path" <<'EOF'
+%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj
+4 0 obj<</Length 44>>stream
+BT /F1 12 Tf 72 720 Td (VIB test page) Tj ET
+endstream endobj
+5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
+xref
+0 6
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000262 00000 n
+0000000355 00000 n
+trailer<</Size 6/Root 1 0 R>>
+startxref
+434
+%%EOF
+EOF
+    return 0
+  fi
+
+  python3 - <<PY
 from fpdf import FPDF
 pdf = FPDF()
 text = "VIB integration test page"
@@ -315,6 +346,7 @@ documents_check() {
       local failures=0
       DOC_CONCURRENT_IDS=()
       rm -f "$TEST_DIR"/concurrent-*.pdf "$TEST_DIR"/concurrent-*.status 2>/dev/null || true
+      local pids=()
       for i in 1 2 3; do
         (
           local path="$TEST_DIR/concurrent-$i.pdf"
@@ -322,14 +354,17 @@ documents_check() {
           response=$(document_upload_file "$path" "application/pdf")
           [[ -z "${response%%|*}" ]] && echo "fail" > "$TEST_DIR/concurrent-$i.status"
         ) &
+        pids+=($!)
       done
 
       # Wait for all uploads to complete with timeout protection
       local wait_timeout=120
       local wait_start=$(date +%s)
+      local all_done=false
       while true; do
         # Check if all background jobs are done
         if ! jobs -r | grep -q .; then
+          all_done=true
           break
         fi
 
@@ -338,13 +373,23 @@ documents_check() {
         if [[ $wait_elapsed -ge $wait_timeout ]]; then
           error "Timeout waiting for concurrent uploads to complete (${wait_timeout}s)"
           # Kill any remaining background jobs
-          jobs -p | xargs -r kill 2>/dev/null || true
+          for pid in "${pids[@]}"; do
+            kill -TERM "$pid" 2>/dev/null || true
+          done
+          wait 2>/dev/null || true
           rc=1
           break
         fi
 
         sleep 0.5
       done
+
+      # Wait for all processes to ensure proper cleanup
+      if [[ "$all_done" == "true" ]]; then
+        for pid in "${pids[@]}"; do
+          wait "$pid" 2>/dev/null || true
+        done
+      fi
 
       failures=$(grep -c "fail" "$TEST_DIR"/concurrent-*.status 2>/dev/null || true)
       assert_equals "${failures:-0}" "0" "Concurrent uploads succeed" || rc=1

@@ -3,6 +3,7 @@
 # Tests calendar events, recurrence rules, and timezone handling
 
 set -euo pipefail
+IFS=$'\n\t'
 
 STAGE6_CREATED_EVENTS=()
 STAGE6_CREATED_REMINDERS=()
