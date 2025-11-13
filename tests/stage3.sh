@@ -23,24 +23,41 @@ PY
 document_wait_for_job() {
   local job_id="$1"
   local timeout="${2:-180}"
+  local context="${3:-}"
+  local expected_status="${4:-completed}"
   local waited=0
   local status="pending"
+  local response label
+  label="Job $job_id"
+  if [[ -n "$context" ]]; then
+    label="$context (job $job_id)"
+  fi
   while [[ $waited -lt $timeout ]]; do
-    local response
     response=$(curl -sS -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/jobs/$job_id")
     status=$(echo "$response" | jq -r '.status')
-    if [[ "$status" == "completed" ]]; then
-      LAST_JOB_ERROR=""
+    if [[ "$status" == "$expected_status" ]]; then
+      if [[ "$expected_status" == "failed" ]]; then
+        LAST_JOB_ERROR=$(echo "$response" | jq -r '.error_message // ""')
+      else
+        LAST_JOB_ERROR=""
+      fi
       return 0
     fi
     if [[ "$status" == "failed" ]]; then
       LAST_JOB_ERROR=$(echo "$response" | jq -r '.error_message // ""')
+      error "$label failed (error=${LAST_JOB_ERROR:-unknown})"
+      return 1
+    fi
+    if [[ "$status" == "completed" && "$expected_status" == "failed" ]]; then
+      LAST_JOB_ERROR=""
+      error "$label completed but failure was expected"
       return 1
     fi
     sleep 5
     waited=$((waited + 5))
   done
   LAST_JOB_ERROR="timeout"
+  error "$label timed out after ${timeout}s waiting for status '$expected_status'"
   return 1
 }
 
@@ -77,7 +94,7 @@ ensure_twenty_page_document() {
   DOC_TWENTY_ID=${pair%%|*}
   DOC_TWENTY_JOB_ID=${pair##*|}
   if [[ -n "$DOC_TWENTY_JOB_ID" && "$DOC_TWENTY_JOB_ID" != "null" ]]; then
-    document_wait_for_job "$DOC_TWENTY_JOB_ID" 240 || true
+    document_wait_for_job "$DOC_TWENTY_JOB_ID" 240 "20-page document fixture" || return 1
   fi
 }
 
@@ -99,7 +116,7 @@ ensure_failed_document_fixture() {
   DOC_FAILED_ID=${pair%%|*}
   DOC_FAILED_JOB_ID=${pair##*|}
   if [[ -n "$DOC_FAILED_JOB_ID" && "$DOC_FAILED_JOB_ID" != "null" ]]; then
-    document_wait_for_job "$DOC_FAILED_JOB_ID" 60 || true
+    document_wait_for_job "$DOC_FAILED_JOB_ID" 120 "corrupted document fixture" "failed"
   fi
 }
 
@@ -157,22 +174,31 @@ documents_check() {
       assert_contains "$payload" "embedding_model" "Vector payload contains embedding_model" || rc=1
       ;;
     search_keyword)
-      local results
-      results=$(curl -sS -G -H "Authorization: Bearer $TOKEN" \
+      local response status response_file
+      response_file="$TEST_DIR/search-keyword.json"
+      status=$(curl -sS -o "$response_file" -w "%{http_code}" -G -H "Authorization: Bearer $TOKEN" \
         --data-urlencode "q=integration" \
         "$BASE_URL/api/v1/search")
-      assert_contains "$results" "$DOC_FILENAME" "Keyword search finds document" || rc=1
+      assert_status_code "$status" "200" "Keyword search HTTP 200" || rc=1
+      response=$(cat "$response_file")
+      assert_contains "$response" "$DOC_FILENAME" "Keyword search finds document" || rc=1
       ;;
     search_semantic)
-      local results
-      results=$(curl -sS -G -H "Authorization: Bearer $TOKEN" \
+      local response status response_file
+      response_file="$TEST_DIR/search-semantic.json"
+      status=$(curl -sS -o "$response_file" -w "%{http_code}" -G -H "Authorization: Bearer $TOKEN" \
         --data-urlencode "q=knowledge base document" \
         "$BASE_URL/api/v1/search")
-      assert_contains "$results" "$DOC_FILENAME" "Semantic search returns document" || rc=1
+      assert_status_code "$status" "200" "Semantic search HTTP 200" || rc=1
+      response=$(cat "$response_file")
+      assert_contains "$response" "$DOC_FILENAME" "Semantic search returns document" || rc=1
       ;;
     search_filter)
-      local count
-      count=$(curl -sS "$BASE_URL/api/v1/search?q=test&content_type=document_chunk" -H "Authorization: Bearer $TOKEN" | jq '.results | length')
+      local count status response_file
+      response_file="$TEST_DIR/search-filter.json"
+      status=$(curl -sS -o "$response_file" -w "%{http_code}" "$BASE_URL/api/v1/search?q=test&content_type=document_chunk" -H "Authorization: Bearer $TOKEN")
+      assert_status_code "$status" "200" "Search filter HTTP 200" || rc=1
+      count=$(jq '.results | length' "$response_file" 2>/dev/null || echo 0)
       assert_greater_than "$count" "0" "Search filter for document chunks" || rc=1
       ;;
     rag_answer)
@@ -191,9 +217,13 @@ documents_check() {
       fi
       ;;
     deduplication)
-      local response flag
+      local response flag job_id
       response=$(curl -sS -X POST "$BASE_URL/api/v1/ingest" -H "Authorization: Bearer $TOKEN" -F "file=@tests/fixtures/$DOC_FILENAME")
       flag=$(echo "$response" | jq -r '.deduplicated // false')
+      job_id=$(echo "$response" | jq -r '.job_id // empty')
+      if [[ -n "$job_id" && "$job_id" != "null" ]]; then
+        document_wait_for_job "$job_id" 120 "duplicate upload job" || rc=1
+      fi
       assert_equals "$flag" "true" "Duplicate upload flagged" || rc=1
       ;;
     large_file_rejected)
@@ -201,6 +231,7 @@ documents_check() {
       local status
       status=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/ingest" -H "Authorization: Bearer $TOKEN" -F "file=@$TEST_DIR/$DOC_LARGE_FILENAME;type=application/pdf")
       assert_status_code "$status" "422" "Large file rejected" || rc=1
+      rm -f "$TEST_DIR/$DOC_LARGE_FILENAME" 2>/dev/null || true
       ;;
     unsupported_type)
       local path="$TEST_DIR/test.exe"
@@ -251,11 +282,17 @@ documents_check() {
       assert_status_code "$status" "200" "Delete document endpoint" || rc=1
       ;;
     delete_vectors)
-      local before after temp_pair temp_id
+      local before after temp_pair temp_id temp_job_id
       temp_pair=$(document_upload_file "tests/fixtures/$DOC_FILENAME" "application/pdf")
       temp_id=${temp_pair%%|*}
+      temp_job_id=${temp_pair##*|}
       if [[ -n "$temp_pair" ]]; then
-        document_wait_for_job "${temp_pair##*|}" 120 || true
+        if [[ -n "$temp_job_id" && "$temp_job_id" != "null" ]]; then
+          if ! document_wait_for_job "$temp_job_id" 120 "delete vectors fixture"; then
+            rc=1
+            return $rc
+          fi
+        fi
         before=$(document_qdrant_point_count "$temp_id")
         curl -sS -X DELETE "$BASE_URL/api/v1/documents/$temp_id" -H "Authorization: Bearer $TOKEN" >/dev/null
         after=$(document_qdrant_point_count "$temp_id")
@@ -277,6 +314,7 @@ documents_check() {
     concurrent_uploads)
       local failures=0
       DOC_CONCURRENT_IDS=()
+      rm -f "$TEST_DIR"/concurrent-*.pdf "$TEST_DIR"/concurrent-*.status 2>/dev/null || true
       for i in 1 2 3; do
         (
           local path="$TEST_DIR/concurrent-$i.pdf"
@@ -310,6 +348,7 @@ documents_check() {
 
       failures=$(grep -c "fail" "$TEST_DIR"/concurrent-*.status 2>/dev/null || true)
       assert_equals "${failures:-0}" "0" "Concurrent uploads succeed" || rc=1
+      rm -f "$TEST_DIR"/concurrent-*.pdf "$TEST_DIR"/concurrent-*.status 2>/dev/null || true
       ;;
     vector_search_latency)
       local latency
@@ -318,9 +357,13 @@ documents_check() {
       assert_less_than "$latency" "$SEARCH_LATENCY_THRESHOLD" "Search latency under threshold" || rc=1
       ;;
     metrics_counters)
-      local before after
+      local before after temp_pair temp_job_id
       before=$(document_latest_metric "documents_ingested_total" || echo 0)
-      document_upload_file "tests/fixtures/$DOC_FILENAME" "application/pdf" >/dev/null
+      temp_pair=$(document_upload_file "tests/fixtures/$DOC_FILENAME" "application/pdf")
+      temp_job_id=${temp_pair##*|}
+      if [[ -n "$temp_job_id" && "$temp_job_id" != "null" ]]; then
+        document_wait_for_job "$temp_job_id" 120 "metrics counter upload" || rc=1
+      fi
       after=$(document_latest_metric "documents_ingested_total" || echo 0)
       assert_greater_than "$after" "$before" "documents_ingested_total increments" || rc=1
       ;;
