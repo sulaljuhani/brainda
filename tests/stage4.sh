@@ -134,12 +134,32 @@ stage4_check() {
       local before
       before=$(metric_value "notes_created_total" refresh || echo 0)
       local payload='{"title":"Metrics Test Note","body":"Testing metrics","tags":[]}'
-      curl -sS -X POST "$BASE_URL/api/v1/notes" \
+      local response status note_id
+      # Capture response and status code
+      response=$(curl -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/notes" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
-        -d "$payload" >/dev/null 2>&1 || true
-      if ! wait_for_metric_increase "notes_created_total" "${before:-0}" "Notes created metric non-zero"; then
+        -d "$payload" 2>&1)
+      status=$(echo "$response" | tail -1)
+      response=$(echo "$response" | head -n -1)
+
+      # Check if note creation succeeded
+      if [[ "$status" != "200" && "$status" != "201" ]]; then
+        error "Note creation failed (status=$status)"
+        echo "Response: $response" >&2
         rc=1
+      else
+        # Extract note ID for verification
+        note_id=$(echo "$response" | jq -r '.data.id // empty')
+        if [[ -z "$note_id" ]]; then
+          error "Note creation response missing ID"
+          rc=1
+        else
+          # Wait for metric to increment
+          if ! wait_for_metric_increase "notes_created_total" "${before:-0}" "Notes created metric non-zero"; then
+            rc=1
+          fi
+        fi
       fi
       ;;
     metrics_histograms)

@@ -76,19 +76,46 @@ class ReminderService:
 
         except UniqueViolationError as e:
             # DB constraint caught a duplicate
-            # Let idempotency middleware handle this by re-raising as HTTP 409
-            # The middleware will cache the first successful response and replay it
-            logger.warning(
-                "duplicate_reminder_constraint_violated",
+            # This happens when concurrent requests with the same idempotency key
+            # both try to insert before the first one completes.
+            # Return the existing reminder with success=True so idempotency middleware
+            # can cache a consistent 200 response for all concurrent requests.
+            logger.info(
+                "duplicate_reminder_constraint_violated_returning_existing",
                 user_id=str(user_id),
                 title=data.title,
                 due_at=data.due_at_utc.isoformat(),
-                error=str(e)
             )
             reminders_deduped_total.labels(user_id=str(user_id)).inc()
 
-            # Return error response instead of existing reminder
-            # This allows different idempotency keys to create separate reminders
+            # Fetch the existing reminder
+            existing = await self.db.fetchrow(
+                """
+                SELECT * FROM reminders
+                WHERE user_id = $1
+                AND title = $2
+                AND due_at_utc = $3
+                AND status = 'active'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                user_id,
+                data.title,
+                data.due_at_utc,
+            )
+
+            if existing:
+                # Return existing reminder as a successful response
+                # This ensures idempotency: all requests get the same 200 response
+                return {"success": True, "data": dict(existing), "deduplicated": True}
+
+            # If we can't find the existing reminder, raise an error
+            # This shouldn't happen but is a safety fallback
+            logger.error(
+                "duplicate_constraint_but_no_existing_reminder",
+                user_id=str(user_id),
+                title=data.title,
+            )
             return {
                 "success": False,
                 "error": {
