@@ -1777,9 +1777,16 @@ stage4_check() {
       done
       ;;
     metrics_non_zero)
-      local value
-      value=$(metric_value "notes_created_total" || echo 0)
-      assert_greater_than "${value:-0}" "0" "Notes created metric non-zero" || rc=1
+      # Create a note to ensure metric increments
+      local before after
+      before=$(metric_value "notes_created_total" || echo 0)
+      local payload='{"title":"Metrics Test Note","body":"Testing metrics","tags":[]}'
+      curl -sS -X POST "$BASE_URL/api/v1/notes" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$payload" >/dev/null 2>&1 || true
+      after=$(metric_value "notes_created_total" || echo 0)
+      assert_greater_than "${after:-0}" "${before:-0}" "Notes created metric non-zero" || rc=1
       ;;
     metrics_histograms)
       local content

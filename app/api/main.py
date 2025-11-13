@@ -269,6 +269,7 @@ async def create_note_record(
             return {
                 "success": True,
                 "deduplicated": True,
+                "message": f"Note with title '{note.title}' already exists",
                 "data": {
                     "id": str(existing["id"]),
                     "title": existing["title"],
@@ -349,12 +350,14 @@ async def ensure_qdrant_collection():
 # Metrics middleware (must run before other middleware to capture timings)
 app.add_middleware(MetricsMiddleware)
 
-# Auth middleware (extracts user_id from token and sets in request.state)
-from api.middleware import AuthMiddleware, IdempotencyMiddleware
-app.add_middleware(AuthMiddleware)
-
 # Idempotency middleware (ensures exactly-once semantics for state-changing operations)
+# NOTE: Must be added AFTER auth middleware so that user_id is available
+from api.middleware import AuthMiddleware, IdempotencyMiddleware
 app.add_middleware(IdempotencyMiddleware)
+
+# Auth middleware (extracts user_id from token and sets in request.state)
+# NOTE: Must be added LAST (runs first) so user_id is set before other middleware
+app.add_middleware(AuthMiddleware)
 
 # CORS - Secure configuration using environment variables
 # CRITICAL: Never use allow_origins=["*"] with allow_credentials=True
