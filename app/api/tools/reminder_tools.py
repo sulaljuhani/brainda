@@ -1,7 +1,10 @@
 from datetime import datetime, time, timedelta
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
 import structlog
+
+from api.models.reminder import ReminderCreate
+from api.services.reminder_service import ReminderService
 
 logger = structlog.get_logger()
 
@@ -107,3 +110,65 @@ def smart_time_default(now: datetime, prompt: str) -> datetime:
         return now.replace(hour=17, minute=0, second=0, microsecond=0)
     else:
         return now + timedelta(hours=1)
+
+
+async def execute_reminder_tool(
+    tool_name: str,
+    arguments: dict[str, Any],
+    user_id: UUID,
+    db,
+) -> dict:
+    """Execute reminder tool functions used by the chat orchestration layer."""
+    service = ReminderService(db)
+
+    try:
+        if tool_name == "create_reminder":
+            # Parse the datetime
+            due_at_utc = datetime.fromisoformat(arguments["due_at_utc"].replace("Z", "+00:00"))
+
+            # Create the reminder request
+            payload = ReminderCreate(
+                title=arguments["title"],
+                body=arguments.get("body"),
+                due_at_utc=due_at_utc,
+                due_at_local=arguments.get("due_at_local"),
+                timezone=arguments.get("timezone", "UTC"),
+                repeat_rrule=arguments.get("repeat_rrule"),
+            )
+
+            result = await service.create_reminder(user_id, payload)
+            return result
+
+        if tool_name == "list_reminders":
+            status_filter = arguments.get("status")
+            reminders = await service.list_reminders(user_id, status=status_filter)
+            return {
+                "success": True,
+                "data": reminders,
+                "total": len(reminders),
+            }
+
+        if tool_name == "snooze_reminder":
+            reminder_id = UUID(arguments["reminder_id"])
+            duration_minutes = int(arguments["duration_minutes"])
+            result = await service.snooze_reminder(reminder_id, user_id, duration_minutes)
+            return result
+
+        logger.warning("reminder_tool_not_found", tool=tool_name)
+        return {
+            "success": False,
+            "error": {
+                "code": "UNKNOWN_TOOL",
+                "message": f"Tool {tool_name} not implemented",
+            },
+        }
+
+    except Exception as exc:
+        logger.error("reminder_tool_failed", tool=tool_name, error=str(exc))
+        return {
+            "success": False,
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": str(exc),
+            },
+        }

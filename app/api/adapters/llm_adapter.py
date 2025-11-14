@@ -60,6 +60,26 @@ class BaseLLMAdapter(ABC):
     def model_name(self) -> str:
         """Return the model identifier."""
 
+    async def complete_with_tools(
+        self,
+        prompt: str,
+        tools: list[dict],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+        **kwargs: Any,
+    ) -> dict:
+        """
+        Generate a completion with tool calling support.
+        Returns a dict with:
+        - 'type': 'text' or 'tool_calls'
+        - 'content': text content (if type='text')
+        - 'tool_calls': list of tool calls (if type='tool_calls')
+        """
+        # Default implementation: fall back to simple completion
+        content = await self.complete(prompt, temperature, max_tokens, system_prompt, **kwargs)
+        return {"type": "text", "content": content}
+
     async def _retry(self, func, *args: Any, **kwargs: Any):
         async for attempt in AsyncRetrying(
             stop=stop_after_attempt(self.retry_attempts),
@@ -208,6 +228,54 @@ class OpenAIAdapter(BaseLLMAdapter):
     def model_name(self) -> str:
         return self._model
 
+    async def complete_with_tools(
+        self,
+        prompt: str,
+        tools: list[dict],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+        **kwargs: Any,
+    ) -> dict:
+        """Generate a completion with tool calling support using OpenAI's native tools."""
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        async def _call():
+            return await self._client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                tools=tools,
+                tool_choice="auto",
+                **kwargs,
+            )
+
+        try:
+            response = await self._retry(_call)
+        except RetryError as exc:
+            raise LLMAdapterError("OpenAI completion with tools failed") from exc
+
+        message = response.choices[0].message
+
+        # Check if the model wants to call tools
+        if message.tool_calls:
+            tool_calls = []
+            for tool_call in message.tool_calls:
+                tool_calls.append({
+                    "id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "arguments": json.loads(tool_call.function.arguments),
+                })
+            return {"type": "tool_calls", "tool_calls": tool_calls}
+
+        # Otherwise return text response
+        content = message.content or ""
+        return {"type": "text", "content": content.strip()}
+
 
 class AnthropicAdapter(BaseLLMAdapter):
     """Adapter for the Anthropic Messages API."""
@@ -296,6 +364,65 @@ class AnthropicAdapter(BaseLLMAdapter):
     @property
     def model_name(self) -> str:
         return self._model
+
+    async def complete_with_tools(
+        self,
+        prompt: str,
+        tools: list[dict],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+        **kwargs: Any,
+    ) -> dict:
+        """Generate a completion with tool calling support using Anthropic's native tools."""
+        max_output_tokens = max_tokens or self._default_max_tokens
+
+        # Convert OpenAI-style tools to Anthropic format
+        anthropic_tools = []
+        for tool in tools:
+            if tool.get("type") == "function":
+                func = tool.get("function", {})
+                anthropic_tools.append({
+                    "name": func.get("name"),
+                    "description": func.get("description"),
+                    "input_schema": func.get("parameters", {}),
+                })
+
+        async def _call():
+            return await self._client.messages.create(
+                model=self._model,
+                temperature=temperature,
+                max_tokens=max_output_tokens,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+                tools=anthropic_tools,
+                **kwargs,
+            )
+
+        try:
+            response = await self._retry(_call)
+        except RetryError as exc:
+            raise LLMAdapterError("Anthropic completion with tools failed") from exc
+
+        # Check if the model wants to call tools
+        tool_uses = [block for block in response.content if getattr(block, "type", None) == "tool_use"]
+        if tool_uses:
+            tool_calls = []
+            for tool_use in tool_uses:
+                tool_calls.append({
+                    "id": tool_use.id,
+                    "name": tool_use.name,
+                    "arguments": tool_use.input,
+                })
+            return {"type": "tool_calls", "tool_calls": tool_calls}
+
+        # Otherwise return text response
+        parts = []
+        for block in response.content:
+            text = getattr(block, "text", None)
+            if text:
+                parts.append(text)
+        return {"type": "text", "content": "".join(parts).strip()}
 
 
 class OllamaAdapter(BaseLLMAdapter):

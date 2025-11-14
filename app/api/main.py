@@ -113,6 +113,8 @@ from api.models.reminder import ReminderCreate
 from api.services.rag_service import RAGService
 from api.services.reminder_service import ReminderService
 from api.services.vector_service import VectorService
+from api.tools.calendar import CALENDAR_TOOLS, execute_calendar_tool
+from api.tools.reminder_tools import REMINDER_TOOLS, execute_reminder_tool
 
 
 class SlidingWindowRateLimiter:
@@ -718,14 +720,133 @@ async def _dispatch_chat(
     user_id: uuid.UUID,
     db: asyncpg.Connection,
 ) -> Dict[str, Any]:
-    lower_message = message.lower()
-    if "remind" in lower_message:
-        return await _handle_reminder_chat(message, user_id, db)
-    if "search" in lower_message:
-        return await _handle_search_chat(message, user_id)
-    if "note" in lower_message or "write down" in lower_message:
-        return await _handle_note_chat(message, user_id, db)
-    return await _handle_rag_chat(message, user_id)
+    """
+    Dispatch chat using LLM tool calling.
+    The LLM decides whether to use tools or provide a direct response.
+    """
+    # Combine all available tools
+    all_tools = CALENDAR_TOOLS + REMINDER_TOOLS
+
+    # Get LLM adapter
+    llm_adapter = get_llm_adapter()
+
+    # System prompt to guide the LLM
+    system_prompt = """You are a helpful assistant with access to calendar and task management tools.
+
+When the user asks to create events, reminders, or tasks, use the appropriate tools.
+- For calendar events (meetings, appointments): use create_calendar_event
+- For one-time tasks or reminders: use create_reminder
+- For recurring tasks: use create_reminder with repeat_rrule parameter
+
+Always infer reasonable defaults for missing information:
+- If no time is specified, use a sensible default based on context
+- Use the user's timezone (default to UTC if unknown)
+- For recurring tasks, construct proper RRULE strings
+
+Be conversational and confirm what you've done."""
+
+    try:
+        # Call LLM with tools
+        response = await llm_adapter.complete_with_tools(
+            prompt=message,
+            tools=all_tools,
+            system_prompt=system_prompt,
+            temperature=0.7,
+        )
+
+        # Check if LLM wants to use tools
+        if response.get("type") == "tool_calls":
+            tool_calls = response.get("tool_calls", [])
+
+            # Execute tools and collect results
+            tool_results = []
+            for tool_call in tool_calls:
+                tool_name = tool_call.get("name")
+                arguments = tool_call.get("arguments", {})
+
+                logger.info(
+                    "executing_tool",
+                    tool_name=tool_name,
+                    arguments=arguments,
+                    user_id=str(user_id),
+                )
+
+                # Execute the appropriate tool
+                if tool_name in ["create_calendar_event", "update_calendar_event", "delete_calendar_event", "list_calendar_events", "link_reminder_to_event"]:
+                    result = await execute_calendar_tool(tool_name, arguments, user_id, db)
+                elif tool_name in ["create_reminder", "list_reminders", "snooze_reminder"]:
+                    result = await execute_reminder_tool(tool_name, arguments, user_id, db)
+                else:
+                    result = {
+                        "success": False,
+                        "error": {"code": "UNKNOWN_TOOL", "message": f"Unknown tool: {tool_name}"}
+                    }
+
+                tool_results.append({
+                    "tool_name": tool_name,
+                    "result": result,
+                })
+
+            # Generate a user-friendly response based on tool results
+            if tool_results:
+                first_result = tool_results[0]
+                tool_name = first_result["tool_name"]
+                result = first_result["result"]
+
+                if result.get("success"):
+                    data = result.get("data", {})
+
+                    if tool_name == "create_calendar_event":
+                        return {
+                            "mode": "tool_success",
+                            "message": f"Calendar event '{data.get('title', 'Untitled')}' created successfully.",
+                            "data": data,
+                        }
+                    elif tool_name == "create_reminder":
+                        return {
+                            "mode": "tool_success",
+                            "message": f"Task '{data.get('title', 'Untitled')}' created successfully.",
+                            "data": data,
+                        }
+                    elif tool_name == "list_calendar_events":
+                        events = data if isinstance(data, list) else result.get("data", [])
+                        return {
+                            "mode": "tool_success",
+                            "message": f"Found {len(events)} calendar event(s).",
+                            "data": {"events": events},
+                        }
+                    elif tool_name == "list_reminders":
+                        reminders = result.get("data", [])
+                        return {
+                            "mode": "tool_success",
+                            "message": f"Found {len(reminders)} task(s).",
+                            "data": {"reminders": reminders},
+                        }
+                    else:
+                        return {
+                            "mode": "tool_success",
+                            "message": "Action completed successfully.",
+                            "data": data,
+                        }
+                else:
+                    error = result.get("error", {})
+                    return {
+                        "mode": "tool_error",
+                        "message": f"Error: {error.get('message', 'Unknown error')}",
+                        "data": {"error": error},
+                    }
+
+        # LLM returned text response (no tools needed)
+        return {
+            "mode": "chat",
+            "message": response.get("content", "I'm not sure how to help with that."),
+            "data": None,
+        }
+
+    except Exception as exc:
+        logger.exception("chat_dispatch_failed", error=str(exc), user_id=str(user_id))
+        # Fall back to RAG chat on error
+        return await _handle_rag_chat(message, user_id)
 
 
 async def _run_chat_flow(
