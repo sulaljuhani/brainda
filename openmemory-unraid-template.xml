@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>OpenMemory</Name>
+  <Repository>openmemory:local</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/CaviraOSS/OpenMemory</Support>
+  <Project>https://github.com/CaviraOSS/OpenMemory</Project>
+  <Overview>OpenMemory is a memory management system for AI agents that provides persistent, semantic memory with decay and reinforcement mechanisms.</Overview>
+  <Category>AI:</Category>
+  <WebUI>http://[IP]:[PORT:8880]/</WebUI>
+  <TemplateURL/>
+  <Icon>https://raw.githubusercontent.com/CaviraOSS/OpenMemory/main/docs/logo.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Data Directory" Target="/data" Default="/mnt/user/appdata/openmemory/data" Mode="rw" Description="Container Path: /data" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/openmemory/data</Config>
+  <Config Name="Web Interface" Target="8080" Default="8880" Mode="tcp" Description="Container Port: 8080" Type="Port" Display="always" Required="true" Mask="false">8880</Config>
+  <Config Name="OM_API_KEY" Target="OM_API_KEY" Default="your-secret-api-key-here" Mode="" Description="API key for authentication" Type="Variable" Display="always" Required="true" Mask="true">your-secret-api-key-here</Config>
+  <Config Name="OM_EMBEDDINGS" Target="OM_EMBEDDINGS" Default="ollama" Mode="" Description="Embedding provider: ollama, openai, or gemini" Type="Variable" Display="always" Required="true" Mask="false">ollama</Config>
+  <Config Name="OLLAMA_BASE_URL" Target="OLLAMA_BASE_URL" Default="http://192.168.1.12:11434" Mode="" Description="Ollama server URL (use Unraid IP:11434)" Type="Variable" Display="always" Required="false" Mask="false">http://192.168.1.12:11434</Config>
+  <Config Name="OLLAMA_EMBED_MODEL" Target="OLLAMA_EMBED_MODEL" Default="nomic-embed-text" Mode="" Description="Ollama embedding model name" Type="Variable" Display="always" Required="false" Mask="false">nomic-embed-text</Config>
+  <Config Name="OPENAI_API_KEY" Target="OPENAI_API_KEY" Default="" Mode="" Description="OpenAI API key (if using OpenAI embeddings)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="OPENAI_EMBED_MODEL" Target="OPENAI_EMBED_MODEL" Default="text-embedding-3-small" Mode="" Description="OpenAI embedding model" Type="Variable" Display="always" Required="false" Mask="false">text-embedding-3-small</Config>
+  <Config Name="GEMINI_API_KEY" Target="GEMINI_API_KEY" Default="" Mode="" Description="Google Gemini API key (if using Gemini embeddings)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="OM_TIER" Target="OM_TIER" Default="hybrid" Mode="" Description="Memory tier: hybrid, vector, or full" Type="Variable" Display="always" Required="false" Mask="false">hybrid</Config>
+  <Config Name="OM_PORT" Target="OM_PORT" Default="8080" Mode="" Description="Internal container port (leave as 8080)" Type="Variable" Display="advanced" Required="false" Mask="false">8080</Config>
+  <Config Name="OM_METADATA_BACKEND" Target="OM_METADATA_BACKEND" Default="sqlite" Mode="" Description="Metadata backend: sqlite or postgres" Type="Variable" Display="advanced" Required="false" Mask="false">sqlite</Config>
+  <Config Name="OM_DB_PATH" Target="OM_DB_PATH" Default="./data/openmemory.sqlite" Mode="" Description="SQLite database path" Type="Variable" Display="advanced" Required="false" Mask="false">./data/openmemory.sqlite</Config>
+  <Config Name="OM_VECTOR_BACKEND" Target="OM_VECTOR_BACKEND" Default="sqlite" Mode="" Description="Vector backend: sqlite, qdrant, or pinecone" Type="Variable" Display="advanced" Required="false" Mask="false">sqlite</Config>
+  <Config Name="OM_DECAY_INTERVAL_MINUTES" Target="OM_DECAY_INTERVAL_MINUTES" Default="120" Mode="" Description="Memory decay interval in minutes" Type="Variable" Display="advanced" Required="false" Mask="false">120</Config>
+  <Config Name="OM_DECAY_REINFORCE_ON_QUERY" Target="OM_DECAY_REINFORCE_ON_QUERY" Default="true" Mode="" Description="Reinforce memory on query" Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="OM_RATE_LIMIT_ENABLED" Target="OM_RATE_LIMIT_ENABLED" Default="true" Mode="" Description="Enable rate limiting" Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="OM_RATE_LIMIT_WINDOW_MS" Target="OM_RATE_LIMIT_WINDOW_MS" Default="60000" Mode="" Description="Rate limit window in milliseconds" Type="Variable" Display="advanced" Required="false" Mask="false">60000</Config>
+  <Config Name="OM_RATE_LIMIT_MAX_REQUESTS" Target="OM_RATE_LIMIT_MAX_REQUESTS" Default="100" Mode="" Description="Max requests per rate limit window" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+  <Config Name="OM_TELEMETRY" Target="OM_TELEMETRY" Default="false" Mode="" Description="Enable telemetry" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="OM_MIN_SCORE" Target="OM_MIN_SCORE" Default="0.3" Mode="" Description="Minimum similarity score for results" Type="Variable" Display="advanced" Required="false" Mask="false">0.3</Config>
+  <Config Name="OM_KEYWORD_BOOST" Target="OM_KEYWORD_BOOST" Default="2.5" Mode="" Description="Keyword matching boost factor" Type="Variable" Display="advanced" Required="false" Mask="false">2.5</Config>
+  <Config Name="OM_AUTO_REFLECT" Target="OM_AUTO_REFLECT" Default="false" Mode="" Description="Enable automatic reflection" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="OM_COMPRESSION_ENABLED" Target="OM_COMPRESSION_ENABLED" Default="false" Mode="" Description="Enable memory compression" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+</Container>
