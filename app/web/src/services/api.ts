@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+﻿const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH || '/api/v1';
 
 class ApiClient {
@@ -42,7 +42,7 @@ class ApiClient {
         message: response.statusText,
       }));
       console.error('API Error:', error);
-      throw new Error(error.detail || error.message || 'Request failed');
+      throw new Error((error as any).detail || (error as any).message || 'Request failed');
     }
 
     // Handle no-content responses
@@ -71,6 +71,13 @@ class ApiClient {
     });
   }
 
+  async patch<T>(endpoint: string, data: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
@@ -91,7 +98,7 @@ class ApiClient {
       const error = await response.json().catch(() => ({
         message: response.statusText,
       }));
-      throw new Error(error.message || 'Upload failed');
+      throw new Error((error as any).message || 'Upload failed');
     }
 
     return response.json();
@@ -118,7 +125,7 @@ class ApiClient {
       throw new Error('No response body');
     }
 
-    return response.body;
+    return response.body as ReadableStream;
   }
 }
 

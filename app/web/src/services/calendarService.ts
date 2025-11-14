@@ -1,14 +1,20 @@
-import { api } from './api';
+﻿import { api } from './api';
 import type { CalendarEvent, CreateEventRequest } from '@types/*';
 
 export const calendarService = {
-  getEvents: (start: string, end: string) =>
-    api.get<{ events: CalendarEvent[]; count: number }>(
+  getEvents: async (start: string, end: string): Promise<{ events: CalendarEvent[]; count: number }> => {
+    const res = await api.get<any>(
       `/calendar/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
-    ),
+    );
+    if (res?.events) return res as { events: CalendarEvent[]; count: number };
+    const data = res?.data || {};
+    return { events: (data.events as CalendarEvent[]) || [], count: (data.count as number) || 0 };
+  },
 
-  create: (data: CreateEventRequest) =>
-    api.post<CalendarEvent>('/calendar/events', data),
+  create: async (data: CreateEventRequest): Promise<CalendarEvent> => {
+    const res = await api.post<any>('/calendar/events', data);
+    return (res?.data as CalendarEvent) || (res as CalendarEvent);
+  },
 
   delete: (id: string) => api.delete<void>(`/calendar/events/${id}`),
 };

@@ -1,4 +1,4 @@
-"""OpenMemory adapter for long-term AI memory integration."""
+﻿"""OpenMemory adapter for long-term AI memory integration."""
 
 from __future__ import annotations
 
@@ -167,8 +167,8 @@ class OpenMemoryAdapter:
     ) -> List[Dict[str, Any]]:
         """Search memories using semantic similarity.
 
-        OpenMemory uses composite scoring: 0.6×similarity + 0.2×salience +
-        0.1×recency + 0.1×link_weight
+        OpenMemory uses composite scoring: 0.6Ã—similarity + 0.2Ã—salience +
+        0.1Ã—recency + 0.1Ã—link_weight
 
         Args:
             user_id: User identifier for memory isolation
@@ -245,7 +245,7 @@ class OpenMemoryAdapter:
             query=query,
             limit=max_memories,
             min_score=0.3,
-            memory_type="conversation",
+            tags=["conversation"],
         )
 
         if not memories:
@@ -412,3 +412,4 @@ def get_openmemory_adapter() -> OpenMemoryAdapter:
         OpenMemoryAdapter instance configured from environment variables
     """
     return OpenMemoryAdapter()
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import secrets
 from typing import Optional
@@ -6,6 +6,7 @@ from uuid import UUID
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
+from asyncpg.exceptions import UniqueViolationError
 from pydantic import BaseModel
 
 from api.dependencies import get_db, verify_token, get_current_user
@@ -47,6 +48,12 @@ async def register_user(
     existing_user = await auth_service.get_user_by_username(payload.username)
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already taken")
+
+    # If email provided, ensure it's not already in use
+    if payload.email:
+        existing_email_user = await auth_service.get_user_by_email(payload.email.strip().lower())
+        if existing_email_user:
+            raise HTTPException(status_code=400, detail='Email already registered')
 
     # Validate password length
     if len(payload.password) < 8:
@@ -91,12 +98,25 @@ async def register_user(
                 "display_name": user.get("display_name"),
             },
         }
+        except UniqueViolationError as exc:
+        # Map unique constraint violations to user-friendly messages
+        detail = str(exc)
+        if 'users_email_key' in detail or '(email)' in detail:
+            raise HTTPException(status_code=400, detail='Email already registered') from exc
+        if 'idx_users_username_unique' in detail or '(username)' in detail:
+            raise HTTPException(status_code=400, detail='Username already taken') from exc
+
+        await auth_service.log_auth_event(
+            'registration_failed',
+            metadata={'username': payload.username, 'error': str(exc)},
+        )
+        raise HTTPException(status_code=500, detail='Registration failed') from exc
     except Exception as exc:
         await auth_service.log_auth_event(
-            "registration_failed",
-            metadata={"username": payload.username, "error": str(exc)},
+            'registration_failed',
+            metadata={'username': payload.username, 'error': str(exc)},
         )
-        raise HTTPException(status_code=500, detail="Registration failed") from exc
+        raise HTTPException(status_code=500, detail='Registration failed') from exc
 
 
 @router.post("/login")
@@ -199,3 +219,4 @@ async def get_current_user_profile(
         "display_name": user.get("display_name"),  # display_name is optional
         "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
     }
+
