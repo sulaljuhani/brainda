@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Page imports
 import ChatPage from '@pages/ChatPage';
@@ -11,7 +12,8 @@ import SearchPage from '@pages/SearchPage';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
       <Routes>
         {/* Main routes with layout */}
         <Route path="/" element={<MainLayout><ChatPage /></MainLayout>} />
@@ -26,5 +28,6 @@ export default function App() {
         <Route path="*" element={<div style={{ padding: '2rem' }}>Page not found</div>} />
       </Routes>
     </BrowserRouter>
+    </AuthProvider>
   );
 }
