@@ -1,6 +1,6 @@
 """Memory router for OpenMemory integration."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel
@@ -295,4 +295,60 @@ async def preview_conversation_context(
             "context": context,
             "context_length": len(context),
         },
+    }
+
+
+@router.post("/sync")
+async def sync_to_vault(
+    background_tasks: BackgroundTasks,
+    user_id: UUID = Depends(get_current_user),
+):
+    """Sync OpenMemory contents to markdown files (memory vault).
+
+    This creates a vault-like mirror of your OpenMemory contents in `/memory_vault`,
+    organized by sector (semantic/, episodic/, procedural/, etc.).
+
+    The sync runs in the background and creates:
+    - Markdown files for each memory
+    - Organization by primary sector
+    - Index file with overview
+    - Frontmatter with metadata
+
+    Enable vault sync by setting:
+        MEMORY_VAULT_SYNC_ENABLED=true
+        MEMORY_VAULT_PATH=/memory_vault  # Optional, defaults to /memory_vault
+
+    Response:
+        {
+            "success": true,
+            "message": "Sync started in background",
+            "vault_path": "/memory_vault/user-uuid"
+        }
+    """
+    import os
+    from worker.memory_sync import sync_memory_for_user
+
+    enabled = os.getenv("MEMORY_VAULT_SYNC_ENABLED", "false").lower() == "true"
+    vault_path = os.getenv("MEMORY_VAULT_PATH", "/memory_vault")
+
+    if not enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Memory vault sync is disabled. Set MEMORY_VAULT_SYNC_ENABLED=true to enable.",
+        )
+
+    service = MemoryService()
+    if not service.is_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail="OpenMemory integration is disabled",
+        )
+
+    # Run sync in background
+    background_tasks.add_task(sync_memory_for_user, str(user_id))
+
+    return {
+        "success": True,
+        "message": "Memory vault sync started in background",
+        "vault_path": f"{vault_path}/{user_id}",
     }
