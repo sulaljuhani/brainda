@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>ollama</Name>
+  <Repository>ollama/ollama</Repository>
+  <Registry>https://hub.docker.com/r/ollama/ollama/</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://hub.docker.com/r/ollama/ollama/</Support>
+  <Project/>
+  <Overview>The easiest way to get up and running with large language models locally.</Overview>
+  <Category>AI: Other:</Category>
+  <WebUI>http://[IP]:[PORT:11434]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/Joly0/docker-templates/main/templates/ollama.xml</TemplateURL>
+  <Icon>https://ollama.ai/public/ollama.png</Icon>
+  <ExtraParams>--gpus=all</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled>1763125893</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>**Nvidia Driver plugin** (nVidia Support)</Requires>
+  <Config Name="Config" Target="/root/.ollama" Default="/mnt/user/appdata/ollama" Mode="rw" Description="Container Path: /root/.ollama" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/ollama</Config>
+  <Config Name="Web Interface" Target="11434" Default="11434" Mode="tcp" Description="Container Port: 11434" Type="Port" Display="always" Required="true" Mask="false">11434</Config>
+  <Config Name="OLLAMA_ORIGINS" Target="OLLAMA_ORIGINS" Default="*" Mode="" Description="CORS origins for API requests (default: * allows all)" Type="Variable" Display="always" Required="false" Mask="false">*</Config>
+  <Config Name="NVIDIA_VISIBLE_DEVICES" Target="NVIDIA_VISIBLE_DEVICES" Default="all" Mode="" Description="GPU devices to use (all, or specific GPU IDs)" Type="Variable" Display="always" Required="false" Mask="false">all</Config>
+  <Config Name="NVIDIA_DRIVER_CAPABILITIES" Target="NVIDIA_DRIVER_CAPABILITIES" Default="compute,utility" Mode="" Description="NVIDIA driver capabilities needed" Type="Variable" Display="always" Required="false" Mask="false">compute,utility</Config>
+</Container>
