@@ -72,7 +72,19 @@ get_metric_value() {
     error "Unable to scrape metrics endpoint"
     return 1
   fi
-  echo "$metrics" | awk -v name="$metric" '$1 == name {print $NF; found=1; exit} END { if (!found) print 0 }'
+  # Handle both labeled and unlabeled metrics
+  # For labeled metrics like: reminders_created_total{user_id="..."} 31.0
+  # For unlabeled metrics like: some_metric 42.0
+  echo "$metrics" | awk -v name="$metric" '
+    $1 == name || index($1, name "{") == 1 {
+      sum += $NF
+      found = 1
+    }
+    END {
+      if (found != 1) print 0
+      else print sum
+    }
+  '
 }
 
 wait_for_metric_increment() {

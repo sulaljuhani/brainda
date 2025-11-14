@@ -15,11 +15,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --timeout=100 --upgrade pip \
  && pip install --timeout=100 -r /app/api/requirements.txt
 
-# Install a shim so `docker exec vib-worker celery call ...` waits and prints SUCCESS
-RUN sh -c 'set -eu; CEL=$(command -v celery); mv "$CEL" /usr/local/bin/celery-real'
-COPY scripts/celery-wrapper.sh /usr/local/bin/celery
-RUN chmod +x /usr/local/bin/celery
-
 # Verify ONNX Runtime has non-executable stack (security check - without importing)
 RUN bash -c 'set -euo pipefail; \
 paths=$(python3 -c "import site, glob; [print(p) for d in site.getsitepackages() for p in glob.glob(d + \"/onnxruntime/**/*.so\", recursive=True)]"); \
@@ -54,3 +49,4 @@ ENV PYTHONPATH="/app"
 ENV TOKENIZERS_PARALLELISM=false
 
 ENTRYPOINT ["/entrypoint.sh"]
+

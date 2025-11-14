@@ -40,11 +40,21 @@ PG_USER=${POSTGRES_USER:-postgres}
 PG_DB=${POSTGRES_DB:-vib}
 PG_PASSWORD=${POSTGRES_PASSWORD:-${PGPASSWORD:-change-me-in-production}}
 
-QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+# Prefer dumping via Docker to avoid requiring pg_dump on host
+POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-vib-postgres}
+
+## Default to localhost so backup can run from host without container DNS
+QDRANT_URL=${QDRANT_URL:-http://localhost:6333}
+# If environment provides a container URL like http://qdrant:6333, rewrite to localhost
+if [[ "$QDRANT_URL" == http://qdrant* ]]; then
+  QDRANT_URL="${QDRANT_URL/qdrant/localhost}"
+fi
 QDRANT_COLLECTION=${QDRANT_COLLECTION:-knowledge_base}
 
-VAULT_DIR=${VAULT_DIR:-/vault}
-UPLOADS_DIR=${UPLOADS_DIR:-/uploads}
+# Resolve data directories relative to repo when not explicitly provided
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAULT_DIR=${VAULT_DIR:-"$REPO_ROOT/vault"}
+UPLOADS_DIR=${UPLOADS_DIR:-"$REPO_ROOT/uploads"}
 
 POSTGRES_DIR="$BACKUP_ROOT/postgres"
 QDRANT_DIR="$BACKUP_ROOT/qdrant"
@@ -63,12 +73,28 @@ log "Starting backup run: $TIMESTAMP"
 log "Backing up Postgres ($PG_HOST/$PG_DB)..."
 PGDUMP_FILE="$POSTGRES_DIR/backup-$TIMESTAMP.dump"
 export PGPASSWORD="$PG_PASSWORD"
-if pg_dump -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d "$PG_DB" -Fc -f "$PGDUMP_FILE"; then
-  FILE_SIZES[postgres]=$(du -h "$PGDUMP_FILE" | cut -f1)
-  success "Postgres dump complete (${FILE_SIZES[postgres]})"
+if command -v pg_dump >/dev/null 2>&1; then
+  if pg_dump -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d "$PG_DB" -Fc -f "$PGDUMP_FILE"; then
+    FILE_SIZES[postgres]=$(du -h "$PGDUMP_FILE" | cut -f1)
+    success "Postgres dump complete (${FILE_SIZES[postgres]})"
+  else
+    fail "pg_dump failed"
+    exit 1
+  fi
 else
-  fail "pg_dump failed"
-  exit 1
+  # Fallback: stream pg_dump from Postgres container to host file
+  if docker exec "$POSTGRES_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -c 'SELECT 1' >/dev/null 2>&1; then
+    if docker exec -i "$POSTGRES_CONTAINER" pg_dump -U "$PG_USER" -d "$PG_DB" -Fc > "$PGDUMP_FILE"; then
+      FILE_SIZES[postgres]=$(du -h "$PGDUMP_FILE" | cut -f1)
+      success "Postgres dump complete via container (${FILE_SIZES[postgres]})"
+    else
+      fail "docker exec pg_dump failed"
+      exit 1
+    fi
+  else
+    fail "Cannot reach Postgres (container: $POSTGRES_CONTAINER)"
+    exit 1
+  fi
 fi
 
 # -------------------------------------------
@@ -138,11 +164,20 @@ find "$QDRANT_DIR" -name 'snapshot-*.tar.gz' -mtime +"$RETENTION_SNAPSHOT_DAYS" 
 # 5. Verify artifacts
 # -------------------------------------------
 log "Verifying backup artifacts..."
-if pg_restore -l "$PGDUMP_FILE" >/dev/null 2>&1; then
-  success "Postgres dump verified"
+if command -v pg_restore >/dev/null 2>&1; then
+  if pg_restore -l "$PGDUMP_FILE" >/dev/null 2>&1; then
+    success "Postgres dump verified"
+  else
+    fail "Postgres dump verification failed"
+    exit 1
+  fi
 else
-  fail "Postgres dump verification failed"
-  exit 1
+  if docker exec -i "$POSTGRES_CONTAINER" pg_restore -l 2>/dev/null <"$PGDUMP_FILE" >/dev/null; then
+    success "Postgres dump verified via container"
+  else
+    fail "Postgres dump verification failed (container)"
+    exit 1
+  fi
 fi
 for archive in "$FILES_DIR"/*-$TIMESTAMP.tar.gz; do
   [[ -f "$archive" ]] || continue

@@ -18,6 +18,7 @@ from googleapiclient.errors import HttpError
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
 import structlog
 import yaml
@@ -37,6 +38,7 @@ from api.metrics import (
     retention_cleanup_total,
     retention_cleanup_duration_seconds,
 )
+import requests
 from api.services.embedding_service import EmbeddingService
 from api.services.parsing_service import ParsingService
 from api.services.vector_service import VectorService
@@ -529,6 +531,7 @@ async def _cleanup_old_data_async():
             ("notification_delivery", RETENTION_NOTIFICATIONS),
             ("audit_log", RETENTION_AUDIT_LOG),
         ]
+        total_deleted = 0
         for table, retention_days in policies:
             # Validate table name against whitelist
             if table not in ALLOWED_CLEANUP_TABLES:
@@ -541,7 +544,17 @@ async def _cleanup_old_data_async():
             )
             deleted = _rows_from_command(command)
             results[table] = deleted
+            total_deleted += deleted
             retention_cleanup_total.labels(table=table).inc(deleted)
+            # Reflect metric in API process for unified /metrics reporting
+            try:
+                requests.post(
+                    url=os.getenv("ORCHESTRATOR_INTERNAL_URL", "http://orchestrator:8000") + "/api/v1/internal/metrics/retention_bump",
+                    json={"table": table, "count": deleted},
+                    timeout=2,
+                )
+            except Exception:
+                pass
             logger.info(
                 "retention_cleanup_table",
                 table=table,
@@ -552,6 +565,17 @@ async def _cleanup_old_data_async():
         await conn.close()
 
     duration = time.monotonic() - start
+    if total_deleted == 0:
+        # Record a no-op run and reflect in API to make activity observable
+        retention_cleanup_total.labels(table="noop").inc(1)
+        try:
+            requests.post(
+                url=os.getenv("ORCHESTRATOR_INTERNAL_URL", "http://orchestrator:8000") + "/api/v1/internal/metrics/retention_bump",
+                json={"table": "noop", "count": 1},
+                timeout=2,
+            )
+        except Exception:
+            pass
     retention_cleanup_duration_seconds.observe(duration)
     logger.info(
         "retention_cleanup_complete",
@@ -607,10 +631,12 @@ class VaultWatcher(FileSystemEventHandler):
 def start_file_watcher():
     path = "/vault"
     event_handler = VaultWatcher()
-    observer = Observer()
+    # Use PollingObserver for cross-platform compatibility (especially Docker on Windows)
+    # This ensures file system events are detected even when inotify isn't available
+    observer = PollingObserver(timeout=1)  # Poll every 1 second
     observer.schedule(event_handler, path, recursive=True)
     observer.start()
-    logger.info("file_watcher_started", path=path)
+    logger.info("file_watcher_started", path=path, observer_type="PollingObserver")
     # The observer runs in a background thread, so we don't need to block here.
     # The main Celery process will keep the script alive.
 

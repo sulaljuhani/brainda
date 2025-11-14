@@ -18,6 +18,7 @@ import hashlib
 import json
 import structlog
 import os
+import asyncio
 from common.db import connect_with_json_codec
 
 logger = structlog.get_logger()
@@ -80,8 +81,29 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 media_type="application/json",
             )
 
-        # Read request body for caching
+        # Read request body for caching and compute request hash
         body = await request.body()
+        request_hash = hashlib.sha256(body).hexdigest()
+
+        # Attempt to claim this idempotency key to prevent concurrent duplicates
+        # The first requester inserts a placeholder row; others will wait for the
+        # response to be populated and then return the cached response.
+        claimed = await self.claim_idempotency_key(
+            user_id, idempotency_key, endpoint, request_hash
+        )
+        if not claimed:
+            # Another request is in-flight; wait briefly for it to complete
+            cached = await self.wait_for_cached_response(
+                user_id, idempotency_key, endpoint, timeout_seconds=5.0, poll_interval=0.1
+            )
+            if cached:
+                return Response(
+                    content=cached["response_body"],
+                    status_code=cached["response_status"],
+                    headers={"X-Idempotency-Replay": "true", "Content-Type": "application/json"},
+                    media_type="application/json",
+                )
+            # If not cached after waiting, proceed to handle request (best effort)
 
         # Execute request
         # We need to make the body available again for the next handler
@@ -163,7 +185,12 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 INSERT INTO idempotency_keys
                 (idempotency_key, user_id, endpoint, request_hash, response_status, response_body, expires_at)
                 VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '24 hours')
-                ON CONFLICT (user_id, idempotency_key, endpoint) DO NOTHING
+                ON CONFLICT (user_id, idempotency_key, endpoint)
+                DO UPDATE SET
+                    request_hash = EXCLUDED.request_hash,
+                    response_status = EXCLUDED.response_status,
+                    response_body = EXCLUDED.response_body,
+                    expires_at = EXCLUDED.expires_at
             """
             await conn.execute(
                 query,
@@ -190,3 +217,49 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         finally:
             if conn:
                 await conn.close()
+
+    async def claim_idempotency_key(self, user_id, key: str, endpoint: str, request_hash: str) -> bool:
+        """Attempt to create a placeholder record for this idempotency key.
+
+        Returns True if we successfully claimed (i.e., first in-flight request), False
+        if another request already claimed it.
+        """
+        conn = None
+        try:
+            conn = await connect_with_json_codec(DATABASE_URL)
+            query = """
+                INSERT INTO idempotency_keys
+                (idempotency_key, user_id, endpoint, request_hash, response_status, response_body, expires_at)
+                VALUES ($1, $2, $3, $4, 102, '{}'::jsonb, NOW() + INTERVAL '24 hours')
+                ON CONFLICT (user_id, idempotency_key, endpoint) DO NOTHING
+                RETURNING id
+            """
+            row = await conn.fetchrow(query, key, user_id, endpoint, request_hash)
+            return bool(row)
+        except Exception as e:
+            logger.error("idempotency_claim_failed", error=str(e))
+            return False
+        finally:
+            if conn:
+                await conn.close()
+
+    async def wait_for_cached_response(
+        self,
+        user_id,
+        key: str,
+        endpoint: str,
+        timeout_seconds: float = 5.0,
+        poll_interval: float = 0.1,
+    ) -> Optional[dict]:
+        """Poll for a cached response for a short time.
+
+        This allows concurrent requests with the same idempotency key to wait for
+        the first request to complete and populate the cache.
+        """
+        deadline = asyncio.get_event_loop().time() + timeout_seconds
+        while asyncio.get_event_loop().time() < deadline:
+            cached = await self.get_cached_response(user_id, key, endpoint)
+            if cached and 200 <= cached.get("response_status", 0) < 300:
+                return cached
+            await asyncio.sleep(poll_interval)
+        return None

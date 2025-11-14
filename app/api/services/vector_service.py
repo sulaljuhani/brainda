@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
@@ -17,13 +18,28 @@ from api.services.embedding_service import EmbeddingService
 logger = structlog.get_logger()
 
 
+# Cached singleton instances to avoid creating new connections on every request
+@lru_cache(maxsize=1)
+def _get_qdrant_client():
+    """Cached Qdrant client to reuse connections."""
+    return QdrantClient(url=os.getenv("QDRANT_URL"))
+
+
+@lru_cache(maxsize=1)
+def _get_embedding_service():
+    """Cached embedding service to reuse model."""
+    return EmbeddingService()
+
+
 class VectorService:
     """Shared access to the unified Qdrant collection."""
 
     def __init__(self, embedding_service: Optional[EmbeddingService] = None):
         self.collection_name = os.getenv("QDRANT_COLLECTION", "knowledge_base")
-        self.client = QdrantClient(url=os.getenv("QDRANT_URL"))
-        self.embedding_service = embedding_service or EmbeddingService()
+        # Use cached client instead of creating new connection
+        self.client = _get_qdrant_client()
+        # Use cached embedding service or provided one
+        self.embedding_service = embedding_service or _get_embedding_service()
         self._ensure_collection()
 
     def _ensure_collection(self) -> None:

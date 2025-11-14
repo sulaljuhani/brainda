@@ -44,10 +44,15 @@ PG_USER=${POSTGRES_USER:-postgres}
 PG_DB=${POSTGRES_DB:-vib}
 QDRANT_URL=${QDRANT_URL:-http://localhost:6333}
 QDRANT_COLLECTION=${QDRANT_COLLECTION:-knowledge_base}
-VAULT_DIR=${VAULT_DIR:-/vault}
-UPLOADS_DIR=${UPLOADS_DIR:-/uploads}
+# Resolve data directories relative to repo when not explicitly provided
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAULT_DIR=${VAULT_DIR:-"$REPO_ROOT/vault"}
+UPLOADS_DIR=${UPLOADS_DIR:-"$REPO_ROOT/uploads"}
 COMPOSE_CMD=${COMPOSE_CMD:-docker compose}
-SERVICES_TO_STOP=${SERVICES_TO_STOP:-"orchestrator worker beat"}
+# Respect empty SERVICES_TO_STOP when explicitly provided
+if [[ -z "${SERVICES_TO_STOP+x}" ]]; then
+  SERVICES_TO_STOP="orchestrator worker beat"
+fi
 
 require_file() {
   local file=$1
@@ -74,7 +79,12 @@ else
 fi
 
 log "Restoring from timestamp $TIMESTAMP"
-read -r -p "This will overwrite current data. Continue? [yes/no]: " CONFIRM
+# Auto-confirm in non-interactive contexts or when ASSUME_YES=1
+if [[ "${ASSUME_YES:-}" == "1" || ! -t 0 ]]; then
+  CONFIRM="yes"
+else
+  read -r -p "This will overwrite current data. Continue? [yes/no]: " CONFIRM
+fi
 if [[ "$CONFIRM" != "yes" ]]; then
   log "Restore aborted"
   exit 0

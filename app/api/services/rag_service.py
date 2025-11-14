@@ -31,7 +31,7 @@ class RAGService:
             min_score=0.1,
         )
 
-        rag_queries_total.labels(user_id=str(user_id)).inc()
+        rag_queries_total.inc()
 
         if not results:
             return {

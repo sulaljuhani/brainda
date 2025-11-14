@@ -1,4 +1,5 @@
 import asyncio
+from functools import lru_cache
 from typing import Iterable, List, Optional
 
 import structlog
@@ -6,6 +7,25 @@ import structlog
 from common.embeddings import MODEL_NAME, generate_embedding
 
 logger = structlog.get_logger()
+
+
+@lru_cache(maxsize=1)
+def _get_model(model_name: str):
+    """Cached model loader to avoid reloading the model on every instantiation."""
+    try:
+        from sentence_transformers import SentenceTransformer
+
+        normalized = model_name.split(":")[0]
+        model = SentenceTransformer(normalized)
+        logger.info("embedding_model_loaded", model=model.__class__.__name__)
+        return model
+    except Exception as exc:
+        logger.warning(
+            "embedding_model_load_failed",
+            reason=str(exc),
+            model_name=model_name,
+        )
+        return None
 
 
 class EmbeddingService:
@@ -16,20 +36,8 @@ class EmbeddingService:
 
     def __init__(self, model_name: str = MODEL_NAME):
         self.model_name = model_name
-        self._model = None
-        try:
-            from sentence_transformers import SentenceTransformer
-
-            normalized = model_name.split(":")[0]
-            self._model = SentenceTransformer(normalized)
-            logger.info("embedding_service_loaded", model=self._model.__class__.__name__)
-        except Exception as exc:  # pragma: no cover - depends on optional dep
-            logger.warning(
-                "embedding_service_fallback",
-                reason=str(exc),
-                model_name=model_name,
-            )
-            self._model = None
+        # Use cached model loader instead of loading on every instantiation
+        self._model = _get_model(model_name)
 
     async def _encode(self, texts: Iterable[str]) -> List[List[float]]:
         text_list = list(texts)

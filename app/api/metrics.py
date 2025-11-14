@@ -155,7 +155,6 @@ chunks_created_total = Counter(
 rag_queries_total = Counter(
     "rag_queries_total",
     "RAG queries executed by users",
-    ["user_id"],
     registry=registry,
 )
 

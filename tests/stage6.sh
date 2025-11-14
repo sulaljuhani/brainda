@@ -13,6 +13,16 @@ IFS=$'\n\t'
 STAGE6_CREATED_EVENTS=()
 STAGE6_CREATED_REMINDERS=()
 STAGE6_LAST_EVENT_RESPONSE=""
+# Persist last event response to a file to avoid subshell scoping issues
+STAGE6_LAST_EVENT_RESPONSE_FILE="${TEST_DIR:-/tmp}/stage6_last_event_response.json"
+
+get_last_event_response() {
+  if [[ -f "$STAGE6_LAST_EVENT_RESPONSE_FILE" ]]; then
+    cat "$STAGE6_LAST_EVENT_RESPONSE_FILE"
+  else
+    echo "$STAGE6_LAST_EVENT_RESPONSE"
+  fi
+}
 
 stage6_require_dependencies() {
   local missing=()
@@ -73,13 +83,20 @@ build_calendar_payload() {
 
 create_calendar_event() {
   local payload="$1"
-  local response status body
-  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/calendar/events" \
+  local response status body tmp_body
+  tmp_body=$(mktemp)
+  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -o "$tmp_body" -X POST "$BASE_URL/api/v1/calendar/events" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
     -d "$payload" 2>&1)
-  status=$(echo "$response" | tail -1)
-  body=$(echo "$response" | head -n -1)
+  # Extract HTTP status code robustly even when VERBOSE (-v) adds trailing lines
+  # Prefer parsing from curl verbose response header, fallback to last 3-digit sequence
+  status=$(echo "$response" | awk '/^< HTTP\/[0-9]\.[0-9] [0-9]{3}/ {code=$3} END{print code}')
+  if [[ -z "$status" ]]; then
+    status=$(echo "$response" | grep -Eo '[^0-9]([0-9]{3})[^0-9]' | grep -Eo '[0-9]{3}' | tail -1)
+  fi
+  body=$(cat "$tmp_body")
+  rm -f "$tmp_body"
 
   if [[ "$status" != "200" && "$status" != "201" ]]; then
     error "Calendar event creation failed (status $status)"
@@ -89,21 +106,29 @@ create_calendar_event() {
 
   local event_id
   event_id=$(echo "$body" | jq -r '.data.id // .id // empty')
-  assert_not_empty "$event_id" "Calendar event ID returned" || return 1
+  assert_not_empty "$event_id" "Calendar event ID returned" >&2 || return 1
   STAGE6_LAST_EVENT_RESPONSE="$body"
+  # Also write to a file so caller in parent shell can read it
+  printf "%s" "$body" > "$STAGE6_LAST_EVENT_RESPONSE_FILE"
   stage6_register_event_cleanup "$event_id"
   echo "$event_id"
 }
 
 create_reminder() {
   local payload="$1"
-  local response status body
-  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/reminders" \
+  local response status body tmp_body
+  tmp_body=$(mktemp)
+  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -o "$tmp_body" -X POST "$BASE_URL/api/v1/reminders" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
     -d "$payload" 2>&1)
-  status=$(echo "$response" | tail -1)
-  body=$(echo "$response" | head -n -1)
+  # Extract HTTP status code robustly even when VERBOSE (-v) adds trailing lines
+  status=$(echo "$response" | awk '/^< HTTP\/[0-9]\.[0-9] [0-9]{3}/ {code=$3} END{print code}')
+  if [[ -z "$status" ]]; then
+    status=$(echo "$response" | grep -Eo '[^0-9]([0-9]{3})[^0-9]' | grep -Eo '[0-9]{3}' | tail -1)
+  fi
+  body=$(cat "$tmp_body")
+  rm -f "$tmp_body"
   if [[ "$status" != "200" && "$status" != "201" ]]; then
     error "Reminder creation failed (status $status)"
     echo "Response: $body" >&2
@@ -111,7 +136,7 @@ create_reminder() {
   fi
   local reminder_id
   reminder_id=$(echo "$body" | jq -r '.data.id // .id // empty')
-  assert_not_empty "$reminder_id" "Reminder ID returned" || return 1
+  assert_not_empty "$reminder_id" "Reminder ID returned" >&2 || return 1
   stage6_register_reminder_cleanup "$reminder_id"
   echo "$reminder_id"
 }
@@ -119,12 +144,18 @@ create_reminder() {
 fetch_calendar_events() {
   local start_date="$1"
   local end_date="$2"
-  local response status body
-  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
+  local response status body tmp_body
+  tmp_body=$(mktemp)
+  response=$(curl ${VERBOSE:+-v} -sS -w "\n%{http_code}" -o "$tmp_body" -X GET "$BASE_URL/api/v1/calendar/events?start=$start_date&end=$end_date" \
     -H "Authorization: Bearer $TOKEN" 2>&1)
-  status=$(echo "$response" | tail -1)
-  body=$(echo "$response" | head -n -1)
-  assert_status_code "$status" "200" "Calendar events list request succeeded" || return 1
+  # Extract HTTP status code robustly even when VERBOSE (-v) adds trailing lines
+  status=$(echo "$response" | awk '/^< HTTP\/[0-9]\.[0-9] [0-9]{3}/ {code=$3} END{print code}')
+  if [[ -z "$status" ]]; then
+    status=$(echo "$response" | grep -Eo '[^0-9]([0-9]{3})[^0-9]' | grep -Eo '[0-9]{3}' | tail -1)
+  fi
+  body=$(cat "$tmp_body")
+  rm -f "$tmp_body"
+  assert_status_code "$status" "200" "Calendar events list request succeeded" >&2 || return 1
   echo "$body"
 }
 
@@ -162,7 +193,7 @@ test_calendar_event_create() {
 
   local event_id
   event_id=$(create_calendar_event "$payload") || return 1
-  assert_json_field "$STAGE6_LAST_EVENT_RESPONSE" '.data.title // .title' "$title" "Calendar event title returned" || return 1
+  assert_json_field "$(get_last_event_response)" '.data.title // .title' "$title" "Calendar event title returned" || return 1
   local stored_title
   stored_title=$(psql_query "SELECT title FROM calendar_events WHERE id = '$event_id';" | xargs)
   assert_equals "$stored_title" "$title" "Calendar event persisted with correct title"
@@ -395,7 +426,8 @@ test_calendar_weekly_view() {
   log "Testing weekly calendar view API..."
   local title="Weekly View $TIMESTAMP"
   local starts_at
-  starts_at=$(date -u -d 'next tuesday 13:00' '+%Y-%m-%dT%H:%M:00Z')
+  # Choose a mid-week time within the queried window (Mon-Sun)
+  starts_at=$(date -u -d 'last monday +2 days 13:00' '+%Y-%m-%dT%H:%M:00Z')
   local payload
   payload=$(build_calendar_payload "$title" "$starts_at" "UTC")
   local event_id
