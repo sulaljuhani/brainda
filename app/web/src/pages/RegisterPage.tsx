@@ -1,123 +1,60 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@contexts/AuthContext';
 import { authService } from '@services/authService';
 import styles from './RegisterPage.module.css';
 
-// Helper function to convert base64url to Uint8Array
-function base64urlToUint8Array(base64url: string): Uint8Array {
-  // Add padding if needed
-  const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/') + padding;
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-// Convert WebAuthn JSON options to proper format with ArrayBuffers
-function preparePublicKeyOptions(options: any): PublicKeyCredentialCreationOptions {
-  return {
-    ...options,
-    challenge: base64urlToUint8Array(options.challenge),
-    user: {
-      ...options.user,
-      id: base64urlToUint8Array(options.user.id),
-    },
-    excludeCredentials: options.excludeCredentials?.map((cred: any) => ({
-      ...cred,
-      id: base64urlToUint8Array(cred.id),
-    })),
-  };
-}
-
-// Helper to convert Uint8Array to base64url
-function uint8ArrayToBase64url(buffer: Uint8Array): string {
-  const binary = String.fromCharCode(...Array.from(buffer));
-  const base64 = btoa(binary);
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-
-// Convert PublicKeyCredential to a serializable object
-function serializeCredential(credential: any) {
-  return {
-    id: credential.id,
-    rawId: uint8ArrayToBase64url(new Uint8Array(credential.rawId)),
-    type: credential.type,
-    response: {
-      clientDataJSON: uint8ArrayToBase64url(new Uint8Array(credential.response.clientDataJSON)),
-      attestationObject: uint8ArrayToBase64url(new Uint8Array(credential.response.attestationObject)),
-    },
-  };
-}
-
 export default function RegisterPage() {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [deviceName, setDeviceName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<'form' | 'authenticating'>('form');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    // Validation
+    if (username.length < 3) {
+      setError('Username must be at least 3 characters');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Check if WebAuthn is supported
-      if (!authService.isWebAuthnSupported()) {
-        throw new Error('WebAuthn is not supported in this browser');
-      }
-
-      // Check if platform authenticator is available
-      const isAvailable = await authService.isPlatformAuthenticatorAvailable();
-      if (!isAvailable) {
-        throw new Error(
-          'No biometric authenticator found on this device. Please use a device with fingerprint or face recognition.'
-        );
-      }
-
-      setStep('authenticating');
-
-      // Begin registration
-      const { user_id, options } = await authService.beginPasskeyRegistration(
-        email,
-        displayName || email.split('@')[0]
+      const response = await authService.register(
+        username,
+        password,
+        email || undefined,
+        displayName || undefined
       );
 
-      const parsedOptions = JSON.parse(options);
-      const publicKeyOptions = preparePublicKeyOptions(parsedOptions);
+      // Store session token and update auth context
+      await login(response.session_token);
 
-      // Create credential with the authenticator
-      const credential = await navigator.credentials.create({
-        publicKey: publicKeyOptions,
-      });
-
-      if (!credential) {
-        throw new Error('No credential created');
-      }
-
-      // Serialize the credential for transmission
-      const serializedCredential = serializeCredential(credential);
-
-      // Complete registration
-      await authService.completePasskeyRegistration(
-        user_id,
-        serializedCredential,
-        deviceName || undefined
-      );
-
-      // Redirect to login page with success message
-      navigate('/login', {
-        state: { message: 'Registration successful! Please sign in.' },
-      });
+      // Redirect to home page
+      navigate('/', { replace: true });
     } catch (err: any) {
       console.error('Registration error:', err);
-      setError(err.message || 'Failed to register');
-      setStep('form');
+      setError(err.message || 'Failed to create account');
     } finally {
       setLoading(false);
     }
@@ -129,9 +66,7 @@ export default function RegisterPage() {
         <div className={styles.header}>
           <h1 className={styles.title}>Create Your Account</h1>
           <p className={styles.subtitle}>
-            {step === 'form'
-              ? 'Register with a passkey for secure, passwordless access'
-              : 'Follow your device prompt to create your passkey'}
+            Register to start using Brainda
           </p>
         </div>
 
@@ -155,110 +90,130 @@ export default function RegisterPage() {
         )}
 
         <div className={styles.content}>
-          {step === 'form' ? (
-            <form onSubmit={handleSubmit} className={styles.form}>
-              <div className={styles.formGroup}>
-                <label htmlFor="email" className={styles.label}>
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={styles.input}
-                  placeholder="you@example.com"
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="displayName" className={styles.label}>
-                  Display Name
-                  <span className={styles.optional}>(Optional)</span>
-                </label>
-                <input
-                  id="displayName"
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className={styles.input}
-                  placeholder="John Doe"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="deviceName" className={styles.label}>
-                  Device Name
-                  <span className={styles.optional}>(Optional)</span>
-                </label>
-                <input
-                  id="deviceName"
-                  type="text"
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                  className={styles.input}
-                  placeholder="My Laptop"
-                  disabled={loading}
-                />
-                <p className={styles.hint}>
-                  Helps you identify this device when managing your passkeys
-                </p>
-              </div>
-
-              <button type="submit" disabled={loading} className={styles.submitButton}>
-                {loading ? (
-                  <>
-                    <span className={styles.spinner} />
-                    Creating Account...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M12 2a5 5 0 0 1 5 5c0 2.5-2.3 4-5 4s-5-1.5-5-4a5 5 0 0 1 5-5Z" />
-                      <path d="M12 14a9 9 0 0 0-9 9h18a9 9 0 0 0-9-9Z" />
-                      <path d="M20 21v-8a2 2 0 0 0-2-2h-2" />
-                    </svg>
-                    Create Account with Passkey
-                  </>
-                )}
-              </button>
-            </form>
-          ) : (
-            <div className={styles.authenticating}>
-              <div className={styles.authIcon}>
-                <svg
-                  width="64"
-                  height="64"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={styles.authIconSvg}
-                >
-                  <path d="M12 2a5 5 0 0 1 5 5c0 2.5-2.3 4-5 4s-5-1.5-5-4a5 5 0 0 1 5-5Z" />
-                  <path d="M12 14a9 9 0 0 0-9 9h18a9 9 0 0 0-9-9Z" />
-                  <path d="M20 21v-8a2 2 0 0 0-2-2h-2" />
-                </svg>
-              </div>
-              <p className={styles.authText}>
-                Please follow the prompt on your device to create your passkey.
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.formGroup}>
+              <label htmlFor="username" className={styles.label}>
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={styles.input}
+                placeholder="john_doe"
+                required
+                disabled={loading}
+                autoComplete="username"
+                autoFocus
+                minLength={3}
+              />
+              <p className={styles.hint}>
+                At least 3 characters, letters, numbers, hyphens and underscores only
               </p>
             </div>
-          )}
+
+            <div className={styles.formGroup}>
+              <label htmlFor="email" className={styles.label}>
+                Email Address
+                <span className={styles.optional}>(Optional)</span>
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={styles.input}
+                placeholder="you@example.com"
+                disabled={loading}
+                autoComplete="email"
+              />
+              <p className={styles.hint}>
+                Used for notifications (if you set them up)
+              </p>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="displayName" className={styles.label}>
+                Display Name
+                <span className={styles.optional}>(Optional)</span>
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className={styles.input}
+                placeholder="John Doe"
+                disabled={loading}
+                autoComplete="name"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="password" className={styles.label}>
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={styles.input}
+                placeholder="At least 8 characters"
+                required
+                disabled={loading}
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="confirmPassword" className={styles.label}>
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={styles.input}
+                placeholder="Re-enter your password"
+                required
+                disabled={loading}
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </div>
+
+            <button type="submit" disabled={loading} className={styles.submitButton}>
+              {loading ? (
+                <>
+                  <span className={styles.spinner} />
+                  Creating Account...
+                </>
+              ) : (
+                <>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <line x1="19" y1="8" x2="19" y2="14" />
+                    <line x1="22" y1="11" x2="16" y2="11" />
+                  </svg>
+                  Create Account
+                </>
+              )}
+            </button>
+          </form>
 
           <div className={styles.divider}>
             <span className={styles.dividerText}>or</span>
@@ -274,9 +229,8 @@ export default function RegisterPage() {
 
         <div className={styles.footer}>
           <p className={styles.footerText}>
-            By registering, you'll create a passkey that uses your device's biometric
-            authentication (fingerprint, face ID) or security key. Your credentials never
-            leave your device.
+            By creating an account, you can access all features including notes, documents,
+            semantic search, and AI-powered chat.
           </p>
         </div>
       </div>

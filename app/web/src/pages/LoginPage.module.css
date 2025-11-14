@@ -3,23 +3,24 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   padding: 1rem;
 }
 
 .card {
-  background: white;
+  background: #1f2937;
   border-radius: 0.75rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
   max-width: 28rem;
   width: 100%;
   overflow: hidden;
+  border: 1px solid #374151;
 }
 
 .header {
   padding: 2rem 2rem 1.5rem;
   text-align: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: white;
 }
 
@@ -27,12 +28,14 @@
   font-size: 1.875rem;
   font-weight: 700;
   margin: 0 0 0.5rem;
+  color: #ffffff;
 }
 
 .subtitle {
   font-size: 1rem;
   margin: 0;
   opacity: 0.9;
+  color: #e5e7eb;
 }
 
 .content {
@@ -45,18 +48,63 @@
   gap: 0.75rem;
   margin: 1.5rem 2rem 0;
   padding: 0.75rem 1rem;
-  background-color: #fee;
-  border: 1px solid #fcc;
+  background-color: #7f1d1d;
+  border: 1px solid #991b1b;
   border-radius: 0.5rem;
-  color: #c00;
+  color: #fecaca;
   font-size: 0.875rem;
 }
 
 .errorIcon {
   flex-shrink: 0;
+  color: #fca5a5;
 }
 
-.passkeyButton {
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  color: #f3f4f6;
+  background: #111827;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input::placeholder {
+  color: #6b7280;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3);
+}
+
+.input:disabled {
+  background-color: #1f2937;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.submitButton {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -66,24 +114,25 @@
   font-size: 1rem;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 0.5rem;
 }
 
-.passkeyButton:hover:not(:disabled) {
+.submitButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 10px 20px -10px rgba(102, 126, 234, 0.6);
+  box-shadow: 0 10px 20px -10px rgba(79, 70, 229, 0.6);
 }
 
-.passkeyButton:active:not(:disabled) {
+.submitButton:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.passkeyButton:disabled {
-  opacity: 0.6;
+.submitButton:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -107,7 +156,7 @@
   display: flex;
   align-items: center;
   margin: 1.5rem 0;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 0.875rem;
 }
 
@@ -116,7 +165,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background-color: #e5e7eb;
+  background-color: #374151;
 }
 
 .dividerText {
@@ -130,13 +179,13 @@
 
 .registerPrompt p {
   margin: 0 0 0.5rem;
-  color: #6b7280;
+  color: #9ca3af;
   font-size: 0.875rem;
 }
 
 .registerLink {
   display: inline-block;
-  color: #667eea;
+  color: #818cf8;
   font-weight: 600;
   font-size: 0.875rem;
   text-decoration: none;
@@ -144,20 +193,20 @@
 }
 
 .registerLink:hover {
-  color: #764ba2;
+  color: #a78bfa;
   text-decoration: underline;
 }
 
 .footer {
   padding: 1.5rem 2rem;
-  background-color: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background-color: #111827;
+  border-top: 1px solid #374151;
 }
 
 .footerText {
   margin: 0;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #9ca3af;
   line-height: 1.5;
   text-align: center;
 }
