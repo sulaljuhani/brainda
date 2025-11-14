@@ -25,5 +25,5 @@
   <Config Name="Web Interface" Target="11434" Default="11434" Mode="tcp" Description="Container Port: 11434" Type="Port" Display="always" Required="true" Mask="false">11434</Config>
   <Config Name="OLLAMA_ORIGINS" Target="OLLAMA_ORIGINS" Default="*" Mode="" Description="CORS origins for API requests (default: * allows all)" Type="Variable" Display="always" Required="false" Mask="false">*</Config>
   <Config Name="NVIDIA_VISIBLE_DEVICES" Target="NVIDIA_VISIBLE_DEVICES" Default="all" Mode="" Description="GPU devices to use (all, or specific GPU IDs)" Type="Variable" Display="always" Required="false" Mask="false">all</Config>
-  <Config Name="NVIDIA_DRIVER_CAPABILITIES" Target="NVIDIA_DRIVER_CAPABILITIES" Default="compute,utility" Mode="" Description="NVIDIA driver capabilities needed" Type="Variable" Display="always" Required="false" Mask="false">compute,utility</Config>
+  <Config Name="NVIDIA_DRIVER_CAPABILITIES" Target="NVIDIA_DRIVER_CAPABILITIES" Default="compute,utility" Mode="" Description="NVIDIA driver capabilities (use 'compute,utility' - do NOT use '*')" Type="Variable" Display="always" Required="false" Mask="false">compute,utility</Config>
 </Container>
