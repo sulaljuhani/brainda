@@ -1,0 +1,23 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+
+.mainContainer {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  margin-top: var(--header-height);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  background: radial-gradient(
+    circle at top left,
+    rgba(234, 156, 62, 0.08),
+    transparent 50%
+  );
+}
