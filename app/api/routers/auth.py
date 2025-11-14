@@ -194,8 +194,8 @@ async def get_current_user_profile(
     # Return user profile with safe fields
     return {
         "id": str(user["id"]),
-        "username": user.get("username"),
-        "email": user.get("email"),
-        "display_name": user.get("display_name"),
+        "username": user["username"],  # username is required (NOT NULL)
+        "email": user.get("email"),  # email is optional
+        "display_name": user.get("display_name"),  # display_name is optional
         "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
     }

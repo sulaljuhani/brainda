@@ -62,16 +62,19 @@ class AuthService:
         email: str,
         display_name: Optional[str] = None,
     ) -> asyncpg.Record:
+        """Legacy passkey user creation - generates username from email."""
         normalized_email = email.strip().lower()
+        username = normalized_email.split("@")[0]  # Use email prefix as username
         org_name = display_name or normalized_email
         async with self.db.transaction():
             organization = await self.create_organization(org_name)
             user = await self.db.fetchrow(
                 """
-                INSERT INTO users (email, display_name, organization_id, role, is_active)
-                VALUES ($1, $2, $3, 'owner', FALSE)
+                INSERT INTO users (username, email, display_name, organization_id, role, is_active)
+                VALUES ($1, $2, $3, $4, 'owner', FALSE)
                 RETURNING *
                 """,
+                username,
                 normalized_email,
                 display_name,
                 organization["id"],
