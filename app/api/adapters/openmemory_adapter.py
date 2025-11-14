@@ -113,35 +113,47 @@ class OpenMemoryAdapter:
         user_id: UUID,
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
-        memory_type: str = "conversation",
+        tags: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Store a new memory in OpenMemory.
+
+        OpenMemory automatically determines which sectors (semantic, episodic,
+        procedural, emotional, reflective) apply to the content.
 
         Args:
             user_id: User identifier for memory isolation
             content: Memory content to store
             metadata: Additional metadata (e.g., source, timestamp)
-            memory_type: Type of memory (conversation, fact, event, etc.)
+            tags: Optional tags for categorization
 
         Returns:
-            Created memory object with ID and embeddings
+            Created memory object with ID, sectors, and embeddings
+            Example: {"id": "...", "sectors": ["semantic", "procedural"], ...}
         """
         payload = {
             "user_id": str(user_id),
             "content": content,
+            "tags": tags or [],
             "metadata": metadata or {},
-            "type": memory_type,
-            "timestamp": datetime.utcnow().isoformat(),
         }
 
         logger.info(
             "storing_openmemory",
             user_id=str(user_id),
             content_preview=content[:100],
-            memory_type=memory_type,
+            tags=tags,
         )
 
-        result = await self._request("POST", "/api/memory", json=payload)
+        result = await self._request("POST", "/memory/add", json=payload)
+
+        # Log which sectors were assigned
+        if "sectors" in result:
+            logger.info(
+                "openmemory_sectors_assigned",
+                user_id=str(user_id),
+                sectors=result["sectors"],
+            )
+
         return result
 
     async def search_memories(
@@ -150,44 +162,67 @@ class OpenMemoryAdapter:
         query: str,
         limit: int = 5,
         min_score: float = 0.5,
-        memory_type: Optional[str] = None,
-        time_range: Optional[Dict[str, str]] = None,
+        sectors: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Search memories using semantic similarity.
+
+        OpenMemory uses composite scoring: 0.6×similarity + 0.2×salience +
+        0.1×recency + 0.1×link_weight
 
         Args:
             user_id: User identifier for memory isolation
             query: Search query text
-            limit: Maximum number of results
+            limit: Maximum number of results (k parameter in OpenMemory)
             min_score: Minimum similarity score threshold
-            memory_type: Filter by memory type
-            time_range: Optional time range filter {"start": "ISO8601", "end": "ISO8601"}
+            sectors: Filter by specific sectors (e.g., ["semantic", "procedural"])
+                    Available: semantic, episodic, procedural, emotional, reflective
+            tags: Filter by tags
 
         Returns:
-            List of memory objects sorted by relevance
+            List of memory objects sorted by relevance, each with sectors field
+            Example: [{"id": "...", "content": "...", "sectors": ["semantic"], "score": 0.85}, ...]
         """
         payload = {
             "user_id": str(user_id),
             "query": query,
-            "limit": limit,
-            "min_score": min_score,
+            "k": limit,
         }
 
-        if memory_type:
-            payload["type"] = memory_type
+        # Add filters if specified
+        filters = {}
+        if sectors:
+            filters["sectors"] = sectors
+        if tags:
+            filters["tags"] = tags
 
-        if time_range:
-            payload["time_range"] = time_range
+        if filters:
+            payload["filters"] = filters
 
         logger.info(
             "searching_openmemory",
             user_id=str(user_id),
             query_preview=query[:100],
             limit=limit,
+            sector_filters=sectors,
         )
 
-        result = await self._request("POST", "/api/memory/search", json=payload)
-        return result.get("memories", [])
+        result = await self._request("POST", "/memory/query", json=payload)
+        memories = result.get("memories", [])
+
+        # Log sector distribution in results
+        if memories:
+            all_sectors = []
+            for mem in memories:
+                all_sectors.extend(mem.get("sectors", []))
+            logger.info(
+                "openmemory_search_results",
+                user_id=str(user_id),
+                result_count=len(memories),
+                sectors_found=list(set(all_sectors)),
+            )
+
+        return memories
 
     async def get_conversation_context(
         self,
@@ -237,6 +272,9 @@ class OpenMemoryAdapter:
     ) -> Dict[str, Any]:
         """Store a conversation turn (user + assistant exchange).
 
+        OpenMemory will automatically classify this into appropriate sectors
+        (typically episodic for the interaction, semantic for facts mentioned).
+
         Args:
             user_id: User identifier
             user_message: User's message
@@ -244,7 +282,7 @@ class OpenMemoryAdapter:
             metadata: Additional context (e.g., sources used, query type)
 
         Returns:
-            Created memory object
+            Created memory object with assigned sectors
         """
         conversation_content = f"User: {user_message}\n\nAssistant: {assistant_message}"
 
@@ -259,7 +297,7 @@ class OpenMemoryAdapter:
             user_id=user_id,
             content=conversation_content,
             metadata=combined_metadata,
-            memory_type="conversation",
+            tags=["conversation", "chat"],
         )
 
     async def get_user_memories(

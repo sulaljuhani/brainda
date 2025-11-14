@@ -102,12 +102,23 @@ curl -X POST http://localhost:8000/api/v1/memory \
   -H "Content-Type: application/json" \
   -d '{
     "content": "User prefers dark mode for all applications",
-    "memory_type": "preference",
+    "tags": ["preference", "ui"],
     "metadata": {
       "category": "ui_settings",
       "source": "user_profile"
     }
   }'
+
+# Response will include sectors:
+# {
+#   "success": true,
+#   "data": {
+#     "id": "memory_uuid",
+#     "content": "User prefers dark mode for all applications",
+#     "sectors": ["semantic", "procedural"],
+#     ...
+#   }
+# }
 ```
 
 #### Search Memories
@@ -115,14 +126,25 @@ curl -X POST http://localhost:8000/api/v1/memory \
 Search for relevant memories semantically:
 
 ```bash
+# Basic search
 curl -X POST http://localhost:8000/api/v1/memory/search \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What are the user interface preferences?",
     "limit": 5,
-    "min_score": 0.5,
-    "memory_type": "preference"
+    "min_score": 0.5
+  }'
+
+# Search with sector filtering (only semantic facts)
+curl -X POST http://localhost:8000/api/v1/memory/search \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What are the user interface preferences?",
+    "limit": 5,
+    "sectors": ["semantic"],
+    "tags": ["preference"]
   }'
 ```
 
@@ -162,16 +184,100 @@ curl -X GET http://localhost:8000/api/v1/memory/health \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN"
 ```
 
-## Memory Types
+## Memory Sectors
 
-OpenMemory supports different memory types for organization:
+OpenMemory uses **Hierarchical Memory Decomposition (HMD)** to automatically classify memories into sectors. Each memory is assigned 2-3 relevant sectors and gets one embedding per sector for multi-dimensional recall.
 
-- **conversation**: Chat interactions (automatically stored)
-- **fact**: Explicit facts to remember
-- **preference**: User preferences and settings
-- **event**: Time-based events
-- **procedural**: How-to knowledge
-- **custom**: Any custom type you define
+### Automatic Sector Classification
+
+When you store a memory, OpenMemory analyzes the content and assigns appropriate sectors:
+
+**Available Sectors:**
+
+- **semantic**: Facts and conceptual knowledge
+  - Example: "Paris is the capital of France"
+  - Example: "User's email is user@example.com"
+
+- **episodic**: Specific events and experiences
+  - Example: "Had a productive meeting on Jan 15"
+  - Example: "User mentioned struggling with the login flow"
+
+- **procedural**: How-to knowledge and workflows
+  - Example: "To deploy: run tests, build, then push"
+  - Example: "User prefers reviewing code in small batches"
+
+- **emotional**: Emotional context and sentiment
+  - Example: "User was frustrated with slow performance"
+  - Example: "Excited about the new feature launch"
+
+- **reflective**: Insights and meta-cognition
+  - Example: "Realized the architecture needs refactoring"
+  - Example: "User learns best through hands-on examples"
+
+### Sector Assignment Example
+
+```bash
+# Store a memory
+curl -X POST http://localhost:8000/api/v1/memory \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "User prefers reviewing code in the morning when focused",
+    "tags": ["preference", "workflow"]
+  }'
+
+# Response shows assigned sectors
+{
+  "success": true,
+  "data": {
+    "id": "memory_abc123",
+    "content": "User prefers reviewing code in the morning when focused",
+    "sectors": ["procedural", "semantic"],  # Automatically determined!
+    "embeddings": {
+      "procedural": [...],
+      "semantic": [...]
+    },
+    "salience": 0.8,
+    ...
+  }
+}
+```
+
+### Filtering by Sectors
+
+You can filter searches to specific sectors:
+
+```bash
+# Search only procedural memories (how-to knowledge)
+curl -X POST http://localhost:8000/api/v1/memory/search \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "how does the user prefer to work?",
+    "sectors": ["procedural"],
+    "limit": 5
+  }'
+
+# Search across semantic and episodic
+curl -X POST http://localhost:8000/api/v1/memory/search \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "what happened at the last meeting?",
+    "sectors": ["episodic", "semantic"],
+    "limit": 5
+  }'
+```
+
+### Composite Scoring
+
+OpenMemory ranks search results using:
+- **60%** similarity (semantic match to query)
+- **20%** salience (importance/reinforcement)
+- **10%** recency (how recent the memory is)
+- **10%** link weight (connections to other memories)
+
+This ensures the most relevant and important memories surface first.
 
 ## Advanced Usage
 

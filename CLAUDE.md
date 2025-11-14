@@ -337,12 +337,14 @@ OPENMEMORY_ENABLED=true               # Enable/disable integration
 - `GET /api/v1/memory/context/preview` - Debug conversation context retrieval
 - `GET /api/v1/memory/health` - Check OpenMemory connectivity
 
-**Memory Types**:
-- `conversation`: Automatic chat storage (handled by RAG)
-- `fact`: Explicit facts to remember
-- `preference`: User preferences and settings
-- `event`: Time-based events
-- `procedural`: How-to knowledge
+**Memory Sectors** (automatically determined by OpenMemory):
+- `semantic`: Facts and conceptual knowledge
+- `episodic`: Specific events and experiences
+- `procedural`: How-to knowledge and workflows
+- `emotional`: Emotional context and sentiment
+- `reflective`: Insights and meta-cognition
+
+Each memory is automatically classified into 2-3 relevant sectors with one embedding per sector for multi-dimensional recall. Composite scoring: 60% similarity + 20% salience + 10% recency + 10% link weight.
 
 **User Isolation**: All memories are strictly scoped by `user_id` - one user cannot access another's memories.
 

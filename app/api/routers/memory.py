@@ -13,18 +13,27 @@ router = APIRouter(prefix="/api/v1/memory", tags=["memory"])
 
 
 class MemoryCreateRequest(BaseModel):
-    """Request model for creating a memory."""
+    """Request model for creating a memory.
+
+    OpenMemory will automatically classify the content into appropriate sectors
+    (semantic, episodic, procedural, emotional, reflective).
+    """
     content: str
-    memory_type: Optional[str] = "fact"
+    tags: Optional[List[str]] = None
     metadata: Optional[dict] = None
 
 
 class MemorySearchRequest(BaseModel):
-    """Request model for searching memories."""
+    """Request model for searching memories.
+
+    OpenMemory uses composite scoring: 0.6×similarity + 0.2×salience +
+    0.1×recency + 0.1×link_weight
+    """
     query: str
     limit: Optional[int] = 5
     min_score: Optional[float] = 0.5
-    memory_type: Optional[str] = None
+    sectors: Optional[List[str]] = None  # Filter by sectors: semantic, episodic, procedural, emotional, reflective
+    tags: Optional[List[str]] = None  # Filter by tags
 
 
 class MemoryResponse(BaseModel):
@@ -51,14 +60,26 @@ async def store_memory(
 ):
     """Store a new memory in OpenMemory.
 
-    This endpoint allows you to explicitly store facts, events, or other
-    information that should be remembered for future conversations.
+    OpenMemory will automatically classify your content into appropriate sectors
+    (semantic, episodic, procedural, emotional, reflective) and create multiple
+    embeddings for multi-dimensional recall.
 
     Example:
         {
             "content": "User prefers dark mode for all applications",
-            "memory_type": "preference",
+            "tags": ["preference", "ui"],
             "metadata": {"category": "ui_settings"}
+        }
+
+    Response includes the assigned sectors:
+        {
+            "success": true,
+            "data": {
+                "id": "memory_uuid",
+                "content": "User prefers dark mode...",
+                "sectors": ["semantic", "procedural"],
+                ...
+            }
         }
     """
     service = MemoryService()
@@ -72,7 +93,7 @@ async def store_memory(
     memory = await service.store_memory(
         user_id=user_id,
         content=request.content,
-        memory_type=request.memory_type,
+        tags=request.tags,
         metadata=request.metadata,
     )
 
@@ -90,17 +111,50 @@ async def search_memories(
     request: MemorySearchRequest,
     user_id: UUID = Depends(get_current_user),
 ):
-    """Search memories by semantic similarity.
+    """Search memories by semantic similarity with sector filtering.
 
-    This endpoint searches through stored memories to find relevant information
-    based on the query. Results are ranked by similarity score.
+    OpenMemory ranks results using composite scoring:
+    - 60% similarity (semantic match)
+    - 20% salience (importance)
+    - 10% recency (how recent)
+    - 10% link weight (connections to other memories)
 
-    Example:
+    Example without sector filter:
         {
             "query": "What are the user's UI preferences?",
             "limit": 5,
-            "min_score": 0.5,
-            "memory_type": "preference"
+            "min_score": 0.5
+        }
+
+    Example with sector filter (only search specific memory types):
+        {
+            "query": "How does the user prefer to work?",
+            "limit": 5,
+            "sectors": ["procedural", "semantic"],
+            "tags": ["preference"]
+        }
+
+    Available sectors:
+        - semantic: Facts and conceptual knowledge
+        - episodic: Specific events and experiences
+        - procedural: How-to knowledge and workflows
+        - emotional: Emotional context and sentiment
+        - reflective: Insights and meta-cognition
+
+    Response includes sectors for each memory:
+        {
+            "success": true,
+            "data": {
+                "memories": [
+                    {
+                        "id": "...",
+                        "content": "...",
+                        "sectors": ["semantic", "procedural"],
+                        "score": 0.85,
+                        ...
+                    }
+                ]
+            }
         }
     """
     service = MemoryService()
@@ -116,7 +170,8 @@ async def search_memories(
         query=request.query,
         limit=request.limit,
         min_score=request.min_score,
-        memory_type=request.memory_type,
+        sectors=request.sectors,
+        tags=request.tags,
     )
 
     return {

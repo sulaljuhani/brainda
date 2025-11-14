@@ -113,19 +113,23 @@ class MemoryService:
         self,
         user_id: UUID,
         content: str,
-        memory_type: str = "fact",
+        tags: Optional[List[str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Store a generic memory (fact, event, etc.).
+        """Store a generic memory.
+
+        OpenMemory will automatically determine which sectors (semantic, episodic,
+        procedural, emotional, reflective) apply to this memory.
 
         Args:
             user_id: User identifier
             content: Memory content
-            memory_type: Type of memory (fact, event, procedural, etc.)
+            tags: Optional tags for categorization (e.g., ["fact", "project-alpha"])
             metadata: Additional metadata
 
         Returns:
-            Created memory object or None if disabled/failed
+            Created memory object with assigned sectors, or None if disabled/failed
+            Example: {"id": "...", "sectors": ["semantic", "procedural"], ...}
         """
         if not self.enabled:
             return None
@@ -135,13 +139,14 @@ class MemoryService:
                 user_id=user_id,
                 content=content,
                 metadata=metadata,
-                memory_type=memory_type,
+                tags=tags,
             )
             logger.info(
                 "memory_stored_in_openmemory",
                 user_id=str(user_id),
-                memory_type=memory_type,
+                tags=tags,
                 memory_id=memory.get("id"),
+                sectors=memory.get("sectors", []),
             )
             return memory
         except OpenMemoryError as e:
@@ -158,19 +163,26 @@ class MemoryService:
         query: str,
         limit: int = 5,
         min_score: float = 0.5,
-        memory_type: Optional[str] = None,
+        sectors: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Search memories by semantic similarity.
+
+        OpenMemory ranks results using: 0.6×similarity + 0.2×salience +
+        0.1×recency + 0.1×link_weight
 
         Args:
             user_id: User identifier
             query: Search query
             limit: Maximum results
             min_score: Minimum similarity threshold
-            memory_type: Optional filter by memory type
+            sectors: Filter by specific sectors (e.g., ["semantic", "procedural"])
+                    Available: semantic, episodic, procedural, emotional, reflective
+            tags: Filter by tags
 
         Returns:
-            List of matching memories (empty if disabled/failed)
+            List of matching memories with sectors field (empty if disabled/failed)
+            Example: [{"id": "...", "content": "...", "sectors": ["semantic"], ...}, ...]
         """
         if not self.enabled:
             return []
@@ -181,12 +193,14 @@ class MemoryService:
                 query=query,
                 limit=limit,
                 min_score=min_score,
-                memory_type=memory_type,
+                sectors=sectors,
+                tags=tags,
             )
             logger.info(
                 "searched_memories",
                 user_id=str(user_id),
                 results_count=len(memories),
+                sector_filter=sectors,
             )
             return memories
         except OpenMemoryError as e:
