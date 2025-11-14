@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB - Personal Knowledge Management</title>
+    <style>
+        :root {
+            /* Dark Mode Palette */
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #212121;
+            --bg-tertiary: #2a2a2a;
+            --bg-elevated: #242424;
+
+            --text-primary: #e8e8e8;
+            --text-secondary: #a8a8a8;
+            --text-tertiary: #6e6e6e;
+            --text-inverse: #1a1a1a;
+
+            --accent-primary: #d97706;
+            --accent-hover: #ea9c3e;
+            --accent-active: #b45309;
+
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+
+            --border-subtle: #2a2a2a;
+            --border-default: #3a3a3a;
+            --border-strong: #4a4a4a;
+
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+
+            /* Typography */
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+            /* Spacing */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-12: 3rem;
+
+            /* Border Radius */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+
+            /* Layout */
+            --header-height: 56px;
+            --sidebar-width: 280px;
+            --max-chat-width: 768px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            padding: 0 var(--space-6);
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Layout */
+        .layout {
+            display: flex;
+            margin-top: var(--header-height);
+            height: calc(100vh - var(--header-height));
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            padding: var(--space-4);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.9375rem;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent-primary);
+            border-left: 3px solid var(--accent-primary);
+            padding-left: calc(var(--space-3) - 3px);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border-subtle);
+            margin: var(--space-4) var(--space-4);
+        }
+
+        .recent-section {
+            padding: var(--space-4);
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-3);
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-y: auto;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: var(--max-chat-width);
+            padding: var(--space-6);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .welcome {
+            text-align: center;
+            margin-bottom: var(--space-12);
+        }
+
+        .welcome h1 {
+            font-size: 2.25rem;
+            font-weight: 600;
+            margin-bottom: var(--space-4);
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-8);
+        }
+
+        .capabilities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+            margin-top: var(--space-8);
+        }
+
+        .capability-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .capability-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--border-strong);
+        }
+
+        .capability-icon {
+            width: 32px;
+            height: 32px;
+            margin-bottom: var(--space-3);
+            color: var(--accent-primary);
+        }
+
+        .capability-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            color: var(--text-primary);
+        }
+
+        .capability-desc {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Status Card */
+        .status-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-top: var(--space-8);
+        }
+
+        .status-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-4);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-4);
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-3);
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+        }
+
+        .status-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .status-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+        }
+
+        .status-ok {
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .status-error {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .status-loading {
+            color: var(--text-tertiary);
+        }
+
+        /* API Endpoints */
+        .endpoints-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-top: var(--space-6);
+        }
+
+        .endpoint {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            margin: var(--space-2) 0;
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+        }
+
+        .method {
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .method-get {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--info);
+        }
+
+        .method-post {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .endpoint-path {
+            color: var(--text-secondary);
+        }
+
+        /* Loading Animation */
+        .loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-default);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .chat-container {
+                padding: var(--space-4);
+            }
+
+            .welcome h1 {
+                font-size: 1.75rem;
+            }
+
+            .capabilities {
+                grid-template-columns: 1fr;
+            }
+
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">VIB</div>
+        <div class="header-actions">
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span id="system-status">Checking...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Layout -->
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <nav class="nav-section">
+                <a href="#" class="nav-item active">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+                    <span>Chat</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span>Notes</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    <span>Documents</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <span>Reminders</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <span>Search</span>
+                </a>
+            </nav>
+
+            <div class="divider"></div>
+
+            <div class="recent-section">
+                <h3 class="section-title">System Info</h3>
+                <p style="font-size: 0.875rem; color: var(--text-tertiary); line-height: 1.5;">
+                    VIB v1.0.0 - Stage 8<br>
+                    Multi-user authentication with passkeys and TOTP
+                </p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="chat-container">
+                <div class="welcome">
+                    <h1>Welcome to VIB</h1>
+                    <p>Your personal knowledge management system</p>
+                </div>
+
+                <div class="capabilities">
+                    <div class="capability-card">
+                        <svg class="capability-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <div class="capability-title">Smart Notes</div>
+                        <div class="capability-desc">Create and manage notes with automatic embedding and semantic search</div>
+                    </div>
+
+                    <div class="capability-card">
+                        <svg class="capability-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                        </svg>
+                        <div class="capability-title">RAG Chat</div>
+                        <div class="capability-desc">Chat with your knowledge base using retrieval-augmented generation</div>
+                    </div>
+
+                    <div class="capability-card">
+                        <svg class="capability-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <div class="capability-title">Reminders</div>
+                        <div class="capability-desc">Set time-based reminders with RRULE support for recurring events</div>
+                    </div>
+
+                    <div class="capability-card">
+                        <svg class="capability-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        <div class="capability-title">Documents</div>
+                        <div class="capability-desc">Upload and process PDF, DOCX, TXT files with automatic ingestion</div>
+                    </div>
+                </div>
+
+                <div class="status-card">
+                    <h3 class="status-title">System Status</h3>
+                    <div class="status-grid" id="status-grid">
+                        <div class="status-item">
+                            <span class="status-label">PostgreSQL</span>
+                            <span class="status-value status-loading"><span class="loader"></span></span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Redis</span>
+                            <span class="status-value status-loading"><span class="loader"></span></span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Qdrant</span>
+                            <span class="status-value status-loading"><span class="loader"></span></span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Celery Worker</span>
+                            <span class="status-value status-loading"><span class="loader"></span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoints-card">
+                    <h3 class="status-title">API Endpoints</h3>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/health</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/version</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/metrics</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/v1/notes</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/v1/search</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/v1/chat</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function checkHealth() {
+            try {
+                const response = await fetch('/api/v1/health');
+                const data = await response.json();
+
+                const services = data.services || {};
+                const statusGrid = document.getElementById('status-grid');
+
+                // Update overall status
+                const systemStatus = document.getElementById('system-status');
+                systemStatus.textContent = data.status === 'healthy' ? 'All systems operational' : 'System degraded';
+
+                // Update individual services
+                const serviceMap = {
+                    'postgres': 'PostgreSQL',
+                    'redis': 'Redis',
+                    'qdrant': 'Qdrant',
+                    'celery_worker': 'Celery Worker'
+                };
+
+                statusGrid.innerHTML = '';
+                for (const [key, label] of Object.entries(serviceMap)) {
+                    const status = services[key] || 'unknown';
+                    const statusClass = status === 'ok' ? 'status-ok' : 'status-error';
+                    const statusText = status === 'ok' ? 'OK' : status.toUpperCase();
+
+                    const item = document.createElement('div');
+                    item.className = 'status-item';
+                    item.innerHTML = `
+                        <span class="status-label">${label}</span>
+                        <span class="status-value ${statusClass}">${statusText}</span>
+                    `;
+                    statusGrid.appendChild(item);
+                }
+            } catch (error) {
+                const systemStatus = document.getElementById('system-status');
+                systemStatus.textContent = 'Connection error';
+
+                console.error('Health check failed:', error);
+            }
+        }
+
+        // Initial check
+        checkHealth();
+
+        // Refresh every 30 seconds
+        setInterval(checkHealth, 30000);
+    </script>
+</body>
+</html>

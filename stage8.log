@@ -1,0 +1,123 @@
+
+======================================
+SETUP
+======================================
+
+[14:42:49] Using base URL: http://localhost:8000
+[14:42:49] Waiting for: orchestrator health endpoint (timeout 60s)
+[0;32m[14:42:54] ✓ Condition met after 0s[0m
+[0;32m[14:42:59] ✓ Health endpoint reports healthy (expected=healthy, actual=healthy)[0m
+
+======================================
+STAGE 8: PASSKEYS + MULTI-USER
+======================================
+
+[14:42:59] Running test: stage8_org_table
+[14:42:59] Validating organizations schema
+[0;32m[14:43:00] ✓ Table 'organizations' exists (expected=1, actual=1)[0m
+[0;32m[14:43:01] ✓ Column organizations.id exists (expected=1, actual=1)[0m
+[0;32m[14:43:01] ✓ Column organizations.name exists (expected=1, actual=1)[0m
+[0;32m[14:43:02] ✓ Column organizations.created_at exists (expected=1, actual=1)[0m
+[0;32m[14:43:02] ✓ stage8_org_table passed (3s)[0m
+[14:43:02] Running test: stage8_passkey_table
+[14:43:02] Validating passkey credential schema
+[0;32m[14:43:03] ✓ Table 'passkey_credentials' exists (expected=1, actual=1)[0m
+[0;32m[14:43:03] ✓ Column passkey_credentials.user_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:04] ✓ Column passkey_credentials.credential_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:05] ✓ Column passkey_credentials.public_key exists (expected=1, actual=1)[0m
+[0;32m[14:43:05] ✓ Column passkey_credentials.counter exists (expected=1, actual=1)[0m
+[0;32m[14:43:06] ✓ Foreign key passkey_credentials.user_id references users (expected=1, actual=1)[0m
+[0;32m[14:43:06] ✓ stage8_passkey_table passed (4s)[0m
+[14:43:06] Running test: stage8_totp_table
+[14:43:06] Validating TOTP secret storage
+[0;32m[14:43:07] ✓ Table 'totp_secrets' exists (expected=1, actual=1)[0m
+[0;32m[14:43:07] ✓ Column totp_secrets.user_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:08] ✓ Column totp_secrets.secret exists (expected=1, actual=1)[0m
+[0;32m[14:43:09] ✓ Column totp_secrets.backup_codes exists (expected=1, actual=1)[0m
+[0;32m[14:43:09] ✓ Column totp_secrets.enabled exists (expected=1, actual=1)[0m
+[0;32m[14:43:10] ✓ Foreign key totp_secrets.user_id references users (expected=1, actual=1)[0m
+[0;32m[14:43:10] ✓ stage8_totp_table passed (4s)[0m
+[14:43:10] Running test: stage8_sessions_table
+[14:43:10] Validating sessions schema
+[0;32m[14:43:11] ✓ Table 'sessions' exists (expected=1, actual=1)[0m
+[0;32m[14:43:11] ✓ Column sessions.token exists (expected=1, actual=1)[0m
+[0;32m[14:43:12] ✓ Column sessions.user_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:13] ✓ Column sessions.device_type exists (expected=1, actual=1)[0m
+[0;32m[14:43:13] ✓ Column sessions.expires_at exists (expected=1, actual=1)[0m
+[0;32m[14:43:14] ✓ Column sessions.created_at exists (expected=1, actual=1)[0m
+[0;32m[14:43:15] ✓ Foreign key sessions.user_id references users (expected=1, actual=1)[0m
+[0;32m[14:43:15] ✓ stage8_sessions_table passed (5s)[0m
+[14:43:15] Running test: stage8_multi_user
+[14:43:15] Validating multi-tenant relationships
+[0;32m[14:43:15] ✓ Column users.organization_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:16] ✓ Foreign key users.organization_id references organizations (expected=1, actual=1)[0m
+[0;32m[14:43:16] ✓ stage8_multi_user passed (1s)[0m
+[14:43:16] Running test: stage8_user_isolation
+[14:43:16] Checking user ownership constraints on core tables
+[0;32m[14:43:17] ✓ Column notes.user_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:17] ✓ Foreign key notes.user_id references users (expected=1, actual=1)[0m
+[0;32m[14:43:18] ✓ Column reminders.user_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:19] ✓ Foreign key reminders.user_id references users (expected=1, actual=1)[0m
+[0;32m[14:43:19] ✓ Column calendar_events.user_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:20] ✓ Foreign key calendar_events.user_id references users (expected=1, actual=1)[0m
+[0;32m[14:43:21] ✓ Column documents.user_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:21] ✓ Foreign key documents.user_id references users (expected=1, actual=1)[0m
+[0;32m[14:43:21] ✓ stage8_user_isolation passed (5s)[0m
+[14:43:21] Running test: stage8_totp_flow
+[14:43:21] Exercising TOTP setup and verification endpoints
+[0;32m[14:43:22] ✓ Resolved test user from API token[0m
+[14:43:22] Ensuring TOTP secret is configured and verified
+[0;32m[14:43:24] ✓ TOTP setup endpoint available (expected=200, actual=200)[0m
+[0;32m[14:43:25] ✓ Received TOTP secret[0m
+[0;32m[14:43:25] ✓ Generated current TOTP code[0m
+[0;32m[14:43:25] ✓ TOTP verify endpoint succeeded (expected=200, actual=200)[0m
+[0;32m[14:43:25] ✓ TOTP verification accepted code (expected=true, actual=true)[0m
+[0;32m[14:43:26] ✓ TOTP secret marked enabled in database (expected=t, actual=t)[0m
+[0;32m[14:43:26] ✓ TOTP setup + verification completed[0m
+[0;32m[14:43:26] ✓ stage8_totp_flow passed (5s)[0m
+[14:43:26] Running test: stage8_session_endpoints
+[14:43:26] Testing session creation via TOTP and logout invalidation
+[14:43:26] Ensuring TOTP secret is configured and verified
+[0;32m[14:43:28] ✓ TOTP setup endpoint available (expected=200, actual=200)[0m
+[0;32m[14:43:28] ✓ Received TOTP secret[0m
+[0;32m[14:43:28] ✓ Generated current TOTP code[0m
+[0;32m[14:43:28] ✓ TOTP verify endpoint succeeded (expected=200, actual=200)[0m
+[0;32m[14:43:28] ✓ TOTP verification accepted code (expected=true, actual=true)[0m
+[0;32m[14:43:29] ✓ TOTP secret marked enabled in database (expected=t, actual=t)[0m
+[0;32m[14:43:29] ✓ Generated TOTP code for authentication[0m
+[0;32m[14:43:29] ✓ TOTP authenticate endpoint returned 200 (expected=200, actual=200)[0m
+[0;32m[14:43:30] ✓ Received session token[0m
+[0;31m[14:43:30] ✗ Session persisted in database (expected=1, actual=0)[0m
+[0;32m[14:43:30] ✓ Logout endpoint invalidated session (expected=200, actual=200)[0m
+[0;32m[14:43:31] ✓ Session removed after logout (expected=0, actual=0)[0m
+[0;32m[14:43:31] ✓ stage8_session_endpoints passed (5s)[0m
+[14:43:31] Running test: stage8_auth_audit
+[14:43:31] Validating auth audit log schema
+[0;32m[14:43:32] ✓ Table 'auth_audit_log' exists (expected=1, actual=1)[0m
+[0;32m[14:43:32] ✓ Column auth_audit_log.user_id exists (expected=1, actual=1)[0m
+[0;32m[14:43:33] ✓ Column auth_audit_log.event_type exists (expected=1, actual=1)[0m
+[0;32m[14:43:34] ✓ Column auth_audit_log.created_at exists (expected=1, actual=1)[0m
+[0;32m[14:43:34] ✓ stage8_auth_audit passed (3s)[0m
+
+======================================
+TEST SUMMARY
+======================================
+
+Total Tests: 9
+Passed: 9
+Failed: 0
+Warnings: 0
+Duration: 0m 46s
+Pass Rate: 100.0%
+
+SLO Status:
+  - Reminder fire lag p95: unavailable
+  - Push success rate: unavailable
+  - Document ingestion p95: unavailable
+  - Vector search p95: unavailable
+
+Logs: /tmp/vib-test-20251114-174248/run.log
+Artifacts: /tmp/vib-test-20251114-174248
+[14:43:34] JSON report: /tmp/vib-test-20251114-174248/results.json
+[14:43:34] Cleaning up test data...
+[0;32m[14:43:37] ✓ Cleanup complete[0m

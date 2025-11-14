@@ -1,0 +1,88 @@
+
+======================================
+SETUP
+======================================
+
+[14:41:06] Using base URL: http://localhost:8000
+[14:41:06] Waiting for: orchestrator health endpoint (timeout 60s)
+[0;32m[14:41:11] ✓ Condition met after 0s[0m
+[0;32m[14:41:16] ✓ Health endpoint reports healthy (expected=healthy, actual=healthy)[0m
+
+======================================
+STAGE 5: MOBILE + IDEMPOTENCY
+======================================
+
+[14:41:16] Running test: stage5_idempotency_table
+[14:41:16] Checking idempotency_keys table exists...
+[0;32m[14:41:17] ✓ idempotency_keys table exists (expected=1, actual=1)[0m
+[0;32m[14:41:17] ✓ stage5_idempotency_table passed (1s)[0m
+[14:41:17] Running test: stage5_idempotency_create
+[14:41:17] Testing idempotency key with reminder creation...
+[14:41:17] Creating reminder with idempotency key: test-idem-20251114-174106-12620
+[0;32m[14:41:18] ✓ Reminder ID returned[0m
+[0;32m[14:41:18] ✓ Idempotency key stored in database (expected=1, actual=1)[0m
+[0;32m[14:41:18] ✓ stage5_idempotency_create passed (1s)[0m
+[14:41:18] Running test: stage5_idempotency_duplicate
+[14:41:18] Testing duplicate prevention with same idempotency key...
+[14:41:18] First request with key: test-dup-20251114-174106-23939
+[0;32m[14:41:19] ✓ First response includes reminder ID[0m
+[14:41:19] Second request with same key: test-dup-20251114-174106-23939
+[0;32m[14:41:19] ✓ Second response includes reminder ID[0m
+[0;32m[14:41:19] ✓ X-Idempotency-Replay header present: x-idempotency-replay: true[0m
+[0;32m[14:41:20] ✓ Only one reminder created despite duplicate request (expected=1, actual=1)[0m
+[0;32m[14:41:20] ✓ stage5_idempotency_duplicate passed (2s)[0m
+[14:41:20] Running test: stage5_idempotency_header
+[14:41:20] Testing idempotency replay header...
+[0;32m[14:41:21] ✓ X-Idempotency-Replay header found in response[0m
+[0;32m[14:41:21] ✓ stage5_idempotency_header passed (1s)[0m
+[14:41:21] Running test: stage5_idempotency_aggressive
+[14:41:21] Testing aggressive retry scenario (10 rapid requests with same key)...
+[14:41:21] Sending 10 parallel requests with same idempotency key...
+[14:41:23] Checking database for duplicate reminders...
+[0;32m[14:41:24] ✓ Aggressive retry test passed: only 1 reminder created from 10 concurrent requests[0m
+[0;32m[14:41:24] ✓ stage5_idempotency_aggressive passed (3s)[0m
+[14:41:24] Running test: stage5_idempotency_different_key
+[14:41:24] Testing that different idempotency keys create separate reminders...
+[14:41:24] Creating reminder with key1: test-key1-20251114-174106-10561
+[14:41:24] Creating reminder with key2: test-key2-20251114-174106-12594
+[0;32m[14:41:25] ✓ Two separate reminders created with different idempotency keys (expected=2, actual=2)[0m
+[0;32m[14:41:25] ✓ stage5_idempotency_different_key passed (1s)[0m
+[14:41:25] Running test: stage5_idempotency_expiry
+[14:41:25] Testing idempotency key expiry field...
+[0;32m[14:41:26] ✓ Idempotency key has expiry: 2025-11-15 14:41:26.053424+00[0m
+[0;32m[14:41:26] ✓ stage5_idempotency_expiry passed (1s)[0m
+[14:41:26] Running test: stage5_idempotency_cleanup
+[14:41:26] Testing idempotency cleanup job exists...
+[1;33m[14:41:27] ⚠ Idempotency cleanup task not found in Celery (may not be implemented yet)[0m
+[0;32m[14:41:27] ✓ stage5_idempotency_cleanup passed (1s)[0m
+[14:41:27] Running test: stage5_mobile_endpoints
+[14:41:27] Testing mobile-specific API endpoints are accessible...
+[0;32m[14:41:27] ✓ Reminders endpoint accessible for mobile[0m
+[0;32m[14:41:27] ✓ stage5_mobile_endpoints passed (0s)[0m
+[14:41:27] Running test: stage5_session_token
+[14:41:27] Testing session token support (if implemented)...
+[0;32m[14:41:28] ✓ Sessions table exists (session token support implemented)[0m
+[0;32m[14:41:28] ✓ stage5_session_token passed (1s)[0m
+
+======================================
+TEST SUMMARY
+======================================
+
+Total Tests: 10
+Passed: 10
+Failed: 0
+Warnings: 1
+Duration: 0m 22s
+Pass Rate: 100.0%
+
+SLO Status:
+  - Reminder fire lag p95: unavailable
+  - Push success rate: unavailable
+  - Document ingestion p95: unavailable
+  - Vector search p95: unavailable
+
+Logs: /tmp/vib-test-20251114-174106/run.log
+Artifacts: /tmp/vib-test-20251114-174106
+[14:41:28] JSON report: /tmp/vib-test-20251114-174106/results.json
+[14:41:28] Cleaning up test data...
+[0;32m[14:41:31] ✓ Cleanup complete[0m

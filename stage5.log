@@ -1,0 +1,51 @@
+
+======================================
+SETUP
+======================================
+
+[14:39:26] Using base URL: http://localhost:8000
+[14:39:26] Waiting for: orchestrator health endpoint (timeout 60s)
+[0;32m[14:39:32] ✓ Condition met after 0s[0m
+[0;32m[14:39:37] ✓ Health endpoint reports healthy (expected=healthy, actual=healthy)[0m
+
+======================================
+STAGE 5: MOBILE + IDEMPOTENCY
+======================================
+
+[14:39:37] Running test: stage5_idempotency_table
+[14:39:37] Checking idempotency_keys table exists...
+[0;32m[14:39:38] ✓ idempotency_keys table exists (expected=1, actual=1)[0m
+[0;32m[14:39:38] ✓ stage5_idempotency_table passed (1s)[0m
+[14:39:38] Running test: stage5_idempotency_create
+[14:39:38] Testing idempotency key with reminder creation...
+[14:39:38] Creating reminder with idempotency key: test-idem-20251114-173926-12644
+[0;32m[14:39:38] ✓ Reminder ID returned[0m
+[0;32m[14:39:39] ✓ Idempotency key stored in database (expected=1, actual=1)[0m
+[0;32m[14:39:39] ✓ stage5_idempotency_create passed (1s)[0m
+[14:39:39] Running test: stage5_idempotency_duplicate
+[14:39:39] Testing duplicate prevention with same idempotency key...
+[14:39:39] First request with key: test-dup-20251114-173926-32435
+[0;32m[14:39:39] ✓ First response includes reminder ID[0m
+[14:39:39] Second request with same key: test-dup-20251114-173926-32435
+[0;32m[14:39:40] ✓ Second response includes reminder ID[0m
+[0;32m[14:39:40] ✓ X-Idempotency-Replay header present: x-idempotency-replay: true[0m
+[0;32m[14:39:40] ✓ Only one reminder created despite duplicate request (expected=1, actual=1)[0m
+[0;32m[14:39:40] ✓ stage5_idempotency_duplicate passed (1s)[0m
+[14:39:40] Running test: stage5_idempotency_header
+[14:39:40] Testing idempotency replay header...
+[0;32m[14:39:41] ✓ X-Idempotency-Replay header found in response[0m
+[0;32m[14:39:41] ✓ stage5_idempotency_header passed (1s)[0m
+[14:39:41] Running test: stage5_idempotency_aggressive
+[14:39:41] Testing aggressive retry scenario (10 rapid requests with same key)...
+[14:39:41] Sending 10 parallel requests with same idempotency key...
+[14:39:43] Checking database for duplicate reminders...
+[0;32m[14:39:44] ✓ Aggressive retry test passed: only 1 reminder created from 10 concurrent requests[0m
+[0;32m[14:39:44] ✓ stage5_idempotency_aggressive passed (3s)[0m
+[14:39:44] Running test: stage5_idempotency_different_key
+[14:39:44] Testing that different idempotency keys create separate reminders...
+[14:39:44] Creating reminder with key1: test-key1-20251114-173926-9
+[14:39:45] Creating reminder with key2: test-key2-20251114-173926-15783
+[0;31m[14:39:45] ✗ Same reminder ID returned for different idempotency keys! id=224dc7c0-3951-4a2e-aebd-9b3d68345cb2[0m
+[0;31m[14:39:45] ✗ stage5_idempotency_different_key failed[0m
+[14:39:45] Cleaning up test data...
+[0;32m[14:39:48] ✓ Cleanup complete[0m

@@ -1,0 +1,109 @@
+
+======================================
+SETUP
+======================================
+
+[14:44:50] Using base URL: http://localhost:8000
+[14:44:50] Waiting for: orchestrator health endpoint (timeout 60s)
+[0;32m[14:44:56] ✓ Condition met after 0s[0m
+[0;32m[14:45:01] ✓ Health endpoint reports healthy (expected=healthy, actual=healthy)[0m
+
+======================================
+STAGE 4: BACKUPS + RETENTION + OBSERVABILITY
+======================================
+
+[14:45:01] Running test: stage4_metrics_defined
+[0;32m[14:45:01] ✓ stage4_metrics_defined passed (0s)[0m
+[14:45:01] Running test: stage4_metrics_non_zero
+[0;32m[14:45:02] ✓ Notes created metric non-zero[0m
+[0;32m[14:45:02] ✓ stage4_metrics_non_zero passed (1s)[0m
+[14:45:02] Running test: stage4_metrics_histograms
+[0;32m[14:45:02] ✓ Reminder fire lag histogram exported[0m
+[0;32m[14:45:02] ✓ stage4_metrics_histograms passed (0s)[0m
+[14:45:02] Running test: stage4_metrics_gauges
+[0;32m[14:45:03] ✓ stage4_metrics_gauges passed (1s)[0m
+[14:45:03] Running test: stage4_metrics_counters
+[0;32m[14:45:13] ✓ API request counter increments[0m
+[0;32m[14:45:13] ✓ stage4_metrics_counters passed (10s)[0m
+[14:45:13] Running test: stage4_slo_reminder
+[1;33m[14:45:13] ⚠ Reminder lag metric lacks samples[0m
+[0;32m[14:45:13] ✓ stage4_slo_reminder passed (0s)[0m
+[14:45:13] Running test: stage4_slo_push
+[1;33m[14:45:14] ⚠ Push success rate unavailable[0m
+[0;32m[14:45:14] ✓ stage4_slo_push passed (1s)[0m
+[14:45:14] Running test: stage4_slo_document
+[1;33m[14:45:14] ⚠ Document ingestion histogram empty[0m
+[0;32m[14:45:14] ✓ stage4_slo_document passed (0s)[0m
+[14:45:14] Running test: stage4_slo_vector
+[1;33m[14:45:14] ⚠ Vector search histogram missing[0m
+[0;32m[14:45:14] ✓ stage4_slo_vector passed (0s)[0m
+[14:45:14] Running test: stage4_backup_script
+[0;32m[14:45:14] ✓ Backup script present[0m
+[0;32m[14:45:14] ✓ stage4_backup_script passed (0s)[0m
+[14:45:14] Running test: stage4_backup_run
+[0;32m[14:45:22] ✓ Backup timestamp recorded[0m
+[0;32m[14:45:22] ✓ stage4_backup_run passed (8s)[0m
+[14:45:22] Running test: stage4_backup_postgres
+[0;32m[14:45:22] ✓ Postgres dump created[0m
+[0;32m[14:45:22] ✓ stage4_backup_postgres passed (0s)[0m
+[14:45:22] Running test: stage4_backup_qdrant
+[0;32m[14:45:22] ✓ Qdrant snapshot created[0m
+[0;32m[14:45:23] ✓ stage4_backup_qdrant passed (1s)[0m
+[14:45:23] Running test: stage4_backup_files
+[0;32m[14:45:23] ✓ Vault archive present[0m
+[0;32m[14:45:23] ✓ Uploads archive present[0m
+[0;32m[14:45:23] ✓ stage4_backup_files passed (0s)[0m
+[14:45:23] Running test: stage4_backup_manifest
+[0;32m[14:45:23] ✓ Backup manifest present[0m
+[0;32m[14:45:23] ✓ Manifest references timestamp[0m
+[0;32m[14:45:23] ✓ stage4_backup_manifest passed (0s)[0m
+[14:45:23] Running test: stage4_restore_script
+[0;32m[14:45:23] ✓ Restore script present[0m
+[0;32m[14:45:23] ✓ stage4_restore_script passed (0s)[0m
+[14:45:23] Running test: stage4_restore_temp_db
+[0;32m[14:45:44] ✓ Temp database restored (expected=1, actual=1)[0m
+[0;32m[14:45:45] ✓ stage4_restore_temp_db passed (22s)[0m
+[14:45:45] Running test: stage4_retention_scheduler
+[0;32m[14:45:45] ✓ Celery beat running[0m
+[0;32m[14:45:45] ✓ stage4_retention_scheduler passed (0s)[0m
+[14:45:45] Running test: stage4_retention_cleanup
+[0;32m[14:45:54] ✓ Retention cleanup task invoked[0m
+[0;32m[14:45:54] ✓ stage4_retention_cleanup passed (9s)[0m
+[14:45:54] Running test: stage4_retention_metrics
+[0;32m[14:45:54] ✓ Retention cleanup metric reports work (1 > 0)[0m
+[0;32m[14:45:54] ✓ stage4_retention_metrics passed (0s)[0m
+[14:45:54] Running test: stage4_db_size
+[0;32m[14:45:56] ✓ DB size script runs[0m
+[0;32m[14:45:56] ✓ stage4_db_size passed (1s)[0m
+[14:45:56] Running test: stage4_db_vacuum
+[0;32m[14:45:56] ✓ VACUUM completed[0m
+[0;32m[14:45:56] ✓ stage4_db_vacuum passed (0s)[0m
+[14:45:56] Running test: stage4_metrics_prom
+[0;32m[14:45:56] ✓ Metrics endpoint in Prometheus format[0m
+[0;32m[14:45:56] ✓ stage4_metrics_prom passed (0s)[0m
+[14:45:56] Running test: stage4_manifest_counts
+[0;32m[14:45:56] ✓ Manifest lists artifacts (3 > 0)[0m
+[0;32m[14:45:56] ✓ stage4_manifest_counts passed (0s)[0m
+
+======================================
+TEST SUMMARY
+======================================
+
+Total Tests: 24
+Passed: 24
+Failed: 0
+Warnings: 4
+Duration: 1m 6s
+Pass Rate: 100.0%
+
+SLO Status:
+  - Reminder fire lag p95: nans (target < 5s)
+  - Push success rate: unavailable
+  - Document ingestion p95: nans (target < 120s)
+  - Vector search p95: nanms (target < 200ms)
+
+Logs: /tmp/vib-test-20251114-174450/run.log
+Artifacts: /tmp/vib-test-20251114-174450
+[14:45:57] JSON report: /tmp/vib-test-20251114-174450/results.json
+[14:45:57] Cleaning up test data...
+[0;32m[14:46:00] ✓ Cleanup complete[0m

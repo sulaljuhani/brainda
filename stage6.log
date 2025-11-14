@@ -1,0 +1,114 @@
+
+======================================
+SETUP
+======================================
+
+[14:41:38] Using base URL: http://localhost:8000
+[14:41:38] Waiting for: orchestrator health endpoint (timeout 60s)
+[0;32m[14:41:43] ✓ Condition met after 0s[0m
+[0;32m[14:41:49] ✓ Health endpoint reports healthy (expected=healthy, actual=healthy)[0m
+
+======================================
+STAGE 6: CALENDAR + RRULE
+======================================
+
+[14:41:49] Running test: stage6_calendar_table
+[14:41:49] Checking calendar_events table exists...
+[0;32m[14:41:49] ✓ calendar_events table exists (expected=1, actual=1)[0m
+[0;32m[14:41:49] ✓ stage6_calendar_table passed (0s)[0m
+[14:41:49] Running test: stage6_calendar_create
+[14:41:49] Testing calendar event creation via API...
+[0;32m[14:41:50] ✓ Calendar event ID returned[0m
+[0;32m[14:41:50] ✓ Calendar event title returned (expected=Test Event 20251114-174138, actual=Test Event 20251114-174138)[0m
+[0;32m[14:41:51] ✓ Calendar event persisted with correct title (expected=Test Event 20251114-174138, actual=Test Event 20251114-174138)[0m
+[0;32m[14:41:51] ✓ stage6_calendar_create passed (2s)[0m
+[14:41:51] Running test: stage6_calendar_db_record
+[14:41:51] Testing calendar event persisted in database...
+[0;32m[14:41:51] ✓ Calendar event ID returned[0m
+[0;32m[14:41:52] ✓ Calendar event found in database (expected=1, actual=1)[0m
+[0;32m[14:41:52] ✓ stage6_calendar_db_record passed (1s)[0m
+[14:41:52] Running test: stage6_calendar_list
+[14:41:52] Testing calendar events list endpoint...
+[0;32m[14:41:52] ✓ Calendar event ID returned[0m
+[0;32m[14:41:52] ✓ Calendar events list request succeeded[0m
+[0;32m[14:41:52] ✓ Calendar list endpoint returned created event[0m
+[0;32m[14:41:53] ✓ stage6_calendar_list passed (1s)[0m
+[14:41:53] Running test: stage6_calendar_update
+[14:41:53] Testing calendar event update...
+[0;32m[14:41:53] ✓ Calendar event ID returned[0m
+[0;32m[14:41:53] ✓ Calendar event update returns 200[0m
+[0;32m[14:41:53] ✓ Calendar update echoed new title (expected=Updated Event 20251114-174138, actual=Updated Event 20251114-174138)[0m
+[0;32m[14:41:54] ✓ Calendar event title updated in database (expected=Updated Event 20251114-174138, actual=Updated Event 20251114-174138)[0m
+[0;32m[14:41:54] ✓ stage6_calendar_update passed (1s)[0m
+[14:41:54] Running test: stage6_calendar_delete
+[14:41:54] Testing calendar event deletion...
+[0;32m[14:41:54] ✓ Calendar event ID returned[0m
+[0;32m[14:41:54] ✓ Calendar event delete returns 200[0m
+[0;32m[14:41:55] ✓ Event status set to cancelled (expected=cancelled, actual=cancelled)[0m
+[0;32m[14:41:55] ✓ stage6_calendar_delete passed (1s)[0m
+[14:41:55] Running test: stage6_rrule_daily
+[14:41:55] Testing calendar event with daily RRULE...
+[0;32m[14:41:56] ✓ Calendar event ID returned[0m
+[0;32m[14:41:56] ✓ RRULE stored correctly in database (expected=FREQ=DAILY;COUNT=7, actual=FREQ=DAILY;COUNT=7)[0m
+[0;32m[14:41:56] ✓ stage6_rrule_daily passed (1s)[0m
+[14:41:56] Running test: stage6_rrule_weekly
+[14:41:57] Testing calendar event with weekly RRULE...
+[0;32m[14:41:57] ✓ Calendar event ID returned[0m
+[0;32m[14:41:58] ✓ Weekly RRULE stored correctly (expected=FREQ=WEEKLY;BYDAY=MO;COUNT=4, actual=FREQ=WEEKLY;BYDAY=MO;COUNT=4)[0m
+[0;32m[14:41:58] ✓ stage6_rrule_weekly passed (2s)[0m
+[14:41:58] Running test: stage6_rrule_expansion
+[14:41:58] Testing RRULE expansion in list endpoint...
+[0;32m[14:41:58] ✓ Calendar event ID returned[0m
+[0;32m[14:41:58] ✓ Calendar events list request succeeded[0m
+[0;32m[14:41:58] ✓ RRULE expanded correctly: 5 instances found[0m
+[0;32m[14:41:58] ✓ stage6_rrule_expansion passed (0s)[0m
+[14:41:59] Running test: stage6_rrule_validation
+[14:41:59] Testing RRULE validation (should reject invalid rules)...
+[0;32m[14:41:59] ✓ Invalid RRULE rejected with status 422[0m
+[0;32m[14:41:59] ✓ stage6_rrule_validation passed (0s)[0m
+[14:41:59] Running test: stage6_reminder_link
+[14:41:59] Testing linking reminder to calendar event...
+[0;32m[14:41:59] ✓ Calendar event ID returned[0m
+[0;32m[14:42:00] ✓ Reminder ID returned[0m
+[0;32m[14:42:00] ✓ Reminder update returned 200[0m
+[0;32m[14:42:00] ✓ Reminder response reflects linked event (expected=4d12d9e1-9eab-42b7-9bf7-074190c5c164, actual=4d12d9e1-9eab-42b7-9bf7-074190c5c164)[0m
+[0;32m[14:42:01] ✓ Reminder linked to calendar event (expected=4d12d9e1-9eab-42b7-9bf7-074190c5c164, actual=4d12d9e1-9eab-42b7-9bf7-074190c5c164)[0m
+[0;32m[14:42:01] ✓ stage6_reminder_link passed (2s)[0m
+[14:42:01] Running test: stage6_weekly_view
+[14:42:01] Testing weekly calendar view API...
+[0;32m[14:42:01] ✓ Calendar event ID returned[0m
+[0;32m[14:42:01] ✓ Calendar events list request succeeded[0m
+[0;32m[14:42:01] ✓ Weekly calendar view returned the created event[0m
+[0;32m[14:42:01] ✓ stage6_weekly_view passed (0s)[0m
+[14:42:01] Running test: stage6_timezone
+[14:42:01] Testing calendar event timezone handling...
+[0;32m[14:42:02] ✓ Calendar event ID returned[0m
+[0;32m[14:42:03] ✓ Calendar event timezone stored correctly (expected=America/New_York, actual=America/New_York)[0m
+[0;32m[14:42:03] ✓ stage6_timezone passed (2s)[0m
+[14:42:03] Running test: stage6_user_isolation
+[14:42:03] Testing calendar events are isolated by user...
+[0;32m[14:42:03] ✓ calendar_events table has user_id column for isolation[0m
+[0;32m[14:42:03] ✓ stage6_user_isolation passed (0s)[0m
+
+======================================
+TEST SUMMARY
+======================================
+
+Total Tests: 14
+Passed: 14
+Failed: 0
+Warnings: 0
+Duration: 0m 25s
+Pass Rate: 100.0%
+
+SLO Status:
+  - Reminder fire lag p95: unavailable
+  - Push success rate: unavailable
+  - Document ingestion p95: unavailable
+  - Vector search p95: unavailable
+
+Logs: /tmp/vib-test-20251114-174138/run.log
+Artifacts: /tmp/vib-test-20251114-174138
+[14:42:04] JSON report: /tmp/vib-test-20251114-174138/results.json
+[14:42:04] Cleaning up test data...
+[0;32m[14:42:07] ✓ Cleanup complete[0m

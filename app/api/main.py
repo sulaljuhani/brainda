@@ -5,7 +5,8 @@ from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Header, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import logging
 import structlog
@@ -390,117 +391,130 @@ app.add_middleware(
 # Health check
 @app.get("/api/v1/health")
 async def health_check():
-    """Check health of all services"""
+    """Check health of all services quickly with timeboxed, concurrent checks."""
     import redis
     import httpx
-    
+
     health = {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
-        "services": {}
+        "services": {},
     }
-    
-    # Check Postgres
-    logger.info("checking_postgres")
-    conn = None
-    try:
-        conn = await connect_with_json_codec(os.getenv("DATABASE_URL"))
-        await conn.execute("SELECT 1")
-        pg_conns = await conn.fetchval("SELECT COUNT(*) FROM pg_stat_activity")
-        postgres_connections.set(int(pg_conns))
-        health["services"]["postgres"] = "ok"
-        logger.info("postgres_ok")
-    except Exception as e:
-        health["services"]["postgres"] = "error"
-        health["status"] = "unhealthy"
-        logger.error("postgres_health_check_failed", error=str(e))
-    finally:
-        if conn:
-            await conn.close()
-    
-    # Check Redis
-    logger.info("checking_redis")
-    r = None
-    try:
-        r = redis.from_url(os.getenv("REDIS_URL"))
-        r.ping()
-        celery_queue_depth.labels(queue_name="celery").set(r.llen("celery"))
-        celery_queue_depth.labels(queue_name="document_ingest").set(
-            r.llen("document_ingest")
-        )
-        redis_info = r.info("memory")
-        redis_memory_bytes.set(int(redis_info.get("used_memory", 0)))
-        health["services"]["redis"] = "ok"
-        logger.info("redis_ok")
-    except Exception as e:
-        health["services"]["redis"] = "error"
-        health["status"] = "unhealthy"
-        logger.error("redis_health_check_failed", error=str(e))
-    finally:
-        if r:
-            try:
-                r.close()
-            except Exception:
-                pass
-    
-    # Check Qdrant
-    logger.info("checking_qdrant")
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{os.getenv('QDRANT_URL')}/collections")
-            if resp.status_code == 200:
-                health["services"]["qdrant"] = "ok"
-                logger.info("qdrant_ok")
-                collection_name = os.getenv("QDRANT_COLLECTION", "knowledge_base")
+
+    async def check_postgres():
+        logger.info("checking_postgres")
+        conn = None
+        try:
+            conn = await connect_with_json_codec(os.getenv("DATABASE_URL"))
+            await conn.execute("SELECT 1")
+            pg_conns = await conn.fetchval("SELECT COUNT(*) FROM pg_stat_activity")
+            postgres_connections.set(int(pg_conns))
+            health["services"]["postgres"] = "ok"
+            logger.info("postgres_ok")
+        except Exception as e:
+            health["services"]["postgres"] = "error"
+            health["status"] = "unhealthy"
+            logger.error("postgres_health_check_failed", error=str(e))
+        finally:
+            if conn:
+                await conn.close()
+
+    async def check_redis():
+        logger.info("checking_redis")
+        r = None
+        try:
+            r = redis.from_url(os.getenv("REDIS_URL"))
+            r.ping()
+            celery_queue_depth.labels(queue_name="celery").set(r.llen("celery"))
+            celery_queue_depth.labels(queue_name="document_ingest").set(r.llen("document_ingest"))
+            redis_info = r.info("memory")
+            redis_memory_bytes.set(int(redis_info.get("used_memory", 0)))
+            health["services"]["redis"] = "ok"
+            logger.info("redis_ok")
+        except Exception as e:
+            health["services"]["redis"] = "error"
+            health["status"] = "unhealthy"
+            logger.error("redis_health_check_failed", error=str(e))
+        finally:
+            if r:
                 try:
-                    client = QdrantClient(url=os.getenv("QDRANT_URL"))
-                    collection_info = client.get_collection(
-                        collection_name=collection_name
-                    )
-                    points_count = getattr(collection_info, "points_count", None)
-                    if points_count is None and hasattr(collection_info, "result"):
-                        points_count = getattr(collection_info.result, "points_count", 0)
-                    qdrant_points_count.labels(
-                        collection_name=collection_name
-                    ).set(points_count or 0)
-                except Exception as err:
-                    logger.warning(
-                        "qdrant_points_count_update_failed", error=str(err)
-                    )
-            else:
-                health["services"]["qdrant"] = "error"
-                health["status"] = "unhealthy"
-                logger.error("qdrant_health_check_failed", status_code=resp.status_code)
-    except Exception as e:
-        health["services"]["qdrant"] = "error"
-        health["status"] = "unhealthy"
-        logger.error("qdrant_health_check_failed", error=str(e))
-    
-    # Check Celery worker (via Redis)
-    logger.info("checking_celery")
-    celery_app = None
-    try:
+                    r.close()
+                except Exception:
+                    pass
+
+    async def check_qdrant():
+        logger.info("checking_qdrant")
+        try:
+            timeout = httpx.Timeout(2.0, connect=2.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                base = os.getenv("QDRANT_URL")
+                resp = await client.get(f"{base}/collections")
+                if resp.status_code == 200:
+                    health["services"]["qdrant"] = "ok"
+                    logger.info("qdrant_ok")
+                    collection_name = os.getenv("QDRANT_COLLECTION", "knowledge_base")
+                    try:
+                        details = await client.get(f"{base}/collections/{collection_name}")
+                        if details.status_code == 200:
+                            data = details.json()
+                            points_count = 0
+                            if isinstance(data, dict):
+                                result = data.get("result", {})
+                                points_count = int(result.get("points_count", 0) or 0)
+                            qdrant_points_count.labels(collection_name=collection_name).set(points_count)
+                    except Exception as err:
+                        logger.warning("qdrant_points_count_update_failed", error=str(err))
+                else:
+                    health["services"]["qdrant"] = "error"
+                    health["status"] = "unhealthy"
+                    logger.error("qdrant_health_check_failed", status_code=resp.status_code)
+        except Exception as e:
+            health["services"]["qdrant"] = "error"
+            health["status"] = "unhealthy"
+            logger.error("qdrant_health_check_failed", error=str(e))
+
+    async def check_celery():
+        logger.info("checking_celery")
         from celery import Celery
-        celery_app = Celery(broker=os.getenv("REDIS_URL"))
-        inspector = celery_app.control.inspect(timeout=5.0)
-        stats = inspector.stats()
-        if stats:
-            health["services"]["celery_worker"] = "ok"
-            logger.info("celery_ok")
-        else:
-            health["services"]["celery_worker"] = "no_workers"
-            health["status"] = "degraded"
-            logger.warning("celery_no_workers")
-    except Exception as e:
-        health["services"]["celery_worker"] = "error"
-        logger.error("celery_health_check_failed", error=str(e))
-    finally:
-        if celery_app:
-            try:
-                celery_app.close()
-            except Exception:
-                pass
-    
+
+        celery_app = None
+        try:
+            celery_app = Celery(broker=os.getenv("REDIS_URL"))
+            # Use a fast ping instead of heavy stats call
+            def _ping():
+                try:
+                    return celery_app.control.ping(timeout=2.0)
+                except Exception:
+                    return None
+
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(None, _ping)
+            if result:
+                health["services"]["celery_worker"] = "ok"
+                logger.info("celery_ok")
+            else:
+                health["services"]["celery_worker"] = "no_workers"
+                health["status"] = "degraded"
+                logger.warning("celery_no_workers")
+        except Exception as e:
+            health["services"]["celery_worker"] = "error"
+            logger.error("celery_health_check_failed", error=str(e))
+        finally:
+            if celery_app:
+                try:
+                    celery_app.close()
+                except Exception:
+                    pass
+
+    # Run checks concurrently to minimize latency
+    await asyncio.gather(
+        check_postgres(),
+        check_redis(),
+        check_qdrant(),
+        check_celery(),
+        return_exceptions=True,
+    )
+
     status_code = 200 if health["status"] == "healthy" else 503
     return health
 
@@ -873,6 +887,22 @@ app.include_router(calendar.router)
 app.include_router(google_calendar.router)
 app.include_router(auth.router)
 app.include_router(totp.router)
+
+# Mount static files from web/public directory
+# This must be done AFTER all API routes are registered
+WEB_PUBLIC_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "public")
+if os.path.exists(WEB_PUBLIC_DIR):
+    app.mount("/static", StaticFiles(directory=WEB_PUBLIC_DIR), name="static")
+
+# Root route to serve index.html
+@app.get("/")
+async def read_root():
+    """Serve the main UI"""
+    index_path = os.path.join(WEB_PUBLIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    else:
+        return {"message": "VIB API is running", "version": "1.0.0", "docs": "/docs"}
 
 if __name__ == "__main__":
     import uvicorn

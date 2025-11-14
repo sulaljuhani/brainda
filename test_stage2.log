@@ -1,0 +1,36 @@
+
+======================================
+SETUP
+======================================
+
+[14:19:58] Using base URL: http://localhost:8000
+[14:19:58] Waiting for: orchestrator health endpoint (timeout 60s)
+[0;32m[14:20:03] ✓ Condition met after 0s[0m
+[0;32m[14:20:14] ✓ Health endpoint reports healthy (expected=healthy, actual=healthy)[0m
+
+======================================
+STAGE 2: REMINDERS + NOTIFICATIONS
+======================================
+
+[14:20:14] Running test: reminder_api_create
+[0;32m[14:20:14] ✓ Reminder created via API[0m
+[0;32m[14:20:14] ✓ reminder_api_create passed (0s)[0m
+[14:20:14] Running test: reminder_db_record
+[0;32m[14:20:14] ✓ Reminder persisted in DB (expected=1, actual=1)[0m
+[0;32m[14:20:15] ✓ reminder_db_record passed (1s)[0m
+[14:20:15] Running test: reminder_scheduler_entry
+[0;32m[14:20:16] ✓ Reminder dcbe402e-825c-4352-af16-7ecde2d71521 scheduled in APScheduler[0m
+[0;32m[14:20:16] ✓ reminder_scheduler_entry passed (1s)[0m
+[14:20:16] Running test: reminder_chat_flow
+[0;32m[14:20:16] ✓ Chat endpoint accepted reminder request[0m
+[0;32m[14:20:16] ✓ reminder_chat_flow passed (0s)[0m
+[14:20:16] Running test: reminder_smart_defaults
+[0;32m[14:20:16] ✓ Chat request for smart defaults[0m
+[0;32m[14:20:22] ✓ Reminder created via chat[0m
+[0;32m[14:20:23] ✓ Smart default produced local time 09:00:00[0m
+[0;32m[14:20:23] ✓ reminder_smart_defaults passed (7s)[0m
+[14:20:23] Running test: reminder_dedup_response
+[0;31m[14:20:23] ✗ Duplicate reminder flagged (expected=true, actual=false)[0m
+[0;31m[14:20:23] ✗ reminder_dedup_response failed[0m
+[14:20:23] Cleaning up test data...
+[0;32m[14:20:26] ✓ Cleanup complete[0m

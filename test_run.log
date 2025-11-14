@@ -1,0 +1,196 @@
+
+======================================
+SETUP
+======================================
+
+[14:11:02] Using base URL: http://localhost:8000
+[14:11:02] Waiting for: orchestrator health endpoint (timeout 60s)
+[0;32m[14:11:07] ✓ Condition met after 0s[0m
+[0;32m[14:11:12] ✓ Health endpoint reports healthy (expected=healthy, actual=healthy)[0m
+
+======================================
+STAGE 0: INFRASTRUCTURE
+======================================
+
+[14:11:12] Running test: infra_containers
+[0;32m[14:11:13] ✓ Container vib-orchestrator running (expected=true, actual=true)[0m
+[0;32m[14:11:13] ✓ Container vib-worker running (expected=true, actual=true)[0m
+[0;32m[14:11:14] ✓ Container vib-beat running (expected=true, actual=true)[0m
+[0;32m[14:11:14] ✓ Container vib-postgres running (expected=true, actual=true)[0m
+[0;32m[14:11:15] ✓ Container vib-redis running (expected=true, actual=true)[0m
+[0;32m[14:11:16] ✓ Container vib-qdrant running (expected=true, actual=true)[0m
+[0;32m[14:11:16] ✓ infra_containers passed (4s)[0m
+[14:11:16] Running test: infra_health_status
+[0;32m[14:11:24] ✓ Health endpoint returns 200[0m
+[0;32m[14:11:24] ✓ Health status is healthy (expected=healthy, actual=healthy)[0m
+[0;32m[14:11:25] ✓ infra_health_status passed (9s)[0m
+[14:11:25] Running test: infra_health_services
+[0;32m[14:11:25] ✓ Service postgres healthy (expected=ok, actual=ok)[0m
+[0;32m[14:11:25] ✓ Service redis healthy (expected=ok, actual=ok)[0m
+[0;32m[14:11:25] ✓ Service qdrant healthy (expected=ok, actual=ok)[0m
+[0;32m[14:11:25] ✓ Service celery_worker healthy (expected=ok, actual=ok)[0m
+[0;32m[14:11:25] ✓ infra_health_services passed (0s)[0m
+[14:11:25] Running test: infra_metrics_endpoint
+[0;32m[14:11:25] ✓ Metrics endpoint returns 200[0m
+[0;32m[14:11:25] ✓ Metrics contain HELP blocks[0m
+[0;32m[14:11:25] ✓ infra_metrics_endpoint passed (0s)[0m
+[14:11:25] Running test: infra_metrics_help
+[0;32m[14:11:25] ✓ api_request_duration_seconds metric present[0m
+[0;32m[14:11:25] ✓ infra_metrics_help passed (0s)[0m
+[14:11:25] Running test: infra_database
+[0;32m[14:11:26] ✓ Database responds (expected=1, actual=1)[0m
+[0;32m[14:11:26] ✓ infra_database passed (1s)[0m
+[14:11:26] Running test: infra_redis
+[0;32m[14:11:27] ✓ Redis responds (expected=PONG, actual=PONG)[0m
+[0;32m[14:11:27] ✓ infra_redis passed (1s)[0m
+[14:11:27] Running test: infra_qdrant
+[0;32m[14:11:27] ✓ Qdrant collection available[0m
+[0;32m[14:11:27] ✓ infra_qdrant passed (0s)[0m
+[14:11:27] Running test: infra_auth_valid
+[0;32m[14:11:27] ✓ Valid token accepted[0m
+[0;32m[14:11:27] ✓ infra_auth_valid passed (0s)[0m
+[14:11:27] Running test: infra_auth_invalid
+[0;32m[14:11:27] ✓ Invalid token rejected[0m
+[0;32m[14:11:27] ✓ infra_auth_invalid passed (0s)[0m
+[14:11:27] Running test: infra_auth_missing
+[0;32m[14:11:27] ✓ Missing token rejected[0m
+[0;32m[14:11:27] ✓ infra_auth_missing passed (0s)[0m
+[14:11:27] Running test: infra_rate_limit
+[0;32m[14:11:30] ✓ Rate limit triggered (6/32 responses were rate-limited)[0m
+[0;32m[14:11:30] ✓ infra_rate_limit passed (3s)[0m
+[14:11:30] Running test: infra_rate_limit_reset
+[14:11:30] Waiting 65s for rate limit window to reset
+[0;32m[14:12:36] ✓ Requests succeed after window reset (expected=200, actual=200)[0m
+[0;32m[14:12:36] ✓ infra_rate_limit_reset passed (66s)[0m
+[14:12:36] Running test: infra_logs
+[0;32m[14:12:36] ✓ Logs contain timestamp[0m
+[0;32m[14:12:36] ✓ Logs contain endpoint/event[0m
+[0;32m[14:12:36] ✓ infra_logs passed (0s)[0m
+[14:12:36] Running test: infra_metrics_increment
+[0;32m[14:12:36] ✓ Metrics updated after request[0m
+[0;32m[14:12:36] ✓ infra_metrics_increment passed (0s)[0m
+[14:12:36] Running test: infra_cors
+[0;32m[14:12:42] ✓ CORS header present[0m
+[0;32m[14:12:42] ✓ infra_cors passed (6s)[0m
+[14:12:42] Running test: infra_tls
+[1;33m[14:12:42] ⚠ BASE_URL not HTTPS; skipping TLS check[0m
+[0;32m[14:12:42] ✓ infra_tls passed (0s)[0m
+[14:12:42] Running test: infra_celery_worker
+[0;32m[14:12:55] ✓ Celery worker responding[0m
+[0;32m[14:12:55] ✓ infra_celery_worker passed (13s)[0m
+[14:12:55] Running test: infra_celery_beat
+[0;32m[14:12:55] ✓ Celery beat running[0m
+[0;32m[14:12:55] ✓ infra_celery_beat passed (0s)[0m
+[14:12:55] Running test: infra_db_schema
+[0;32m[14:12:56] ✓ DB schema migrated (23 > 10)[0m
+[0;32m[14:12:56] ✓ infra_db_schema passed (1s)[0m
+[14:12:56] Running test: infra_metrics_prom
+[0;32m[14:12:56] ✓ Reminder lag histogram exposed[0m
+[0;32m[14:12:56] ✓ infra_metrics_prom passed (0s)[0m
+[14:12:56] Running test: infra_qdrant_metric
+[0;32m[14:12:56] ✓ Qdrant gauge exported[0m
+[0;32m[14:12:56] ✓ infra_qdrant_metric passed (0s)[0m
+
+======================================
+STAGE 1: NOTES + VECTOR SEARCH
+======================================
+
+[14:12:56] Running test: notes_api_create
+[0;32m[14:12:57] ✓ Note created via API[0m
+[0;32m[14:12:57] ✓ notes_api_create passed (1s)[0m
+[14:12:57] Running test: notes_db_record
+[0;32m[14:12:57] ✓ Note persisted in DB (expected=1, actual=1)[0m
+[0;32m[14:12:57] ✓ notes_db_record passed (0s)[0m
+[14:12:57] Running test: notes_markdown
+[0;32m[14:12:57] ✓ Markdown file created[0m
+[0;32m[14:12:57] ✓ notes_markdown passed (0s)[0m
+[14:12:57] Running test: notes_frontmatter
+[0;32m[14:12:58] ✓ Frontmatter has title[0m
+[0;32m[14:12:58] ✓ Frontmatter has tags[0m
+[0;32m[14:12:58] ✓ notes_frontmatter passed (1s)[0m
+[14:12:58] Running test: notes_embedding
+[14:12:58] Waiting for: note embedding state (timeout 90s)
+[0;32m[14:12:58] ✓ Condition met after 0s[0m
+[0;32m[14:12:58] ✓ notes_embedding passed (0s)[0m
+[14:12:58] Running test: notes_vector_keyword
+[0;32m[14:12:59] ✓ Keyword search finds note[0m
+[0;32m[14:12:59] ✓ notes_vector_keyword passed (1s)[0m
+[14:12:59] Running test: notes_vector_semantic
+[0;32m[14:12:59] ✓ Semantic search returns note[0m
+[0;32m[14:12:59] ✓ notes_vector_semantic passed (0s)[0m
+[14:12:59] Running test: notes_top3
+[0;32m[14:12:59] ✓ Search returns <=3 results (3 < 4)[0m
+[0;32m[14:12:59] ✓ notes_top3 passed (0s)[0m
+[14:12:59] Running test: notes_filter
+[0;32m[14:13:00] ✓ Search filter content_type=note yields results (10 > 0)[0m
+[0;32m[14:13:00] ✓ notes_filter passed (1s)[0m
+[14:13:00] Running test: notes_user_scope
+[0;32m[14:13:05] ✓ Results scoped to user[0m
+[0;32m[14:13:05] ✓ notes_user_scope passed (5s)[0m
+[14:13:05] Running test: notes_dedup_response
+[0;32m[14:13:05] ✓ Duplicate creation flagged (expected=true, actual=true)[0m
+[0;32m[14:13:05] ✓ notes_dedup_response passed (0s)[0m
+[14:13:05] Running test: notes_dedup_message
+[0;32m[14:13:05] ✓ Deduplication message returned[0m
+[0;32m[14:13:05] ✓ notes_dedup_message passed (0s)[0m
+[14:13:05] Running test: notes_db_constraint
+[0;32m[14:13:06] ✓ DB constraint blocked duplicate[0m
+[0;32m[14:13:06] ✓ notes_db_constraint passed (1s)[0m
+[14:13:06] Running test: notes_slug_simple
+[0;32m[14:13:07] ✓ Slugified filename[0m
+[0;32m[14:13:07] ✓ notes_slug_simple passed (1s)[0m
+[14:13:07] Running test: notes_slug_special
+[0;32m[14:13:07] ✓ Special chars sanitized[0m
+[0;32m[14:13:07] ✓ notes_slug_special passed (0s)[0m
+[14:13:07] Running test: notes_slug_collision
+[0;32m[14:13:07] ✓ Slug collision resolved with suffix[0m
+[0;32m[14:13:08] ✓ notes_slug_collision passed (1s)[0m
+[14:13:08] Running test: notes_file_sync
+[0;32m[14:13:09] ✓ file_sync_state entry exists (expected=1, actual=1)[0m
+[0;32m[14:13:09] ✓ notes_file_sync passed (0s)[0m
+[14:13:09] Running test: notes_external_edit
+[14:13:10] Waiting for: re-embedding after external edit (timeout 180s)
+[0;31m[14:18:05] ✗ Timeout waiting for: re-embedding after external edit[0m
+[0;32m[14:18:06] ✓ Embedding timestamp advanced (1763129595.651686 > 1763129576.917954)[0m
+[0;32m[14:18:06] ✓ notes_external_edit passed (297s)[0m
+[14:18:06] Running test: notes_chat_create
+[0;32m[14:18:06] ✓ Chat endpoint responded[0m
+[0;32m[14:18:06] ✓ Chat note mode returned (expected=note, actual=note)[0m
+[0;32m[14:18:06] ✓ Chat note ID present[0m
+[0;32m[14:18:07] ✓ notes_chat_create passed (1s)[0m
+[14:18:07] Running test: notes_chat_search
+[0;32m[14:18:08] ✓ Chat search endpoint responded[0m
+[0;32m[14:18:08] ✓ Chat search mode returned (expected=search, actual=search)[0m
+[0;32m[14:18:08] ✓ Chat search returned results (5 > 0)[0m
+[0;32m[14:18:08] ✓ notes_chat_search passed (1s)[0m
+[14:18:08] Running test: notes_list_endpoint
+[0;32m[14:18:08] ✓ List notes endpoint[0m
+[0;32m[14:18:08] ✓ notes_list_endpoint passed (0s)[0m
+[14:18:08] Running test: notes_update_endpoint
+[0;32m[14:18:08] ✓ Patch note works[0m
+[0;32m[14:18:08] ✓ notes_update_endpoint passed (0s)[0m
+
+======================================
+STAGE 2: REMINDERS + NOTIFICATIONS
+======================================
+
+[14:18:08] Running test: reminder_api_create
+[0;32m[14:18:09] ✓ Reminder created via API[0m
+[0;32m[14:18:09] ✓ reminder_api_create passed (1s)[0m
+[14:18:09] Running test: reminder_db_record
+[0;32m[14:18:09] ✓ Reminder persisted in DB (expected=1, actual=1)[0m
+[0;32m[14:18:09] ✓ reminder_db_record passed (0s)[0m
+[14:18:09] Running test: reminder_scheduler_entry
+[0;32m[14:18:11] ✓ Reminder ab5a7ec1-f5e6-44b4-bdfa-07a7d75a82cc scheduled in APScheduler[0m
+[0;32m[14:18:11] ✓ reminder_scheduler_entry passed (2s)[0m
+[14:18:11] Running test: reminder_chat_flow
+[0;32m[14:18:11] ✓ Chat endpoint accepted reminder request[0m
+[0;32m[14:18:11] ✓ reminder_chat_flow passed (0s)[0m
+[14:18:11] Running test: reminder_smart_defaults
+[0;32m[14:18:11] ✓ Chat request for smart defaults[0m
+[0;32m[14:18:17] ✓ Reminder created via chat[0m
+[0;32m[14:18:17] ✓ Smart default produced local time 09:00:00[0m
+[0;32m[14:18:17] ✓ reminder_smart_defaults passed (6s)[0m
+[14:18:17] Running test: reminder_dedup_response
+[0;31m[14:18:21] ✗ Duplicate reminder flagged (expected=true, actual=false)[0m
+[0;31m[14:18:22] ✗ reminder_dedup_response failed[0m

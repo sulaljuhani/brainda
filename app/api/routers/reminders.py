@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Optional, List
 from uuid import UUID
 
@@ -17,12 +17,22 @@ router = APIRouter(prefix="/api/v1/reminders", tags=["reminders"])
 @router.post("", response_model=dict)
 async def create_reminder(
     data: ReminderCreate,
+    request: Request,
     user_id: UUID = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """Create a new reminder"""
     service = ReminderService(db)
-    result = await service.create_reminder(user_id, data)
+    # If an Idempotency-Key header is present, skip content-based dedup so that
+    # different keys create separate reminders even with identical payloads.
+    idem_key = request.headers.get("Idempotency-Key")
+    skip_dedup = bool(idem_key)
+    result = await service.create_reminder(
+        user_id,
+        data,
+        skip_content_dedup=skip_dedup,
+        idempotency_key_ref=idem_key if idem_key else None,
+    )
     
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -32,7 +42,7 @@ async def create_reminder(
 @router.get("", response_model=List[ReminderResponse])
 async def list_reminders(
     status: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 500,
     user_id: UUID = Depends(get_current_user),
     db = Depends(get_db)
 ):

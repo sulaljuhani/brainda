@@ -15,7 +15,9 @@ class ReminderService:
     async def create_reminder(
         self,
         user_id: UUID,
-        data: ReminderCreate
+        data: ReminderCreate,
+        skip_content_dedup: bool = False,
+        idempotency_key_ref: Optional[str] = None,
     ) -> dict:
         """
         Create reminder. Idempotency is handled by middleware.
@@ -44,18 +46,55 @@ class ReminderService:
                         },
                     }
 
+            # Application-level deduplication: prevent creating exact duplicates
+            # ONLY when an Idempotency-Key is NOT provided. If a valid
+            # Idempotency-Key is present, different keys must create separate
+            # reminders even if the payload is identical.
+            if not skip_content_dedup:
+                existing = await self.db.fetchrow(
+                    """
+                    SELECT * FROM reminders
+                    WHERE user_id = $1
+                      AND title = $2
+                      AND due_at_utc = $3
+                      AND status = 'active'
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """,
+                    user_id,
+                    data.title,
+                    data.due_at_utc,
+                )
+                if existing:
+                    logger.info(
+                        "duplicate_reminder_deduplicated",
+                        user_id=str(user_id),
+                        title=data.title,
+                        due_at=data.due_at_utc.isoformat(),
+                    )
+                    reminders_deduped_total.labels(user_id=str(user_id)).inc()
+                    return {"success": True, "data": dict(existing), "deduplicated": True}
+
             # Use a transaction to ensure atomicity
             async with self.db.transaction():
-                reminder = await self.db.fetchrow("""
+                reminder = await self.db.fetchrow(
+                    """
                     INSERT INTO reminders (
                         user_id, title, body, due_at_utc, due_at_local,
-                        timezone, repeat_rrule, note_id, calendar_event_id, status
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')
+                        timezone, repeat_rrule, note_id, calendar_event_id, idempotency_key_ref, status
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
                     RETURNING *
-                """,
-                    user_id, data.title, data.body, data.due_at_utc,
-                    data.due_at_local, data.timezone, data.repeat_rrule,
-                    data.note_id, data.calendar_event_id
+                    """,
+                    user_id,
+                    data.title,
+                    data.body,
+                    data.due_at_utc,
+                    data.due_at_local,
+                    data.timezone,
+                    data.repeat_rrule,
+                    data.note_id,
+                    data.calendar_event_id,
+                    idempotency_key_ref,
                 )
 
             logger.info(
@@ -141,7 +180,7 @@ class ReminderService:
         self,
         user_id: UUID,
         status: Optional[str] = None,
-        limit: int = 50
+        limit: int = 500
     ) -> List[dict]:
         """List user's reminders"""
         # Whitelist of valid reminder statuses to prevent SQL injection

@@ -1,0 +1,131 @@
+
+======================================
+SETUP
+======================================
+
+[14:57:40] Using base URL: http://localhost:8000
+[14:57:40] Waiting for: orchestrator health endpoint (timeout 60s)
+[0;32m[14:57:45] ✓ Condition met after 0s[0m
+[0;32m[14:57:50] ✓ Health endpoint reports healthy (expected=healthy, actual=healthy)[0m
+
+======================================
+STAGE 2: REMINDERS + NOTIFICATIONS
+======================================
+
+[14:57:50] Running test: reminder_api_create
+[0;32m[14:57:51] ✓ Reminder created via API[0m
+[0;32m[14:57:51] ✓ reminder_api_create passed (1s)[0m
+[14:57:51] Running test: reminder_db_record
+[0;32m[14:57:51] ✓ Reminder persisted in DB (expected=1, actual=1)[0m
+[0;32m[14:57:51] ✓ reminder_db_record passed (0s)[0m
+[14:57:51] Running test: reminder_scheduler_entry
+[0;32m[14:57:53] ✓ Reminder c30ecf02-2402-4680-ae0c-1b1f464af9cf scheduled in APScheduler[0m
+[0;32m[14:57:53] ✓ reminder_scheduler_entry passed (2s)[0m
+[14:57:53] Running test: reminder_chat_flow
+[0;32m[14:57:53] ✓ Chat endpoint accepted reminder request[0m
+[0;32m[14:57:53] ✓ reminder_chat_flow passed (0s)[0m
+[14:57:53] Running test: reminder_smart_defaults
+[0;32m[14:57:53] ✓ Chat request for smart defaults[0m
+[0;32m[14:57:59] ✓ Reminder created via chat[0m
+[0;32m[14:57:59] ✓ Smart default produced local time 09:00:00[0m
+[0;32m[14:57:59] ✓ reminder_smart_defaults passed (6s)[0m
+[14:58:00] Running test: reminder_dedup_response
+[0;32m[14:58:00] ✓ Duplicate reminder flagged (expected=true, actual=true)[0m
+[0;32m[14:58:00] ✓ reminder_dedup_response passed (0s)[0m
+[14:58:00] Running test: reminder_dedup_constraint
+[0;32m[14:58:00] ✓ Database prevented duplicate reminder[0m
+[0;32m[14:58:00] ✓ reminder_dedup_constraint passed (0s)[0m
+[14:58:00] Running test: reminder_timezone
+[0;32m[14:58:01] ✓ Timezone stored correctly (expected=America/Los_Angeles, actual=America/Los_Angeles)[0m
+[0;32m[14:58:01] ✓ reminder_timezone passed (1s)[0m
+[14:58:01] Running test: reminder_due_local
+[0;32m[14:58:02] ✓ due_at_local preserved (expected=15:27:00, actual=15:27:00)[0m
+[0;32m[14:58:02] ✓ reminder_due_local passed (1s)[0m
+[14:58:02] Running test: reminder_snooze_updates
+[0;32m[14:58:08] ✓ Snooze returned due_at[0m
+[0;32m[14:58:08] ✓ reminder_snooze_updates passed (6s)[0m
+[14:58:08] Running test: reminder_snooze_logs
+[0;32m[14:58:10] ✓ Snooze reschedule logged[0m
+[0;32m[14:58:10] ✓ reminder_snooze_logs passed (2s)[0m
+[14:58:10] Running test: reminder_cancel_endpoint
+[0;32m[14:58:10] ✓ Cancel endpoint[0m
+[0;32m[14:58:10] ✓ reminder_cancel_endpoint passed (0s)[0m
+[14:58:10] Running test: reminder_cancel_state
+[1;33m[14:58:11] ⚠ Base reminder not cancelled; cancelling now[0m
+[0;32m[14:58:11] ✓ Reminder marked cancelled (expected=cancelled, actual=cancelled)[0m
+[0;32m[14:58:12] ✓ reminder_cancel_state passed (1s)[0m
+[14:58:12] Running test: reminder_recurring_daily
+[0;32m[14:58:12] ✓ Daily recurrence saved (expected=FREQ=DAILY, actual=FREQ=DAILY)[0m
+[0;32m[14:58:12] ✓ reminder_recurring_daily passed (0s)[0m
+[14:58:12] Running test: reminder_recurring_weekly
+[0;32m[14:58:13] ✓ Weekly recurrence saved (expected=FREQ=WEEKLY;BYDAY=MO, actual=FREQ=WEEKLY;BYDAY=MO)[0m
+[0;32m[14:58:13] ✓ reminder_recurring_weekly passed (1s)[0m
+[14:58:13] Running test: reminder_recurring_monthly
+[0;32m[14:58:14] ✓ Monthly recurrence saved (expected=FREQ=MONTHLY;BYMONTHDAY=1, actual=FREQ=MONTHLY;BYMONTHDAY=1)[0m
+[0;32m[14:58:14] ✓ reminder_recurring_monthly passed (1s)[0m
+[14:58:14] Running test: device_registration
+[0;32m[14:58:14] ✓ Device registered[0m
+[0;32m[14:58:14] ✓ device_registration passed (0s)[0m
+[14:58:14] Running test: device_db_entry
+[0;32m[14:58:15] ✓ Device row exists (expected=1, actual=1)[0m
+[0;32m[14:58:15] ✓ device_db_entry passed (1s)[0m
+[14:58:15] Running test: device_test_notification
+[0;32m[14:58:15] ✓ Test notification endpoint[0m
+[0;32m[14:58:15] ✓ device_test_notification passed (0s)[0m
+[14:58:15] Running test: push_metrics
+[1;33m[14:58:16] ⚠ Push delivery metrics have no samples[0m
+[0;32m[14:58:16] ✓ push_metrics passed (1s)[0m
+[14:58:16] Running test: reminder_fire_slo
+[14:58:16] Waiting for reminder 1af5963b-0e1b-4e68-b93f-21c4c597dbcd to fire (up to 150s)
+[14:58:16] Waiting for: notification delivery for 1af5963b-0e1b-4e68-b93f-21c4c597dbcd (timeout 150s)
+[0;32m[14:59:01] ✓ Condition met after 27s[0m
+[0;32m[14:59:01] ✓ Reminder fire lag <5 s (0.079432 < 5)[0m
+[0;32m[14:59:01] ✓ reminder_fire_slo passed (45s)[0m
+[14:59:01] Running test: notification_delivery_record
+[0;32m[14:59:02] ✓ Notification delivery recorded (expected=delivered, actual=delivered)[0m
+[0;32m[14:59:02] ✓ notification_delivery_record passed (0s)[0m
+[14:59:02] Running test: reminder_metrics_created
+[0;32m[14:59:03] ✓ reminders_created_total increments (31 > 30)[0m
+[0;32m[14:59:03] ✓ reminder_metrics_created passed (1s)[0m
+[14:59:03] Running test: reminder_metrics_deduped
+[0;32m[14:59:03] ✓ reminders_deduped_total increments (7 > 6)[0m
+[0;32m[14:59:04] ✓ reminder_metrics_deduped passed (1s)[0m
+[14:59:04] Running test: reminder_metrics_fire_lag
+[1;33m[14:59:04] ⚠ Reminder fire lag histogram has no samples[0m
+[0;32m[14:59:04] ✓ reminder_metrics_fire_lag passed (0s)[0m
+[14:59:04] Running test: reminder_list_endpoint
+[0;32m[14:59:04] ✓ List reminders endpoint[0m
+[0;32m[14:59:04] ✓ reminder_list_endpoint passed (0s)[0m
+[14:59:04] Running test: reminder_update_endpoint
+[0;32m[14:59:04] ✓ Reminder update endpoint[0m
+[0;32m[14:59:04] ✓ reminder_update_endpoint passed (0s)[0m
+[14:59:04] Running test: reminder_restart_persistence
+[14:59:10] Waiting for: health after orchestrator restart (timeout 60s)
+curl: (52) Empty reply from server
+curl: (52) Empty reply from server
+[0;32m[14:59:17] ✓ Condition met after 2s[0m
+[0;32m[14:59:17] ✓ Reminder still available post-restart (expected=f73850e7-0c46-4244-b1bc-8a75de3a16b7, actual=f73850e7-0c46-4244-b1bc-8a75de3a16b7)[0m
+[0;32m[14:59:17] ✓ reminder_restart_persistence passed (13s)[0m
+
+======================================
+TEST SUMMARY
+======================================
+
+Total Tests: 28
+Passed: 28
+Failed: 0
+Warnings: 3
+Duration: 1m 38s
+Pass Rate: 100.0%
+
+SLO Status:
+  - Reminder fire lag p95: nans (target < 5s)
+  - Push success rate: unavailable
+  - Document ingestion p95: unavailable
+  - Vector search p95: unavailable
+
+Logs: /tmp/vib-test-20251114-175739/run.log
+Artifacts: /tmp/vib-test-20251114-175739
+[14:59:18] JSON report: /tmp/vib-test-20251114-175739/results.json
+[14:59:18] Cleaning up test data...
+[0;32m[14:59:21] ✓ Cleanup complete[0m
