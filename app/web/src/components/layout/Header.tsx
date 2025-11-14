@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserMenu } from '@components/auth/UserMenu';
+import { HamburgerMenu } from './HamburgerMenu';
 import styles from './Header.module.css';
 
-export function Header() {
+interface HeaderProps {
+  onMenuToggle?: () => void;
+  menuOpen?: boolean;
+}
+
+export function Header({ onMenuToggle, menuOpen = false }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -17,6 +23,10 @@ export function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.left}>
+        {onMenuToggle && (
+          <HamburgerMenu isOpen={menuOpen} onClick={onMenuToggle} />
+        )}
+
         <div className={styles.logo} onClick={() => navigate('/')}>
           Brainda
         </div>

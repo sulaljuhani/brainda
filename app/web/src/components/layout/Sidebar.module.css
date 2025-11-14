@@ -137,7 +137,32 @@
 }
 
 /* Mobile responsiveness */
-@media (max-width: 1024px) {
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: var(--mobile-header-height);
+    bottom: var(--mobile-nav-height);
+    z-index: 200;
+    transform: translateX(-100%);
+    width: 280px;
+    box-shadow: var(--shadow-xl);
+    background: var(--bg-primary);
+  }
+
+  /* Show sidebar when not collapsed on mobile */
+  .sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+
+  /* Hide collapse button on mobile */
+  .collapseSection {
+    display: none;
+  }
+}
+
+/* Tablet responsiveness */
+@media (min-width: 768px) and (max-width: 1023px) {
   .sidebar {
     position: fixed;
     left: 0;
@@ -145,6 +170,8 @@
     bottom: 0;
     z-index: 90;
     transform: translateX(-100%);
+    width: var(--sidebar-width);
+    box-shadow: var(--shadow-lg);
   }
 
   .sidebar:not(.collapsed) {

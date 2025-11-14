@@ -79,3 +79,25 @@
 .btn--full-width {
   width: 100%;
 }
+
+/* Mobile responsive styles */
+@media (max-width: 767px) {
+  /* Ensure minimum touch target size on mobile */
+  .btn {
+    min-height: var(--touch-target-min);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn--small {
+    padding: 0.5rem 1rem;
+    min-height: var(--touch-target-min);
+  }
+
+  .btn--medium {
+    padding: 0.625rem 1.25rem;
+  }
+
+  .btn--large {
+    padding: 0.875rem 1.75rem;
+  }
+}

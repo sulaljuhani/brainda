@@ -1,4 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useRef, useEffect } from 'react';
+import { useSwipeGesture } from '@hooks/useSwipeGesture';
+import { useIsMobileOrTablet } from '@hooks/useMediaQuery';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -25,6 +28,8 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const isMobileOrTablet = useIsMobileOrTablet();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -33,8 +38,42 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     return location.pathname.startsWith(path);
   };
 
+  // Add swipe left gesture to close sidebar on mobile
+  useSwipeGesture(sidebarRef, {
+    onSwipeLeft: () => {
+      if (!collapsed && isMobileOrTablet) {
+        onToggle();
+      }
+    },
+  });
+
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    if (!isMobileOrTablet || collapsed) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
+        onToggle();
+      }
+    };
+
+    // Small delay to prevent immediate closing after opening
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [collapsed, onToggle, isMobileOrTablet]);
+
   return (
-    <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
+    <aside
+      ref={sidebarRef}
+      id="mobile-sidebar"
+      className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}
+    >
       <nav className={styles.nav}>
         {NAV_ITEMS.map((item) => (
           <button

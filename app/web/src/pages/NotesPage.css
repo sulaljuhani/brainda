@@ -177,7 +177,8 @@
   margin-bottom: 1.5rem;
 }
 
-@media (max-width: 768px) {
+/* Mobile responsive styles */
+@media (max-width: 767px) {
   .notes-page {
     padding: 1rem;
   }
@@ -201,6 +202,11 @@
     max-width: none;
   }
 
+  .notes-search-input {
+    font-size: 1rem; /* Prevent zoom on iOS */
+    -webkit-text-size-adjust: 100%;
+  }
+
   .notes-tags-filter {
     flex-direction: column;
     align-items: stretch;
@@ -208,5 +214,27 @@
 
   .notes-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Make buttons touch-friendly */
+  .notes-view-btn {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+  }
+
+  .notes-tag-filter {
+    min-height: var(--touch-target-min);
+    justify-content: center;
+  }
+}
+
+/* Tablet responsive styles */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .notes-page {
+    padding: 1.5rem;
+  }
+
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 }

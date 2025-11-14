@@ -57,3 +57,17 @@
   background-color: var(--color-gray-100, #f3f4f6);
   cursor: not-allowed;
 }
+
+/* Mobile responsive styles */
+@media (max-width: 767px) {
+  .input {
+    padding: 0.625rem 0.875rem;
+    font-size: 1rem; /* Prevent zoom on iOS */
+    -webkit-text-size-adjust: 100%;
+    min-height: var(--touch-target-min);
+  }
+
+  .input-label {
+    font-size: 1rem;
+  }
+}
