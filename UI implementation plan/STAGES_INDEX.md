@@ -87,14 +87,14 @@ Use this checklist to track your progress:
 - [x] Stage 01: Foundation & Build System ✅
 - [x] Stage 02: Core Layout & Navigation ✅
 - [x] Stage 03: API Integration Layer ✅
-- [ ] Stage 04: Chat Page (Main) ⭐
-- [ ] Stage 05: Notes Management
-- [ ] Stage 06: Reminders Interface
-- [ ] Stage 07: Documents & Upload
-- [ ] Stage 08: Calendar View
-- [ ] Stage 09: Search Interface
-- [ ] Stage 10: Authentication Flow
-- [x] Stage 11: Settings & Preferences ✅
+- [x] Stage 04: Chat Page (Main) ⭐
+- [x] Stage 05: Notes Management ✅
+- [x] Stage 06: Reminders Interface
+- [x] Stage 07: Documents & Upload
+- [x] Stage 08: Calendar View
+- [x] Stage 09: Search Interface ✅
+- [x] Stage 10: Authentication Flow
+- [x] Stage 11: Settings & Preferences
 - [ ] Stage 12: Polish & UX Enhancements
 - [ ] Stage 13: Mobile Responsive
 - [ ] Stage 14: Testing & QA
