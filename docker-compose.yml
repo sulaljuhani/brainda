@@ -10,6 +10,7 @@ services:
       - ./uploads:/uploads
       - ./uploads:/app/uploads
       - ./migrations:/app/migrations  # Mount migrations for auto-apply
+      - ./memory_vault:/memory_vault  # Mount memory vault for OpenMemory sync
     env_file:
       - .env
     environment:

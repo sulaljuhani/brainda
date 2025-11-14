@@ -305,6 +305,53 @@ observer.schedule(event_handler, "/vault", recursive=True)
 
 **Configuration**: Set `LLM_BACKEND` env var to choose adapter.
 
+### OpenMemory Integration (Long-term AI Memory)
+
+**Purpose**: Provides persistent conversational memory and context across chat sessions.
+
+**Components**:
+- **Adapter**: `app/api/adapters/openmemory_adapter.py` - HTTP client for OpenMemory API
+- **Service**: `app/api/services/memory_service.py` - Business logic for memory operations
+- **Router**: `app/api/routers/memory.py` - REST API endpoints
+
+**Enhanced RAG Flow** (with OpenMemory):
+1. User message received at `/api/v1/chat`
+2. **Search OpenMemory** for relevant conversation history (parallel with Qdrant search)
+3. Search Qdrant for document/note context
+4. Combine both contexts in LLM prompt
+5. Generate response with comprehensive context
+6. **Store conversation turn** in OpenMemory for future reference
+
+**Configuration**:
+```bash
+OPENMEMORY_URL=http://localhost:8080  # Your OpenMemory server
+OPENMEMORY_API_KEY=                   # Optional API key
+OPENMEMORY_ENABLED=true               # Enable/disable integration
+```
+
+**API Endpoints**:
+- `POST /api/v1/memory` - Store explicit memory (facts, preferences)
+- `POST /api/v1/memory/search` - Search memories semantically
+- `GET /api/v1/memory` - List all user memories (paginated)
+- `DELETE /api/v1/memory/{id}` - Delete specific memory
+- `GET /api/v1/memory/context/preview` - Debug conversation context retrieval
+- `GET /api/v1/memory/health` - Check OpenMemory connectivity
+
+**Memory Sectors** (automatically determined by OpenMemory):
+- `semantic`: Facts and conceptual knowledge
+- `episodic`: Specific events and experiences
+- `procedural`: How-to knowledge and workflows
+- `emotional`: Emotional context and sentiment
+- `reflective`: Insights and meta-cognition
+
+Each memory is automatically classified into 2-3 relevant sectors with one embedding per sector for multi-dimensional recall. Composite scoring: 60% similarity + 20% salience + 10% recency + 10% link weight.
+
+**User Isolation**: All memories are strictly scoped by `user_id` - one user cannot access another's memories.
+
+**Graceful Degradation**: If OpenMemory is disabled or unavailable, RAG falls back to Qdrant-only search without errors.
+
+**Documentation**: See `docs/OPENMEMORY_INTEGRATION.md` for detailed usage guide and examples.
+
 ### Google Calendar Sync
 
 **Service**: `app/api/services/google_calendar_service.py`
