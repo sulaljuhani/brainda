@@ -144,6 +144,39 @@ export interface SearchResponse {
   count: number;
 }
 
+// Settings
+export interface UserSettings {
+  notifications_enabled: boolean;
+  email_notifications: boolean;
+  reminder_notifications: boolean;
+  calendar_notifications: boolean;
+  theme: 'light' | 'dark' | 'auto';
+  font_size: 'small' | 'medium' | 'large';
+  timezone?: string;
+}
+
+export interface UpdateProfileRequest {
+  username?: string;
+  email?: string;
+}
+
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
+export interface GoogleCalendarSettings {
+  connected: boolean;
+  sync_enabled: boolean;
+  calendar_id?: string;
+  last_synced_at?: string;
+}
+
+export interface OpenMemorySettings {
+  enabled: boolean;
+  url?: string;
+}
+
 // API Responses
 export interface ApiResponse<T> {
   success: boolean;

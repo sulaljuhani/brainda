@@ -42,7 +42,11 @@ export function Header() {
           {/* Add badge if needed */}
         </button>
 
-        <button className={styles.iconButton} aria-label="Settings">
+        <button
+          className={styles.iconButton}
+          aria-label="Settings"
+          onClick={() => navigate('/settings')}
+        >
           ⚙️
         </button>
 
