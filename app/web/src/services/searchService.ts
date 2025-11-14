@@ -1,9 +1,20 @@
 import { api } from './api';
-import type { SearchResponse } from '@types/*';
+import type { SearchResponse } from '@types/api';
+
+export type ContentTypeFilter = 'all' | 'note' | 'document' | 'reminder' | 'event';
 
 export const searchService = {
-  search: (query: string, limit = 20) =>
-    api.get<SearchResponse>(
-      `/search?query=${encodeURIComponent(query)}&limit=${limit}`
-    ),
+  search: (query: string, contentType: ContentTypeFilter = 'all', limit = 20) => {
+    const params = new URLSearchParams({
+      query: query.trim(),
+      limit: limit.toString(),
+    });
+
+    // Only add content_type if it's not 'all'
+    if (contentType !== 'all') {
+      params.append('content_type', contentType);
+    }
+
+    return api.get<SearchResponse>(`/search?${params.toString()}`);
+  },
 };
