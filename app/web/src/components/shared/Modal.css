@@ -84,18 +84,48 @@
   padding: 1.5rem;
 }
 
-@media (max-width: 640px) {
+/* Mobile responsive styles */
+@media (max-width: 767px) {
   .modal-overlay {
     padding: 0;
+    align-items: flex-end;
   }
 
   .modal-content {
-    max-height: 100vh;
-    border-radius: 0;
+    max-height: 90vh;
+    border-radius: 1rem 1rem 0 0;
+    animation: modalSlideUp 0.3s ease-out;
+  }
+
+  @keyframes modalSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .modal-header,
   .modal-body {
     padding: 1rem;
+  }
+
+  /* Make close button touch-friendly */
+  .modal-close {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Tablet responsive styles */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .modal-overlay {
+    padding: 2rem;
   }
 }

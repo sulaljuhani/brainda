@@ -1,0 +1,59 @@
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  transition: background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Show only on mobile */
+@media (max-width: 767px) {
+  .hamburger {
+    display: flex;
+  }
+}
+
+.hamburger:hover {
+  background: var(--bg-tertiary);
+}
+
+.hamburger:active {
+  transform: scale(0.95);
+}
+
+.hamburger:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.line {
+  width: 24px;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+/* Animated hamburger to X transformation */
+.hamburger.open .line:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.hamburger.open .line:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.hamburger.open .line:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}

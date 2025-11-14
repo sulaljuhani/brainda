@@ -83,3 +83,33 @@
   color: var(--color-text-secondary, #6b7280);
   text-align: right;
 }
+
+/* Mobile responsive styles */
+@media (max-width: 767px) {
+  .chat-input {
+    padding: 0.75rem;
+  }
+
+  .chat-input__wrapper {
+    padding: 0.625rem;
+  }
+
+  /* Make send button larger for touch */
+  .chat-input__send-button {
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+  }
+
+  .chat-input__textarea {
+    font-size: 1rem; /* Prevent zoom on iOS */
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* Tablet responsive styles */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .chat-input__send-button {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
