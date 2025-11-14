@@ -31,6 +31,23 @@
   --border-default: #3a3a3a;
   --border-strong: #4a4a4a;
 
+  /* Light mode color tokens (for components) */
+  --color-primary: #d97706;
+  --color-primary-dark: #b45309;
+  --color-danger: #dc2626;
+  --color-danger-dark: #b91c1c;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
@@ -77,6 +94,19 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
   --radius-full: 9999px;
+
+  /* Aliases for chat components */
+  --color-primary: var(--accent-primary);
+  --color-primary-dark: var(--accent-active);
+  --color-secondary: var(--info);
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-surface: var(--bg-elevated);
+  --color-background: var(--bg-secondary);
+  --color-border: var(--border-default);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
 }
 
 /* Base Styles */
