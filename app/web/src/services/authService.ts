@@ -1,25 +1,28 @@
 import { api } from './api';
-import type { User, Session } from '@types/api';
-
-export interface PasskeyRegisterBeginResponse {
-  user_id: string;
-  options: string; // JSON string of WebAuthn options
-}
-
-export interface PasskeyLoginBeginResponse {
-  challenge_id: string;
-  options: string; // JSON string of WebAuthn options
-}
+import type { User } from '@types/api';
 
 export interface LoginResponse {
   success: boolean;
   session_token: string;
   expires_at: string;
+  user: {
+    id: string;
+    username: string;
+    email?: string;
+    display_name?: string;
+  };
 }
 
-export interface RegisterCompleteResponse {
+export interface RegisterResponse {
   success: boolean;
-  message: string;
+  session_token: string;
+  expires_at: string;
+  user: {
+    id: string;
+    username: string;
+    email?: string;
+    display_name?: string;
+  };
 }
 
 class AuthService {
@@ -31,50 +34,29 @@ class AuthService {
   }
 
   /**
-   * Begin passkey registration flow
+   * Register a new user with username and password
    */
-  async beginPasskeyRegistration(
-    email: string,
-    displayName: string
-  ): Promise<PasskeyRegisterBeginResponse> {
-    return api.post<PasskeyRegisterBeginResponse>('/auth/register/begin', {
+  async register(
+    username: string,
+    password: string,
+    email?: string,
+    displayName?: string
+  ): Promise<RegisterResponse> {
+    return api.post<RegisterResponse>('/auth/register', {
+      username,
+      password,
       email,
       display_name: displayName,
     });
   }
 
   /**
-   * Complete passkey registration
+   * Login with username and password
    */
-  async completePasskeyRegistration(
-    userId: string,
-    credential: any,
-    deviceName?: string
-  ): Promise<RegisterCompleteResponse> {
-    return api.post<RegisterCompleteResponse>('/auth/register/complete', {
-      user_id: userId,
-      credential,
-      device_name: deviceName,
-    });
-  }
-
-  /**
-   * Begin passkey login flow
-   */
-  async beginPasskeyLogin(): Promise<PasskeyLoginBeginResponse> {
-    return api.post<PasskeyLoginBeginResponse>('/auth/login/begin');
-  }
-
-  /**
-   * Complete passkey login
-   */
-  async completePasskeyLogin(
-    challengeId: string,
-    credential: any
-  ): Promise<LoginResponse> {
-    return api.post<LoginResponse>('/auth/login/complete', {
-      challenge_id: challengeId,
-      credential,
+  async login(username: string, password: string): Promise<LoginResponse> {
+    return api.post<LoginResponse>('/auth/login', {
+      username,
+      password,
     });
   }
 
@@ -110,31 +92,6 @@ class AuthService {
       // Token is invalid, clear it
       localStorage.removeItem('session_token');
       return null;
-    }
-  }
-
-  /**
-   * Helper to check if WebAuthn is supported
-   */
-  isWebAuthnSupported(): boolean {
-    return (
-      window.PublicKeyCredential !== undefined &&
-      typeof window.PublicKeyCredential === 'function'
-    );
-  }
-
-  /**
-   * Helper to check if platform authenticator is available (biometrics)
-   */
-  async isPlatformAuthenticatorAvailable(): Promise<boolean> {
-    if (!this.isWebAuthnSupported()) {
-      return false;
-    }
-
-    try {
-      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    } catch {
-      return false;
     }
   }
 }
