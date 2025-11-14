@@ -1,0 +1,125 @@
+.container {
+  width: 100%;
+}
+
+.dropzone {
+  border: 2px dashed var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--bg-secondary, #f9fafb);
+}
+
+.dropzone:hover {
+  border-color: var(--accent-color, #d97706);
+  background: var(--bg-tertiary, #fff);
+}
+
+.dropzone.active {
+  border-color: var(--accent-color, #d97706);
+  background: var(--accent-light, #fef3c7);
+  border-style: solid;
+}
+
+.dropzoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.uploadIcon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.dropzoneText {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.dropzoneSubtext {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+.uploadsList {
+  margin-top: 1.5rem;
+}
+
+.uploadsTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.uploadItem {
+  padding: 0.75rem;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.uploadInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.uploadFilename {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+}
+
+.uploadProgress {
+  height: 4px;
+  background: var(--border-color, #e5e7eb);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.uploadProgressBar {
+  height: 100%;
+  background: var(--accent-color, #d97706);
+  transition: width 0.3s ease;
+}
+
+.uploadStatus {
+  font-size: 0.75rem;
+  color: var(--success-color, #10b981);
+  font-weight: 500;
+}
+
+.uploadError {
+  font-size: 0.75rem;
+  color: var(--error-color, #ef4444);
+  font-weight: 500;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .dropzone {
+    padding: 2rem 1rem;
+  }
+
+  .uploadIcon {
+    font-size: 2rem;
+  }
+
+  .dropzoneText {
+    font-size: 0.875rem;
+  }
+
+  .dropzoneSubtext {
+    font-size: 0.75rem;
+  }
+}
