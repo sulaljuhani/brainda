@@ -77,6 +77,19 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
   --radius-full: 9999px;
+
+  /* Aliases for chat components */
+  --color-primary: var(--accent-primary);
+  --color-primary-dark: var(--accent-active);
+  --color-secondary: var(--info);
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-surface: var(--bg-elevated);
+  --color-background: var(--bg-secondary);
+  --color-border: var(--border-default);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
 }
 
 /* Base Styles */
