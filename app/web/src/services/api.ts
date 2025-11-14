@@ -18,8 +18,8 @@ class ApiClient {
     const token = this.getAuthToken();
     const url = `${this.baseURL}${endpoint}`;
 
-    const headers: HeadersInit = {
-      ...options.headers,
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string>),
     };
 
     // Add auth header if token exists
