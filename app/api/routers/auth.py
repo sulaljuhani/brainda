@@ -17,6 +17,7 @@ from webauthn import (
     generate_registration_options,
     verify_authentication_response,
     verify_registration_response,
+    options_to_json,
 )
 from webauthn.helpers.structs import (
     AttestationConveyancePreference,
@@ -56,6 +57,17 @@ class PasskeyLoginCompleteRequest(BaseModel):
     credential: dict[str, Any]
 
 
+class PasswordRegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+    display_name: Optional[str] = None
+
+
+class PasswordLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
 def _urlsafe_b64encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
 
@@ -71,7 +83,9 @@ def _ensure_base64url(value: str) -> str:
 def _decode_base64(value: Optional[str]) -> bytes:
     if not value:
         return b""
-    padded = value + "=" * (-len(value) % 4)
+    # Add padding only if needed (base64url strings have padding removed)
+    padding_needed = (4 - len(value) % 4) % 4
+    padded = value + "=" * padding_needed
     return base64.urlsafe_b64decode(padded.encode("utf-8"))
 
 
@@ -100,7 +114,7 @@ async def begin_passkey_registration(
     options = generate_registration_options(
         rp_id=RP_ID,
         rp_name=RP_NAME,
-        user_id=str(user["id"]),
+        user_id=str(user["id"]).encode('utf-8'),
         user_name=normalized_email,
         user_display_name=display_label,
         attestation=AttestationConveyancePreference.NONE,
@@ -125,7 +139,7 @@ async def begin_passkey_registration(
 
     return {
         "user_id": str(user["id"]),
-        "options": options.model_dump_json() if hasattr(options, "model_dump_json") else json.dumps(options.model_dump()),
+        "options": options_to_json(options),
     }
 
 
@@ -153,9 +167,6 @@ async def complete_passkey_registration(
             client_data_json=_decode_base64(credential_data["response"].get("clientDataJSON")),
             attestation_object=_decode_base64(credential_data["response"].get("attestationObject")),
         ),
-        authenticator_attachment=credential_data.get("authenticatorAttachment"),
-        client_extension_results=credential_data.get("clientExtensionResults", {}),
-        transports=credential_data.get("transports"),
         type=credential_data.get("type", "public-key"),
     )
 
@@ -218,7 +229,7 @@ async def begin_passkey_login(
 
     return {
         "challenge_id": challenge_id,
-        "options": options.model_dump_json() if hasattr(options, "model_dump_json") else json.dumps(options.model_dump()),
+        "options": options_to_json(options),
     }
 
 
@@ -250,8 +261,6 @@ async def complete_passkey_login(
             signature=_decode_base64(credential_data["response"].get("signature")),
             user_handle=_decode_base64(credential_data["response"].get("userHandle")),
         ),
-        authenticator_attachment=credential_data.get("authenticatorAttachment"),
-        client_extension_results=credential_data.get("clientExtensionResults", {}),
         type=credential_data.get("type", "public-key"),
     )
 
@@ -351,4 +360,122 @@ async def get_current_user_profile(
         "username": user.get("display_name") or user.get("email", "").split("@")[0],
         "email": user.get("email"),
         "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
+    }
+
+
+@router.post("/register/password")
+async def register_with_password(
+    payload: PasswordRegisterRequest,
+    request: Request,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Register a new user with email and password."""
+    auth_service = AuthService(db)
+
+    # Check if user already exists
+    existing_user = await auth_service.get_user_by_email(payload.email)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Validate password length
+    if len(payload.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    try:
+        # Create user
+        user = await auth_service.create_user_with_password(
+            payload.email,
+            payload.password,
+            payload.display_name,
+        )
+
+        # Create session
+        session_token = secrets.token_urlsafe(48)
+        session = await auth_service.create_session(
+            user_id=user["id"],
+            token=session_token,
+            device_type="web",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+        # Log registration event
+        await auth_service.log_auth_event(
+            "password_registration",
+            user_id=user["id"],
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            metadata={"email": payload.email},
+        )
+
+        return {
+            "success": True,
+            "session_token": session_token,
+            "expires_at": session["expires_at"].isoformat(),
+            "user": {
+                "id": str(user["id"]),
+                "email": user["email"],
+                "display_name": user.get("display_name"),
+            },
+        }
+    except Exception as exc:
+        await auth_service.log_auth_event(
+            "password_registration_failed",
+            metadata={"email": payload.email, "error": str(exc)},
+        )
+        raise HTTPException(status_code=500, detail="Registration failed") from exc
+
+
+@router.post("/login/password")
+async def login_with_password(
+    payload: PasswordLoginRequest,
+    request: Request,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Login with email and password."""
+    auth_service = AuthService(db)
+
+    # Authenticate user
+    user = await auth_service.authenticate_with_password(
+        payload.email,
+        payload.password,
+    )
+
+    if not user:
+        await auth_service.log_auth_event(
+            "login_failed",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            metadata={"email": payload.email, "reason": "invalid_credentials"},
+        )
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Create session
+    session_token = secrets.token_urlsafe(48)
+    session = await auth_service.create_session(
+        user_id=user["id"],
+        token=session_token,
+        device_type="web",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    # Log login event
+    await auth_service.log_auth_event(
+        "login_success",
+        user_id=user["id"],
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        metadata={"email": payload.email},
+    )
+
+    return {
+        "success": True,
+        "session_token": session_token,
+        "expires_at": session["expires_at"].isoformat(),
+        "user": {
+            "id": str(user["id"]),
+            "email": user["email"],
+            "display_name": user.get("display_name"),
+        },
     }

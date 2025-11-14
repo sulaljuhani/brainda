@@ -4,6 +4,54 @@ import { useAuth } from '@contexts/AuthContext';
 import { authService } from '@services/authService';
 import styles from './LoginPage.module.css';
 
+// Helper function to convert base64url to Uint8Array
+function base64urlToUint8Array(base64url: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/') + padding;
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Convert WebAuthn JSON options to proper format with ArrayBuffers
+function preparePublicKeyOptions(options: any): PublicKeyCredentialRequestOptions {
+  return {
+    ...options,
+    challenge: base64urlToUint8Array(options.challenge),
+    allowCredentials: options.allowCredentials?.map((cred: any) => ({
+      ...cred,
+      id: base64urlToUint8Array(cred.id),
+    })),
+  };
+}
+
+// Helper to convert Uint8Array to base64url
+function uint8ArrayToBase64url(buffer: Uint8Array): string {
+  const binary = String.fromCharCode(...Array.from(buffer));
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// Convert PublicKeyCredential to a serializable object for login
+function serializeCredential(credential: any) {
+  return {
+    id: credential.id,
+    rawId: uint8ArrayToBase64url(new Uint8Array(credential.rawId)),
+    type: credential.type,
+    response: {
+      clientDataJSON: uint8ArrayToBase64url(new Uint8Array(credential.response.clientDataJSON)),
+      authenticatorData: uint8ArrayToBase64url(new Uint8Array(credential.response.authenticatorData)),
+      signature: uint8ArrayToBase64url(new Uint8Array(credential.response.signature)),
+      userHandle: credential.response.userHandle
+        ? uint8ArrayToBase64url(new Uint8Array(credential.response.userHandle))
+        : null,
+    },
+  };
+}
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +74,8 @@ export default function LoginPage() {
 
       // Begin passkey login
       const { challenge_id, options } = await authService.beginPasskeyLogin();
-      const publicKeyOptions = JSON.parse(options);
+      const parsedOptions = JSON.parse(options);
+      const publicKeyOptions = preparePublicKeyOptions(parsedOptions);
 
       // Request credentials from the authenticator
       const credential = await navigator.credentials.get({
@@ -37,10 +86,13 @@ export default function LoginPage() {
         throw new Error('No credential returned');
       }
 
+      // Serialize the credential for transmission
+      const serializedCredential = serializeCredential(credential);
+
       // Complete login with the credential
       const response = await authService.completePasskeyLogin(
         challenge_id,
-        credential
+        serializedCredential
       );
 
       // Store session token and update auth context

@@ -380,3 +380,61 @@ class AuthService:
             totp_id,
             {"backup_codes": hashed_codes},
         )
+
+    # --- Password helpers -------------------------------------------------
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """Hash a password using bcrypt."""
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    @staticmethod
+    def verify_password(password: str, password_hash: str) -> bool:
+        """Verify a password against a bcrypt hash."""
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+
+    async def create_user_with_password(
+        self,
+        email: str,
+        password: str,
+        display_name: Optional[str] = None,
+    ) -> asyncpg.Record:
+        """Create a new user with email and password."""
+        normalized_email = email.strip().lower()
+        password_hash = self.hash_password(password)
+        org_name = display_name or normalized_email
+        async with self.db.transaction():
+            organization = await self.create_organization(org_name)
+            user = await self.db.fetchrow(
+                """
+                INSERT INTO users (email, password_hash, display_name, organization_id, role, is_active)
+                VALUES ($1, $2, $3, $4, 'owner', TRUE)
+                RETURNING *
+                """,
+                normalized_email,
+                password_hash,
+                display_name,
+                organization["id"],
+            )
+        return user
+
+    async def authenticate_with_password(
+        self,
+        email: str,
+        password: str,
+    ) -> Optional[asyncpg.Record]:
+        """Authenticate user with email and password. Returns user if successful, None otherwise."""
+        user = await self.get_user_by_email(email.strip().lower())
+        if not user:
+            return None
+
+        if not user.get("password_hash"):
+            return None
+
+        if not self.verify_password(password, user["password_hash"]):
+            return None
+
+        if not user.get("is_active"):
+            return None
+
+        return user

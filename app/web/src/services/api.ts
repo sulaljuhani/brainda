@@ -41,7 +41,8 @@ class ApiClient {
       const error = await response.json().catch(() => ({
         message: response.statusText,
       }));
-      throw new Error(error.message || 'Request failed');
+      console.error('API Error:', error);
+      throw new Error(error.detail || error.message || 'Request failed');
     }
 
     // Handle no-content responses

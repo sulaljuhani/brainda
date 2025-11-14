@@ -18,16 +18,6 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-      <Routes>
-        {/* Main routes with layout */}
-        <Route path="/" element={<MainLayout><ChatPage /></MainLayout>} />
-        <Route path="/chat" element={<Navigate to="/" replace />} />
-        <Route path="/notes" element={<MainLayout><NotesPage /></MainLayout>} />
-        <Route path="/documents" element={<MainLayout><DocumentsPage /></MainLayout>} />
-        <Route path="/reminders" element={<MainLayout><RemindersPage /></MainLayout>} />
-        <Route path="/calendar" element={<MainLayout><CalendarPage /></MainLayout>} />
-        <Route path="/search" element={<MainLayout><SearchPage /></MainLayout>} />
-        <Route path="/settings" element={<MainLayout><SettingsPage /></MainLayout>} />
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -91,6 +81,16 @@ export default function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <SearchPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <SettingsPage />
                 </MainLayout>
               </ProtectedRoute>
             }

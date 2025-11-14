@@ -3,6 +3,55 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '@services/authService';
 import styles from './RegisterPage.module.css';
 
+// Helper function to convert base64url to Uint8Array
+function base64urlToUint8Array(base64url: string): Uint8Array {
+  // Add padding if needed
+  const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/') + padding;
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Convert WebAuthn JSON options to proper format with ArrayBuffers
+function preparePublicKeyOptions(options: any): PublicKeyCredentialCreationOptions {
+  return {
+    ...options,
+    challenge: base64urlToUint8Array(options.challenge),
+    user: {
+      ...options.user,
+      id: base64urlToUint8Array(options.user.id),
+    },
+    excludeCredentials: options.excludeCredentials?.map((cred: any) => ({
+      ...cred,
+      id: base64urlToUint8Array(cred.id),
+    })),
+  };
+}
+
+// Helper to convert Uint8Array to base64url
+function uint8ArrayToBase64url(buffer: Uint8Array): string {
+  const binary = String.fromCharCode(...Array.from(buffer));
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// Convert PublicKeyCredential to a serializable object
+function serializeCredential(credential: any) {
+  return {
+    id: credential.id,
+    rawId: uint8ArrayToBase64url(new Uint8Array(credential.rawId)),
+    type: credential.type,
+    response: {
+      clientDataJSON: uint8ArrayToBase64url(new Uint8Array(credential.response.clientDataJSON)),
+      attestationObject: uint8ArrayToBase64url(new Uint8Array(credential.response.attestationObject)),
+    },
+  };
+}
+
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -39,7 +88,8 @@ export default function RegisterPage() {
         displayName || email.split('@')[0]
       );
 
-      const publicKeyOptions = JSON.parse(options);
+      const parsedOptions = JSON.parse(options);
+      const publicKeyOptions = preparePublicKeyOptions(parsedOptions);
 
       // Create credential with the authenticator
       const credential = await navigator.credentials.create({
@@ -50,10 +100,13 @@ export default function RegisterPage() {
         throw new Error('No credential created');
       }
 
+      // Serialize the credential for transmission
+      const serializedCredential = serializeCredential(credential);
+
       // Complete registration
       await authService.completePasskeyRegistration(
         user_id,
-        credential,
+        serializedCredential,
         deviceName || undefined
       );
 
