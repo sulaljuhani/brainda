@@ -1,0 +1,124 @@
+/* Base skeleton styles */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-skeleton-base, #e0e0e0) 25%,
+    var(--color-skeleton-highlight, #f0f0f0) 50%,
+    var(--color-skeleton-base, #e0e0e0) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton--text {
+  height: 1em;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton--circular {
+  border-radius: 50%;
+}
+
+.skeleton--rectangular {
+  border-radius: 8px;
+}
+
+/* Skeleton layouts */
+.skeleton-note {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.skeleton-note-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+.skeleton-chat-message {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.skeleton-chat-content {
+  flex: 1;
+}
+
+.skeleton-reminder {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.skeleton-reminder-content {
+  flex: 1;
+}
+
+.skeleton-document {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.skeleton-document-content {
+  flex: 1;
+}
+
+.skeleton-calendar-event {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-left: 3px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.skeleton-calendar-time {
+  flex-shrink: 0;
+  width: 80px;
+}
+
+.skeleton-calendar-details {
+  flex: 1;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-list-item {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .skeleton {
+    --color-skeleton-base: #2a2a2a;
+    --color-skeleton-highlight: #3a3a3a;
+  }
+}
