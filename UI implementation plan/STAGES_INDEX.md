@@ -87,8 +87,8 @@ Use this checklist to track your progress:
 - [x] Stage 01: Foundation & Build System ✅
 - [x] Stage 02: Core Layout & Navigation ✅
 - [x] Stage 03: API Integration Layer ✅
-- [x] Stage 04: Chat Page (Main) ⭐ ✅
-- [ ] Stage 05: Notes Management
+- [x] Stage 04: Chat Page (Main) ⭐
+- [x] Stage 05: Notes Management ✅
 - [ ] Stage 06: Reminders Interface
 - [ ] Stage 07: Documents & Upload
 - [ ] Stage 08: Calendar View
