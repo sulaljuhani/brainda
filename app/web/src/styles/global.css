@@ -104,9 +104,14 @@
   --color-surface: var(--bg-elevated);
   --color-background: var(--bg-secondary);
   --color-border: var(--border-default);
+  --color-hover: var(--bg-tertiary);
   --color-success: var(--success);
   --color-error: var(--error);
   --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-error-bg: #3a1a1a;
+  --color-skeleton-base: #2a2a2a;
+  --color-skeleton-highlight: #3a3a3a;
 }
 
 /* Base Styles */

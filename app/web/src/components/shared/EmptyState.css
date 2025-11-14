@@ -1,0 +1,84 @@
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 3rem 2rem;
+}
+
+.empty-state-content {
+  max-width: 400px;
+  text-align: center;
+}
+
+.empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  width: 80px;
+  height: 80px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-text-secondary);
+}
+
+.empty-state-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.empty-state-description {
+  margin: 0 0 1.5rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  font-size: 0.875rem;
+}
+
+.empty-state-button {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.empty-state-button:hover {
+  opacity: 0.9;
+}
+
+.empty-state-button:active {
+  transform: scale(0.98);
+}
+
+/* Compact variant */
+.empty-state--compact {
+  min-height: 200px;
+  padding: 2rem 1rem;
+}
+
+.empty-state--compact .empty-state-icon {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 1rem;
+}
+
+.empty-state--compact .empty-state-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.empty-state--compact .empty-state-title {
+  font-size: 1rem;
+}
+
+.empty-state--compact .empty-state-description {
+  font-size: 0.8125rem;
+}

@@ -1,0 +1,89 @@
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 2rem;
+}
+
+.error-boundary-content {
+  max-width: 500px;
+  text-align: center;
+}
+
+.error-boundary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  width: 80px;
+  height: 80px;
+  background: var(--color-error-bg, #fee);
+  border-radius: 50%;
+  color: var(--color-error);
+}
+
+.error-boundary-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.error-boundary-message {
+  margin: 0 0 1.5rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.error-boundary-button {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.error-boundary-button:hover {
+  opacity: 0.9;
+}
+
+.error-boundary-button:active {
+  transform: scale(0.98);
+}
+
+.error-boundary-details {
+  margin-top: 2rem;
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--color-surface);
+}
+
+.error-boundary-details summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-text);
+  user-select: none;
+}
+
+.error-boundary-details summary:hover {
+  color: var(--color-primary);
+}
+
+.error-boundary-stack {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  color: var(--color-text-secondary);
+}
