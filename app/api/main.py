@@ -890,9 +890,18 @@ app.include_router(auth.router)
 app.include_router(totp.router)
 app.include_router(memory.router)
 
-# Mount static files from web/public directory
+# Mount static files from web/dist directory (Vite build output)
 # This must be done AFTER all API routes are registered
+WEB_DIST_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
 WEB_PUBLIC_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "public")
+
+if os.path.exists(WEB_DIST_DIR):
+    # Serve static assets (JS, CSS, images) from Vite build
+    assets_dir = os.path.join(WEB_DIST_DIR, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+# Serve legacy static files from public directory
 if os.path.exists(WEB_PUBLIC_DIR):
     app.mount("/static", StaticFiles(directory=WEB_PUBLIC_DIR), name="static")
 
@@ -900,11 +909,16 @@ if os.path.exists(WEB_PUBLIC_DIR):
 @app.get("/")
 async def read_root():
     """Serve the main UI"""
+    # Try Vite build first
+    index_path = os.path.join(WEB_DIST_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    # Fallback to public directory
     index_path = os.path.join(WEB_PUBLIC_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     else:
-        return {"message": "VIB API is running", "version": "1.0.0", "docs": "/docs"}
+        return {"message": "Brainda API is running", "version": "1.0.0", "docs": "/docs"}
 
 if __name__ == "__main__":
     import uvicorn
@@ -923,3 +937,29 @@ async def retention_bump(payload: dict):
         return {"success": True}
     except Exception:
         raise HTTPException(status_code=500, detail="Metric update failed")
+
+# Catch-all route for SPA (must be last)
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve React SPA for all non-API routes"""
+    # Don't intercept API routes
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+
+    # Serve index.html for all other routes (SPA routing)
+    index_path = os.path.join(WEB_DIST_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+
+    # Fallback to public directory
+    index_path = os.path.join(WEB_PUBLIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+
+    # Fallback if build doesn't exist
+    return {
+        "message": "Brainda API is running",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "note": "Frontend not built. Run 'cd app/web && npm run build'"
+    }
