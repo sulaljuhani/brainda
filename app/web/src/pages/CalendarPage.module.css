@@ -1,0 +1,174 @@
+.calendarPage {
+  padding: var(--space-6);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.calendarHeader {
+  margin-bottom: var(--space-6);
+}
+
+.calendarTitle h1 {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.calendarControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.viewToggle {
+  display: flex;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.viewToggleBtn {
+  background: transparent;
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.viewToggleBtn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.viewToggleBtnActive {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.viewToggleBtnActive:hover {
+  background: var(--accent-hover);
+  color: white;
+}
+
+.navigationControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.navBtn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xl);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navBtn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+}
+
+.todayBtn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.todayBtn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+}
+
+.createEventBtn {
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.createEventBtn:hover {
+  background: var(--accent-hover);
+}
+
+.calendarContent {
+  margin-top: var(--space-6);
+}
+
+.loadingContainer,
+.errorContainer {
+  text-align: center;
+  padding: var(--space-12);
+}
+
+.loadingSpinner {
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+}
+
+.errorContainer p {
+  color: var(--error);
+  margin-bottom: var(--space-4);
+}
+
+.retryBtn {
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retryBtn:hover {
+  background: var(--accent-hover);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .calendarPage {
+    padding: var(--space-4);
+  }
+
+  .calendarControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .createEventBtn {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .calendarTitle h1 {
+    font-size: var(--text-2xl);
+  }
+}
