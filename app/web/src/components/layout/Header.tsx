@@ -30,6 +30,7 @@ export function Header() {
               placeholder="Search workspace..."
               className={styles.searchInput}
             />
+            <kbd className={styles.kbd}>⌘K</kbd>
           </div>
         </form>
       </div>
