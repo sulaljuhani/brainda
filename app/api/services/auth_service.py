@@ -41,6 +41,9 @@ class AuthService:
     async def get_user_by_email(self, email: str) -> Optional[asyncpg.Record]:
         return await self.db.fetchrow("SELECT * FROM users WHERE email = $1", email)
 
+    async def get_user_by_username(self, username: str) -> Optional[asyncpg.Record]:
+        return await self.db.fetchrow("SELECT * FROM users WHERE username = $1", username)
+
     async def get_user_by_id(self, user_id: UUID) -> Optional[asyncpg.Record]:
         return await self.db.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
 
@@ -395,22 +398,25 @@ class AuthService:
 
     async def create_user_with_password(
         self,
-        email: str,
+        username: str,
         password: str,
+        email: Optional[str] = None,
         display_name: Optional[str] = None,
     ) -> asyncpg.Record:
-        """Create a new user with email and password."""
-        normalized_email = email.strip().lower()
+        """Create a new user with username and password."""
+        normalized_username = username.strip().lower()
+        normalized_email = email.strip().lower() if email else None
         password_hash = self.hash_password(password)
-        org_name = display_name or normalized_email
+        org_name = display_name or normalized_username
         async with self.db.transaction():
             organization = await self.create_organization(org_name)
             user = await self.db.fetchrow(
                 """
-                INSERT INTO users (email, password_hash, display_name, organization_id, role, is_active)
-                VALUES ($1, $2, $3, $4, 'owner', TRUE)
+                INSERT INTO users (username, email, password_hash, display_name, organization_id, role, is_active)
+                VALUES ($1, $2, $3, $4, $5, 'owner', TRUE)
                 RETURNING *
                 """,
+                normalized_username,
                 normalized_email,
                 password_hash,
                 display_name,
@@ -420,11 +426,11 @@ class AuthService:
 
     async def authenticate_with_password(
         self,
-        email: str,
+        username: str,
         password: str,
     ) -> Optional[asyncpg.Record]:
-        """Authenticate user with email and password. Returns user if successful, None otherwise."""
-        user = await self.get_user_by_email(email.strip().lower())
+        """Authenticate user with username and password. Returns user if successful, None otherwise."""
+        user = await self.get_user_by_username(username.strip().lower())
         if not user:
             return None
 

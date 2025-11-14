@@ -877,7 +877,6 @@ from api.routers import (
     calendar,
     google_calendar,
     auth,
-    totp,
     memory,
 )
 app.include_router(reminders.router)
@@ -887,7 +886,6 @@ app.include_router(search.router)
 app.include_router(calendar.router)
 app.include_router(google_calendar.router)
 app.include_router(auth.router)
-app.include_router(totp.router)
 app.include_router(memory.router)
 
 # Mount static files from web/dist directory (Vite build output)
