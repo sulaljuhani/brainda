@@ -75,14 +75,14 @@ export default function RemindersPage() {
     <div className={styles.remindersPage}>
       <div className={styles.header}>
         <div className={styles.headerContent}>
-          <h1 className={styles.title}>Reminders</h1>
+          <h1 className={styles.title}>Tasks</h1>
           <p className={styles.subtitle}>
-            Manage your reminders and never miss important tasks
+            Manage your tasks and never miss important deadlines
           </p>
         </div>
         <button onClick={() => setShowForm(true)} className={styles.createBtn}>
           <Plus size={20} />
-          New Reminder
+          New Task
         </button>
       </div>
 
@@ -125,10 +125,10 @@ export default function RemindersPage() {
             onDelete={handleDelete}
             emptyMessage={
               activeTab === 'active'
-                ? 'No active reminders. Create one to get started!'
+                ? 'No active tasks. Create one to get started!'
                 : activeTab === 'snoozed'
-                ? 'No snoozed reminders'
-                : 'No completed reminders'
+                ? 'No snoozed tasks'
+                : 'No completed tasks'
             }
           />
         )}

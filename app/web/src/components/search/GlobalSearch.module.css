@@ -62,10 +62,15 @@
   flex: 1;
   background: transparent;
   border: none;
-  outline: none;
+  outline: none !important;
   color: var(--text-primary);
   font-size: var(--text-lg);
   font-family: var(--font-sans);
+}
+
+.searchInput:focus {
+  outline: none !important;
+  box-shadow: none;
 }
 
 .searchInput::placeholder {
@@ -144,6 +149,7 @@
 .resultItem:hover,
 .resultItem.selected {
   background: var(--bg-tertiary);
+  outline: none;
 }
 
 .resultIcon {

@@ -30,9 +30,14 @@ export function useCalendar(start?: string, end?: string) {
   }, [start, end]);
 
   const createEvent = async (data: CreateEventRequest) => {
-    const newEvent = await calendarService.create(data);
-    setEvents((prev) => [...prev, newEvent]);
-    return newEvent;
+    try {
+      const newEvent = await calendarService.create(data);
+      setEvents((prev) => [...prev, newEvent]);
+      return newEvent;
+    } catch (err) {
+      console.error('Failed to create event:', err);
+      throw err;
+    }
   };
 
   const deleteEvent = async (id: string) => {

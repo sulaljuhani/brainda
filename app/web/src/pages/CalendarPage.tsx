@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   format,
   addMonths,
@@ -26,6 +26,10 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null
   );
+  const [showCreateDropdown, setShowCreateDropdown] = useState(false);
+  const [showOneTimeEvents, setShowOneTimeEvents] = useState(true);
+  const [showRecurringEvents, setShowRecurringEvents] = useState(true);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Calculate date range for fetching events
   const dateRange = useMemo(() => {
@@ -53,6 +57,28 @@ export default function CalendarPage() {
   const { events, loading, error, createEvent, deleteEvent, refetch } =
     useCalendar(dateRange.start, dateRange.end);
 
+  // Filter events based on selected filters
+  const filteredEvents = useMemo(() => {
+    return events.filter((event) => {
+      const isRecurring = Boolean(event.rrule);
+      if (isRecurring && !showRecurringEvents) return false;
+      if (!isRecurring && !showOneTimeEvents) return false;
+      return true;
+    });
+  }, [events, showOneTimeEvents, showRecurringEvents]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowCreateDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handlePrevious = () => {
     if (view === 'week') {
       setCurrentDate((prev) => subWeeks(prev, 1));
@@ -77,6 +103,19 @@ export default function CalendarPage() {
     setSelectedEvent(null);
     setSelectedDate(undefined);
     setIsEventFormOpen(true);
+    setShowCreateDropdown(false);
+  };
+
+  const handleCreateOneTimeTask = () => {
+    // For now, this opens the same event form
+    // In the future, this could open a task-specific form
+    handleCreateEvent();
+  };
+
+  const handleCreateRecurringTask = () => {
+    // For now, this opens the event form with recurring enabled
+    // You could preset isRecurring to true
+    handleCreateEvent();
   };
 
   const handleDayClick = (date: Date) => {
@@ -160,8 +199,52 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <button className={styles.createEventBtn} onClick={handleCreateEvent}>
-            + New Event
+          <div className={styles.createBtnContainer} ref={dropdownRef}>
+            <button
+              className={styles.createEventBtn}
+              onClick={() => setShowCreateDropdown(!showCreateDropdown)}
+            >
+              + New Item
+            </button>
+
+            {showCreateDropdown && (
+              <div className={styles.createDropdown}>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={handleCreateEvent}
+                >
+                  Event
+                </button>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={handleCreateRecurringTask}
+                >
+                  Recurring Task
+                </button>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={handleCreateOneTimeTask}
+                >
+                  One-Time Task
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className={styles.calendarFilters}>
+          <button
+            className={`${styles.filterBtn} ${showOneTimeEvents ? styles.filterBtnActive : ''}`}
+            onClick={() => setShowOneTimeEvents(!showOneTimeEvents)}
+          >
+            One-Time Events
+          </button>
+          <button
+            className={`${styles.filterBtn} ${showRecurringEvents ? styles.filterBtnActive : ''}`}
+            onClick={() => setShowRecurringEvents(!showRecurringEvents)}
+          >
+            Recurring Tasks
           </button>
         </div>
       </div>
@@ -191,7 +274,7 @@ export default function CalendarPage() {
           {view === 'week' ? (
             <WeeklyCalendar
               currentDate={currentDate}
-              events={events}
+              events={filteredEvents}
               onEventClick={handleEventClick}
               onEventDelete={handleEventDelete}
               onDayClick={handleDayClick}
@@ -199,7 +282,7 @@ export default function CalendarPage() {
           ) : (
             <MonthlyCalendar
               currentDate={currentDate}
-              events={events}
+              events={filteredEvents}
               onEventClick={handleEventClick}
               onDayClick={handleDayClick}
             />
