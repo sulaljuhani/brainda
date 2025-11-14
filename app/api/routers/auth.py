@@ -29,7 +29,7 @@ from webauthn.helpers.structs import (
     UserVerificationRequirement,
 )
 
-from api.dependencies import get_db, get_redis, verify_token
+from api.dependencies import get_db, get_redis, verify_token, get_current_user
 from api.services.auth_service import AuthService
 
 
@@ -331,3 +331,24 @@ async def logout(
 
     # Legacy API token logout is a no-op
     return {"success": True, "message": "Token invalidated"}
+
+
+@router.get("/users/me")
+async def get_current_user_profile(
+    user_id: UUID = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Get current authenticated user profile."""
+    auth_service = AuthService(db)
+    user = await auth_service.get_user_by_id(user_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Return user profile with safe fields
+    return {
+        "id": str(user["id"]),
+        "username": user.get("display_name") or user.get("email", "").split("@")[0],
+        "email": user.get("email"),
+        "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
+    }

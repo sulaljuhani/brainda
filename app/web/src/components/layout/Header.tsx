@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { UserMenu } from '@components/auth/UserMenu';
 import styles from './Header.module.css';
 
 export function Header() {
@@ -45,9 +46,7 @@ export function Header() {
           ⚙️
         </button>
 
-        <div className={styles.avatar}>
-          JD
-        </div>
+        <UserMenu />
       </div>
     </header>
   );
