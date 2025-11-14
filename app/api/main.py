@@ -864,6 +864,7 @@ from api.routers import (
     google_calendar,
     auth,
     totp,
+    memory,
 )
 app.include_router(reminders.router)
 app.include_router(devices.router)
@@ -873,6 +874,7 @@ app.include_router(calendar.router)
 app.include_router(google_calendar.router)
 app.include_router(auth.router)
 app.include_router(totp.router)
+app.include_router(memory.router)
 
 if __name__ == "__main__":
     import uvicorn
