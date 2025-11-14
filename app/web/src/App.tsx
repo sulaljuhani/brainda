@@ -9,6 +9,7 @@ import DocumentsPage from '@pages/DocumentsPage';
 import RemindersPage from '@pages/RemindersPage';
 import CalendarPage from '@pages/CalendarPage';
 import SearchPage from '@pages/SearchPage';
+import SettingsPage from '@pages/SettingsPage';
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/reminders" element={<MainLayout><RemindersPage /></MainLayout>} />
         <Route path="/calendar" element={<MainLayout><CalendarPage /></MainLayout>} />
         <Route path="/search" element={<MainLayout><SearchPage /></MainLayout>} />
+        <Route path="/settings" element={<MainLayout><SettingsPage /></MainLayout>} />
 
         {/* 404 fallback */}
         <Route path="*" element={<div style={{ padding: '2rem' }}>Page not found</div>} />
