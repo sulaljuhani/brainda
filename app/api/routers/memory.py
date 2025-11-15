@@ -3,10 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl
+import asyncpg
 
 from api.services.memory_service import MemoryService
-from api.dependencies import get_current_user
+from api.services.openmemory_settings_service import OpenMemorySettingsService
+from api.dependencies import get_current_user, get_db
 
 
 router = APIRouter(prefix="/api/v1/memory", tags=["memory"])
@@ -352,3 +354,107 @@ async def sync_to_vault(
         "message": "Memory vault sync started in background",
         "vault_path": f"{vault_path}/{user_id}",
     }
+
+
+# OpenMemory Settings Management
+
+class OpenMemorySettingsResponse(BaseModel):
+    """Response model for OpenMemory settings."""
+    enabled: bool
+    server_url: Optional[str] = None
+    api_key: Optional[str] = None
+    auto_store_conversations: bool = True
+    retention_days: int = Field(default=90, ge=1, le=3650)
+
+
+class OpenMemorySettingsUpdate(BaseModel):
+    """Request model for updating OpenMemory settings."""
+    enabled: Optional[bool] = None
+    server_url: Optional[str] = None
+    api_key: Optional[str] = None
+    auto_store_conversations: Optional[bool] = None
+    retention_days: Optional[int] = Field(None, ge=1, le=3650)
+
+
+@router.get("/settings", response_model=OpenMemorySettingsResponse)
+async def get_openmemory_settings(
+    user_id: UUID = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Get OpenMemory settings for the current user.
+
+    Returns user-specific settings if they exist, otherwise returns global defaults
+    from environment variables (OPENMEMORY_URL, OPENMEMORY_API_KEY, etc.).
+
+    User-specific settings always override global environment settings when enabled.
+
+    NOTE: Currently these settings are stored and retrieved, but MemoryService still
+    uses global environment variables. Future enhancement: Update MemoryService to
+    respect per-user settings when making OpenMemory API calls.
+
+    Response:
+        {
+            "enabled": true,
+            "server_url": "http://localhost:8080",
+            "api_key": "user_api_key",
+            "auto_store_conversations": true,
+            "retention_days": 90
+        }
+    """
+    settings_service = OpenMemorySettingsService(db)
+
+    try:
+        settings = await settings_service.get_user_settings(user_id)
+        return OpenMemorySettingsResponse(**settings)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve OpenMemory settings: {str(exc)}",
+        ) from exc
+
+
+@router.put("/settings", response_model=OpenMemorySettingsResponse)
+async def update_openmemory_settings(
+    payload: OpenMemorySettingsUpdate,
+    user_id: UUID = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Update OpenMemory settings for the current user.
+
+    This allows users to override global OpenMemory settings with their own configuration.
+    All fields are optional - only provided fields will be updated.
+
+    Example request:
+        {
+            "enabled": true,
+            "server_url": "http://my-openmemory.example.com",
+            "api_key": "my_secret_key",
+            "auto_store_conversations": true,
+            "retention_days": 365
+        }
+
+    Security:
+        - API keys are encrypted using Fernet before storage
+        - User settings are isolated by user_id (one user cannot access another's settings)
+
+    Response includes the updated settings (with decrypted API key for display).
+    """
+    settings_service = OpenMemorySettingsService(db)
+
+    try:
+        updated_settings = await settings_service.update_user_settings(
+            user_id=user_id,
+            enabled=payload.enabled,
+            server_url=payload.server_url,
+            api_key=payload.api_key,
+            auto_store_conversations=payload.auto_store_conversations,
+            retention_days=payload.retention_days,
+        )
+        return OpenMemorySettingsResponse(**updated_settings)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update OpenMemory settings: {str(exc)}",
+        ) from exc
