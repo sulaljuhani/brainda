@@ -999,6 +999,8 @@ from api.routers import (
     google_calendar,
     auth,
     memory,
+    tasks,
+    categories,
 )
 app.include_router(reminders.router)
 app.include_router(devices.router)
@@ -1008,6 +1010,8 @@ app.include_router(calendar.router)
 app.include_router(google_calendar.router)
 app.include_router(auth.router)
 app.include_router(memory.router)
+app.include_router(tasks.router)
+app.include_router(categories.router)
 
 # Mount static files from web/dist directory (Vite build output)
 # This must be done AFTER all API routes are registered
