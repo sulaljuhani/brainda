@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Calendar, Tag, Edit, Trash2, ArrowLeft } from 'lucide-react';
 import { Button } from '@components/shared/Button';
-import type { Note } from '@types/*';
+import type { Note } from '@/types';
 import './NoteDetail.css';
 
 interface NoteDetailProps {

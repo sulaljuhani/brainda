@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@services/apiClient';
-import type { Task, CreateTaskRequest, UpdateTaskRequest } from '@types/*';
+import type { Task, CreateTaskRequest, UpdateTaskRequest } from '@/types';
 
 interface UseTasksOptions {
   status?: 'active' | 'completed' | 'cancelled';

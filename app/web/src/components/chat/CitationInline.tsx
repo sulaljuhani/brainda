@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FileText, StickyNote, Calendar, File } from 'lucide-react';
-import type { Citation } from '@types/*';
+import type { Citation } from '@/types';
 import './CitationInline.css';
 
 interface CitationInlineProps {

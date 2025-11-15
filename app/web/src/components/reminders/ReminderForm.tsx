@@ -5,7 +5,7 @@ import { RecurrenceInput } from '@components/shared/RecurrenceInput';
 import { CategoryManager } from '@components/shared/CategoryManager';
 import { useTasks } from '@hooks/useTasks';
 import { useEvents } from '@hooks/useEvents';
-import type { Reminder, CreateReminderRequest } from '@types/*';
+import type { Reminder, CreateReminderRequest } from '@/types';
 import styles from './ReminderForm.module.css';
 
 interface ReminderFormProps {
@@ -25,6 +25,8 @@ export function ReminderForm({
   const [body, setBody] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [dueAtUtc, setDueAtUtc] = useState('');
+  const [dueAtLocal, setDueAtLocal] = useState('');
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [repeatRrule, setRepeatRrule] = useState('');
   const [linkType, setLinkType] = useState<'none' | 'task' | 'event'>('none');
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -100,7 +102,9 @@ export function ReminderForm({
         title: title.trim(),
         body: body.trim() || undefined,
         category_id: categoryId || undefined,
-        due_at_utc: dueAtUtc || undefined,
+        due_at_utc: dueAtUtc!,
+        due_at_local: dueAtLocal!,
+        timezone: timezone,
         repeat_rrule: repeatRrule || undefined,
         task_id: linkType === 'task' ? taskId || undefined : undefined,
         calendar_event_id: linkType === 'event' ? calendarEventId || undefined : undefined,
@@ -287,7 +291,10 @@ export function ReminderForm({
                   type="datetime-local"
                   className={styles.input}
                   value={dueAtUtc}
-                  onChange={(e) => setDueAtUtc(e.target.value)}
+                  onChange={(e) => {
+                    setDueAtUtc(e.target.value);
+                    setDueAtLocal(e.target.value);
+                  }}
                   placeholder="When should the reminder fire?"
                 />
               </div>

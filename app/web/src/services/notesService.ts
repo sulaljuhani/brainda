@@ -1,5 +1,5 @@
 ﻿import { api } from './api';
-import type { Note, CreateNoteRequest } from '@types/*';
+import type { Note, CreateNoteRequest } from '@/types';
 
 export const notesService = {
   getAll: async (): Promise<Note[]> => {

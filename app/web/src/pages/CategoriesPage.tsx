@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useCategories } from '@hooks/useCategories';
-import type { Category } from '@types/*';
+import type { Category } from '@/types';
 import styles from './CategoriesPage.module.css';
 
 type CategoryType = 'tasks' | 'events' | 'reminders';

@@ -4,7 +4,7 @@ import type {
   ConversationWithMessages,
   CreateMessageRequest,
   ChatMessagePersisted
-} from '@types/*';
+} from '@/types';
 
 export const chatConversationsService = {
   /**

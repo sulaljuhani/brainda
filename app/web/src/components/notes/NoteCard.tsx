@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { FileText, Calendar, Tag } from 'lucide-react';
-import type { Note } from '@types/*';
+import type { Note } from '@/types';
 import './NoteCard.css';
 
 interface NoteCardProps {

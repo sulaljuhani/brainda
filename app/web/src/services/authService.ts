@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { User } from '@types/api';
+import type { User } from '@/types';
 
 export interface LoginResponse {
   success: boolean;

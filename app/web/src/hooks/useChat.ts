@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { chatService } from '../services/chatService';
 import { chatConversationsService } from '../services/chatConversationsService';
-import type { ChatMessage } from '@types/*';
+import type { ChatMessage } from '@/types';
 
 interface UseChatOptions {
   conversationId?: string | null;

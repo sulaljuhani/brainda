@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { documentsService } from '@services/documentsService';
-import type { Document, UploadDocumentResponse } from '@types/*';
+import type { Document, UploadDocumentResponse } from '@/types';
 
 export function useDocuments() {
   const [documents, setDocuments] = useState<Document[]>([]);

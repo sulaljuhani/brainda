@@ -3,7 +3,7 @@ import { Modal } from '@components/shared/Modal';
 import { CategoryPicker } from '@components/shared/CategoryPicker';
 import { RecurrenceInput } from '@components/shared/RecurrenceInput';
 import { CategoryManager } from '@components/shared/CategoryManager';
-import type { Task, CreateTaskRequest } from '@types/*';
+import type { Task, CreateTaskRequest } from '@/types';
 import styles from './TaskForm.module.css';
 
 interface TaskFormProps {

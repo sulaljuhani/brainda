@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@services/apiClient';
-import type { CalendarEvent, CreateEventRequest } from '@types/*';
+import type { CalendarEvent, CreateEventRequest } from '@/types';
 
 interface UseEventsOptions {
   categoryId?: string | null;

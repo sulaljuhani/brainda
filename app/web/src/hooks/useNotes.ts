@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { notesService } from '@services/notesService';
-import type { Note, CreateNoteRequest } from '@types/*';
+import type { Note, CreateNoteRequest } from '@/types';
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);

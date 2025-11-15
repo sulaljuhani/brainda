@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { settingsService } from '@services/settingsService';
-import type { GoogleCalendarSettings, OpenMemorySettings } from '@types/*';
+import type { GoogleCalendarSettings, OpenMemorySettings } from '@/types';
 import styles from './SettingsSection.module.css';
 
 export function IntegrationSettings() {

@@ -1,5 +1,4 @@
-import { formatDistanceToNow } from 'date-fns';
-import type { CalendarEvent } from '@types/*';
+import type { CalendarEvent } from '@/types';
 import styles from './calendar.module.css';
 
 interface EventCardProps {

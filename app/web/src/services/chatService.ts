@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { ChatRequest } from '@types/*';
+import type { ChatRequest } from '@/types';
 
 export const chatService = {
   sendMessage: (message: string) =>

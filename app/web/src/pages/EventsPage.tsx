@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useEvents } from '@hooks/useEvents';
 import { EventForm } from '@components/calendar/EventForm';
-import type { CalendarEvent, CreateEventRequest } from '@types/*';
+import type { CalendarEvent, CreateEventRequest } from '@/types';
 import styles from './EventsPage.module.css';
 
-export function EventsPage() {
+export default function EventsPage() {
   const [isEventFormOpen, setIsEventFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -22,9 +22,6 @@ export function EventsPage() {
   const {
     events: pastEvents,
     loading: pastLoading,
-    createEvent: createPast,
-    updateEvent: updatePast,
-    deleteEvent: deletePast,
   } = useEvents({ status: 'past' });
 
   const loading = upcomingLoading || pastLoading;

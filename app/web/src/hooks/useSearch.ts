@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { searchService } from '@services/searchService';
-import type { SearchResult } from '@types/api';
+import type { SearchResult } from '@/types';
 
 export type ContentTypeFilter = 'all' | 'note' | 'document' | 'reminder' | 'event';
 
