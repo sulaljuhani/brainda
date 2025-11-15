@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import type { SearchResult } from '@types/api';
+import type { SearchResult } from '@/types';
 import styles from './SearchResults.module.css';
 
 interface SearchResultsProps {
@@ -16,21 +16,21 @@ interface GroupedResults {
   events: SearchResult[];
 }
 
-const TYPE_LABELS = {
+const TYPE_LABELS: Record<string, string> = {
   note: 'Notes',
   document: 'Documents',
   reminder: 'Reminders',
   event: 'Events',
 };
 
-const TYPE_ICONS = {
+const TYPE_ICONS: Record<string, string> = {
   note: '📝',
   document: '📄',
   reminder: '⏰',
   event: '📅',
 };
 
-const TYPE_ROUTES = {
+const TYPE_ROUTES: Record<string, string> = {
   note: '/notes',
   document: '/documents',
   reminder: '/reminders',

@@ -3,7 +3,7 @@ import { Plus, CheckCircle, GripVertical } from 'lucide-react';
 import { useTasks } from '@hooks/useTasks';
 import { TaskForm } from '@components/tasks/TaskForm';
 import { CategoryManager } from '@components/shared/CategoryManager';
-import type { Task, CreateTaskRequest } from '@types/*';
+import type { Task, CreateTaskRequest } from '@/types';
 import styles from './TasksPage.module.css';
 import {
   DndContext,
@@ -13,7 +13,6 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-  DragOverlay,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -231,11 +230,10 @@ export default function TasksPage() {
   const [parentTaskTitle, setParentTaskTitle] = useState<string | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
 
-  const { tasks, loading, error, createTask, updateTask, completeTask, deleteTask, moveTask } =
+  const { tasks, loading, error, createTask, updateTask, completeTask, deleteTask } =
     useTasks({ status: activeTab, includeSubtasks: false });
 
   const sensors = useSensors(
@@ -333,28 +331,16 @@ export default function TasksPage() {
     });
   };
 
-  const handleDragStart = (event: DragEndEvent) => {
-    setActiveId(event.active.id as string);
+  const handleDragStart = (_event: DragEndEvent) => {
+    // TODO: Implement drag and drop
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    setActiveId(null);
-    const { active, over } = event;
-
-    if (!over || active.id === over.id) {
-      return;
-    }
-
-    // For now, we don't support moving tasks between parent/child hierarchy
-    // Just notify the user that drag-and-drop is available for future enhancement
-    console.log('Task moved:', { from: active.id, to: over.id });
-
-    // In a full implementation, you would call:
-    // await moveTask(active.id as string, newParentId);
+  const handleDragEnd = async (_event: DragEndEvent) => {
+    // TODO: Implement drag and drop reordering
   };
 
   const handleDragCancel = () => {
-    setActiveId(null);
+    // TODO: Implement drag and drop
   };
 
   // Batch operations

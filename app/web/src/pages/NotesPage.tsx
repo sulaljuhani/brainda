@@ -5,9 +5,8 @@ import { NoteCard } from '@components/notes/NoteCard';
 import { NoteEditor } from '@components/notes/NoteEditor';
 import { NoteDetail } from '@components/notes/NoteDetail';
 import { Button } from '@components/shared/Button';
-import { Input } from '@components/shared/Input';
 import { LoadingSpinner } from '@components/shared/LoadingSpinner';
-import type { Note } from '@types/*';
+import type { Note } from '@/types';
 import './NotesPage.css';
 
 type ViewMode = 'grid' | 'list';

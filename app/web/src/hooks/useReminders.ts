@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { remindersService } from '@services/remindersService';
-import type { Reminder, CreateReminderRequest } from '@types/*';
+import type { Reminder, CreateReminderRequest } from '@/types';
 
 export function useReminders() {
   const [reminders, setReminders] = useState<Reminder[]>([]);

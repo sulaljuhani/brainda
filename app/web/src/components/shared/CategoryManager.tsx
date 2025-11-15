@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useCategories } from '@hooks/useCategories';
 import { Modal } from '@components/shared/Modal';
-import type { Category } from '@types/*';
+import type { Category } from '@/types';
 import styles from './CategoryManager.module.css';
 
 interface CategoryManagerProps {

@@ -1,5 +1,5 @@
 ﻿import { api } from './api';
-import type { CalendarEvent, CreateEventRequest } from '@types/*';
+import type { CalendarEvent, CreateEventRequest } from '@/types';
 
 export const calendarService = {
   getEvents: async (start: string, end: string): Promise<{ events: CalendarEvent[]; count: number }> => {

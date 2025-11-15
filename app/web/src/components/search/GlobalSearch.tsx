@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearch } from '@hooks/useSearch';
-import type { SearchResult } from '@types/api';
+import type { SearchResult } from '@/types';
 import styles from './GlobalSearch.module.css';
 
 interface GlobalSearchProps {

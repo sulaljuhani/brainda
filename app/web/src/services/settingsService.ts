@@ -5,7 +5,7 @@ import type {
   ChangePasswordRequest,
   GoogleCalendarSettings,
   OpenMemorySettings,
-} from '@types/*';
+} from '@/types';
 
 class SettingsService {
   // User settings

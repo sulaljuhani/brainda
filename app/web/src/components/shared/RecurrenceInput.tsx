@@ -19,7 +19,7 @@ const DAYS_OF_WEEK = [
   { label: 'Sat', value: 'SA' },
 ];
 
-export function RecurrenceInput({ value, onChange, type }: RecurrenceInputProps) {
+export function RecurrenceInput({ value, onChange }: RecurrenceInputProps) {
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('none');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [monthlyDay, setMonthlyDay] = useState<number>(1);

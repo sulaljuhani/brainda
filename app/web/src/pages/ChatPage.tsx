@@ -39,7 +39,6 @@ export default function ChatPage() {
     sendMessage,
     clearMessages,
     loadMessages,
-    conversationId
   } = useChat({
     conversationId: selectedConversationId,
     onConversationCreated: (newConversationId) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@services/apiClient';
-import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '@types/*';
+import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '@/types';
 
 type CategoryType = 'tasks' | 'events' | 'reminders';
 

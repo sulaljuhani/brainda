@@ -7,7 +7,7 @@ import { Input } from '@components/shared/Input';
 import { Textarea } from '@components/shared/Textarea';
 import { Button } from '@components/shared/Button';
 import { TagInput } from './TagInput';
-import type { Note, CreateNoteRequest } from '@types/*';
+import type { Note, CreateNoteRequest } from '@/types';
 import './NoteEditor.css';
 
 interface NoteEditorProps {

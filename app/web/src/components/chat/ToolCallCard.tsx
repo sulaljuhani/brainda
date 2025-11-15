@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
-import type { ToolCall } from '@types/*';
+import type { ToolCall } from '@/types';
 import './ToolCallCard.css';
 
 interface ToolCallCardProps {

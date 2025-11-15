@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { MessageSquare } from 'lucide-react';
-import type { ChatMessage } from '@types/*';
+import type { ChatMessage } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { TypingIndicator } from './TypingIndicator';
 import './MessageList.css';

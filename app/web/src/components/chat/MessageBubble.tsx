@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { format } from 'date-fns';
 import { Copy, Check, User, Bot } from 'lucide-react';
-import type { ChatMessage } from '@types/*';
+import type { ChatMessage } from '@/types';
 import { CitationInline } from './CitationInline';
 import { ToolCallCard } from './ToolCallCard';
 import './MessageBubble.css';

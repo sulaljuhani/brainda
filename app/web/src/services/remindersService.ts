@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Reminder, CreateReminderRequest } from '@types/*';
+import type { Reminder, CreateReminderRequest } from '@/types';
 
 export const remindersService = {
   getAll: () => api.get<Reminder[]>('/reminders'),

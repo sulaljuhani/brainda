@@ -7,7 +7,7 @@ import {
   format,
   isToday,
 } from 'date-fns';
-import type { CalendarEvent } from '@types/*';
+import type { CalendarEvent } from '@/types';
 import { EventCard } from './EventCard';
 import styles from './calendar.module.css';
 

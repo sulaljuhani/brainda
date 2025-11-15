@@ -13,7 +13,7 @@ import { WeeklyCalendar } from '@components/calendar/WeeklyCalendar';
 import { MonthlyCalendar } from '@components/calendar/MonthlyCalendar';
 import { EventForm } from '@components/calendar/EventForm';
 import { GoogleCalendarConnect } from '@components/calendar/GoogleCalendarConnect';
-import type { CalendarEvent, CreateEventRequest } from '@types/*';
+import type { CalendarEvent, CreateEventRequest } from '@/types';
 import styles from './CalendarPage.module.css';
 
 type CalendarView = 'week' | 'month';

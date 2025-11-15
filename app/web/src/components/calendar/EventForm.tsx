@@ -4,7 +4,7 @@ import { Modal } from '@components/shared/Modal';
 import { CategoryPicker } from '@components/shared/CategoryPicker';
 import { RecurrenceInput } from '@components/shared/RecurrenceInput';
 import { CategoryManager } from '@components/shared/CategoryManager';
-import type { CreateEventRequest, CalendarEvent } from '@types/*';
+import type { CreateEventRequest, CalendarEvent } from '@/types';
 import styles from './EventForm.module.css';
 
 interface EventFormProps {

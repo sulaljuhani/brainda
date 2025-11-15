@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { chatConversationsService } from '../services/chatConversationsService';
-import type { ChatConversation } from '@types/*';
+import type { ChatConversation } from '@/types';
 
 export function useChatConversations() {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
