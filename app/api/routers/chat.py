@@ -47,6 +47,11 @@ class CreateMessageRequest(BaseModel):
     citations: Optional[List[Dict[str, Any]]] = None
 
 
+class UpdateTitleRequest(BaseModel):
+    """Update conversation title request"""
+    title: str = Field(..., min_length=1, max_length=500)
+
+
 class ConversationWithMessages(BaseModel):
     """Conversation with messages"""
     conversation: ConversationModel
@@ -258,7 +263,7 @@ async def delete_conversation(
 @router.patch("/conversations/{conversation_id}/title")
 async def update_conversation_title(
     conversation_id: UUID,
-    title: str = Field(..., min_length=1, max_length=500),
+    payload: UpdateTitleRequest,
     user_id: UUID = Depends(get_current_user),
     db: Database = Depends(get_db),
 ):
@@ -270,7 +275,7 @@ async def update_conversation_title(
             SET title = $1, updated_at = NOW()
             WHERE id = $2 AND user_id = $3
             """,
-            title,
+            payload.title,
             conversation_id,
             user_id,
         )
@@ -278,7 +283,7 @@ async def update_conversation_title(
         if result == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Conversation not found")
 
-        return {"success": True, "title": title}
+        return {"success": True, "title": payload.title}
 
     except HTTPException:
         raise

@@ -942,8 +942,43 @@ async def update_note_endpoint(
     
     update_markdown_file(dict(updated))
     await queue_embedding_task(note_id)
-    
+
     return {"success": True, "data": dict(updated)}
+
+@router.get("/notes/{note_id}")
+async def get_note_endpoint(
+    note_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """Get a single note by ID"""
+    note = await db.fetchrow("""
+        SELECT id, title, body, tags, md_path, created_at, updated_at
+        FROM notes
+        WHERE id = $1 AND user_id = $2
+    """, note_id, user_id)
+
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    return dict(note)
+
+@router.delete("/notes/{note_id}")
+async def delete_note_endpoint(
+    note_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """Delete a note"""
+    result = await db.execute("""
+        DELETE FROM notes
+        WHERE id = $1 AND user_id = $2
+    """, note_id, user_id)
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    return {"success": True}
 
 
 @router.post("/chat", response_model=ChatResponse)

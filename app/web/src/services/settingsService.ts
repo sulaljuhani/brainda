@@ -29,7 +29,7 @@ class SettingsService {
 
   // Google Calendar
   async getGoogleCalendarSettings(): Promise<GoogleCalendarSettings> {
-    return api.get<GoogleCalendarSettings>('/calendar/google/settings');
+    return api.get<GoogleCalendarSettings>('/calendar/google/status');
   }
 
   async connectGoogleCalendar(): Promise<{ auth_url: string }> {
@@ -41,7 +41,7 @@ class SettingsService {
   }
 
   async updateGoogleCalendarSync(enabled: boolean): Promise<void> {
-    return api.put<void>('/calendar/google/settings', { sync_enabled: enabled });
+    return api.patch<void>('/calendar/google/settings', { sync_enabled: enabled });
   }
 
   // OpenMemory

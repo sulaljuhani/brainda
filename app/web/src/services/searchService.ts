@@ -6,7 +6,7 @@ export type ContentTypeFilter = 'all' | 'note' | 'document' | 'reminder' | 'even
 export const searchService = {
   search: (query: string, contentType: ContentTypeFilter = 'all', limit = 20) => {
     const params = new URLSearchParams({
-      query: query.trim(),
+      q: query.trim(),
       limit: limit.toString(),
     });
 
