@@ -115,6 +115,7 @@ from api.services.reminder_service import ReminderService
 from api.services.vector_service import VectorService
 from api.tools.calendar import CALENDAR_TOOLS, execute_calendar_tool
 from api.tools.reminder_tools import REMINDER_TOOLS, execute_reminder_tool
+from api.tools.task_tools import TASK_TOOLS, execute_task_tool
 
 
 class SlidingWindowRateLimiter:
@@ -725,23 +726,27 @@ async def _dispatch_chat(
     The LLM decides whether to use tools or provide a direct response.
     """
     # Combine all available tools
-    all_tools = CALENDAR_TOOLS + REMINDER_TOOLS
+    all_tools = CALENDAR_TOOLS + REMINDER_TOOLS + TASK_TOOLS
 
     # Get LLM adapter
     llm_adapter = get_llm_adapter()
 
     # System prompt to guide the LLM
-    system_prompt = """You are a helpful assistant with access to calendar and task management tools.
+    system_prompt = """You are a helpful assistant with access to calendar, task, and reminder management tools.
 
-When the user asks to create events, reminders, or tasks, use the appropriate tools.
+When the user asks to create events, tasks, or reminders, use the appropriate tools:
 - For calendar events (meetings, appointments): use create_calendar_event
-- For one-time tasks or reminders: use create_reminder
-- For recurring tasks: use create_reminder with repeat_rrule parameter
+- For tasks (things to do, projects, work items): use create_task
+- For reminders (time-based notifications): use create_reminder
+- For subtasks: use create_subtask with parent_task_id
 
-Always infer reasonable defaults for missing information:
+Tool usage guidelines:
+- Tasks can have start/end dates, recurrence (rrule), and can be organized hierarchically
+- Reminders can be standalone or linked to tasks/events with offsets
+- Always infer reasonable defaults for missing information
 - If no time is specified, use a sensible default based on context
 - Use the user's timezone (default to UTC if unknown)
-- For recurring tasks, construct proper RRULE strings
+- For recurring items, construct proper RRULE strings
 
 Be conversational and confirm what you've done."""
 
@@ -776,6 +781,8 @@ Be conversational and confirm what you've done."""
                     result = await execute_calendar_tool(tool_name, arguments, user_id, db)
                 elif tool_name in ["create_reminder", "list_reminders", "snooze_reminder"]:
                     result = await execute_reminder_tool(tool_name, arguments, user_id, db)
+                elif tool_name in ["create_task", "update_task", "complete_task", "delete_task", "list_tasks", "create_subtask"]:
+                    result = await execute_task_tool(tool_name, arguments, user_id, db)
                 else:
                     result = {
                         "success": False,
