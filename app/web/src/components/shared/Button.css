@@ -2,72 +2,74 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   border: none;
-  border-radius: 0.5rem;
-  font-weight: 500;
+  border-radius: var(--radius-chatgpt-button);
+  font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  transition: all 0.15s ease;
+  font-family: var(--font-sans);
   white-space: nowrap;
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--color-primary, #d97706);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
 /* Sizes */
 .btn--small {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
 }
 
 .btn--medium {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
 }
 
 .btn--large {
-  padding: 0.75rem 1.5rem;
-  font-size: 1.125rem;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-base);
 }
 
-/* Variants */
+/* Variants - ChatGPT style */
 .btn--primary {
-  background-color: var(--color-primary, #d97706);
+  background-color: var(--accent-primary);
   color: white;
 }
 
 .btn--primary:hover:not(.btn--disabled) {
-  background-color: var(--color-primary-dark, #b45309);
+  background-color: var(--accent-hover);
 }
 
 .btn--secondary {
-  background-color: var(--color-gray-200, #e5e7eb);
-  color: var(--color-gray-800, #1f2937);
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
 }
 
 .btn--secondary:hover:not(.btn--disabled) {
-  background-color: var(--color-gray-300, #d1d5db);
+  background-color: var(--bg-tertiary);
 }
 
 .btn--danger {
-  background-color: var(--color-danger, #dc2626);
+  background-color: var(--error);
   color: white;
 }
 
 .btn--danger:hover:not(.btn--disabled) {
-  background-color: var(--color-danger-dark, #b91c1c);
+  background-color: #dc2626;
 }
 
 .btn--ghost {
   background-color: transparent;
-  color: var(--color-gray-700, #374151);
+  color: var(--text-secondary);
 }
 
 .btn--ghost:hover:not(.btn--disabled) {
-  background-color: var(--color-gray-100, #f3f4f6);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 /* States */

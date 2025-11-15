@@ -4,32 +4,34 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  padding: var(--space-4);
+  backdrop-filter: blur(4px);
 }
 
 .modal-content {
-  background-color: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-chatgpt-card);
+  box-shadow: var(--shadow-xl);
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   width: 100%;
-  animation: modalSlideIn 0.2s ease-out;
+  animation: modalSlideIn 0.15s ease-out;
+  border: 1px solid var(--border-default);
 }
 
 @keyframes modalSlideIn {
   from {
     opacity: 0;
-    transform: translateY(-1rem);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1);
   }
 }
 
@@ -49,14 +51,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-gray-900, #111827);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -64,24 +66,27 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.25rem;
-  color: var(--color-gray-500, #6b7280);
-  border-radius: 0.25rem;
-  transition: all 0.2s ease;
+  padding: var(--space-2);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-close:hover {
-  background-color: var(--color-gray-100, #f3f4f6);
-  color: var(--color-gray-700, #374151);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .modal-close:focus-visible {
-  outline: 2px solid var(--color-primary, #d97706);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: var(--space-6);
 }
 
 /* Mobile responsive styles */
