@@ -447,3 +447,88 @@ class AuthService:
             return None
 
         return user
+
+    async def change_password(
+        self,
+        user_id: UUID,
+        current_password: str,
+        new_password: str,
+    ) -> bool:
+        """
+        Change user's password after verifying current password.
+        Returns True if successful, False if current password is invalid.
+        """
+        # Get user and verify current password
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            return False
+
+        if not user.get("password_hash"):
+            return False
+
+        if not self.verify_password(current_password, user["password_hash"]):
+            return False
+
+        # Hash new password and update
+        new_password_hash = self.hash_password(new_password)
+        await self.db.execute(
+            "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+            new_password_hash,
+            user_id,
+        )
+
+        return True
+
+    async def invalidate_other_sessions(self, user_id: UUID, current_token: str) -> int:
+        """
+        Invalidate all sessions for a user except the current one.
+        Returns the number of sessions invalidated.
+        """
+        hashed_current_token = _hash_session_token(current_token)
+        result = await self.db.execute(
+            "DELETE FROM sessions WHERE user_id = $1 AND token != $2",
+            user_id,
+            hashed_current_token,
+        )
+        # Parse result like "DELETE 5" to get count
+        count = int(result.split()[1]) if result and result.startswith("DELETE") else 0
+        return count
+
+    async def update_user_profile(
+        self,
+        user_id: UUID,
+        display_name: Optional[str] = None,
+        email: Optional[str] = None,
+    ) -> asyncpg.Record:
+        """
+        Update user profile fields.
+        Returns updated user record.
+        Raises ValueError if user not found or email already in use.
+        """
+        # Check if user exists
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        updates: Dict[str, Any] = {}
+
+        # Update display name if provided
+        if display_name is not None:
+            updates["display_name"] = display_name.strip() if display_name else None
+
+        # Update email if provided and different
+        if email is not None:
+            normalized_email = email.strip().lower() if email else None
+            if normalized_email != user.get("email"):
+                # Check if email is already in use by another user
+                if normalized_email:
+                    existing_user = await self.get_user_by_email(normalized_email)
+                    if existing_user and existing_user["id"] != user_id:
+                        raise ValueError("Email already in use")
+                updates["email"] = normalized_email
+
+        # Perform update if there are changes
+        if updates:
+            return await self.update_user(user_id, updates)
+
+        return user
