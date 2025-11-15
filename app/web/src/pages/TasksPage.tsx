@@ -37,11 +37,14 @@ interface DraggableTaskProps {
   isSubtask: boolean;
   activeTab: TabType;
   expandedTasks: Set<string>;
+  batchMode: boolean;
+  isSelected: boolean;
   onComplete: (id: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onAddSubtask: (task: Task) => void;
   onToggleExpand: (taskId: string) => void;
+  onToggleSelection: (taskId: string) => void;
 }
 
 function DraggableTask({
@@ -49,11 +52,14 @@ function DraggableTask({
   isSubtask,
   activeTab,
   expandedTasks,
+  batchMode,
+  isSelected,
   onComplete,
   onEdit,
   onDelete,
   onAddSubtask,
   onToggleExpand,
+  onToggleSelection,
 }: DraggableTaskProps) {
   const {
     attributes,
@@ -77,7 +83,17 @@ function DraggableTask({
     <div ref={setNodeRef} style={style} className={styles.taskWrapper}>
       <div className={`${styles.taskCard} ${isSubtask ? styles.subtask : ''}`}>
         <div className={styles.taskMain}>
-          {activeTab === 'active' && !isSubtask && (
+          {batchMode && !isSubtask && (
+            <input
+              type="checkbox"
+              className={styles.selectCheckbox}
+              checked={isSelected}
+              onChange={() => onToggleSelection(task.id)}
+              aria-label={`Select ${task.title}`}
+            />
+          )}
+
+          {!batchMode && activeTab === 'active' && !isSubtask && (
             <button
               className={styles.dragHandle}
               {...attributes}
@@ -88,7 +104,7 @@ function DraggableTask({
             </button>
           )}
 
-          {activeTab === 'active' && (
+          {!batchMode && activeTab === 'active' && (
             <button
               className={styles.checkbox}
               onClick={() => onComplete(task.id)}
@@ -216,6 +232,8 @@ export default function TasksPage() {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [batchMode, setBatchMode] = useState(false);
 
   const { tasks, loading, error, createTask, updateTask, completeTask, deleteTask, moveTask } =
     useTasks({ status: activeTab, includeSubtasks: false });
@@ -339,6 +357,54 @@ export default function TasksPage() {
     setActiveId(null);
   };
 
+  // Batch operations
+  const toggleBatchMode = () => {
+    setBatchMode(!batchMode);
+    setSelectedTasks(new Set());
+  };
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllTasks = () => {
+    setSelectedTasks(new Set(tasks.map(t => t.id)));
+  };
+
+  const deselectAllTasks = () => {
+    setSelectedTasks(new Set());
+  };
+
+  const handleBatchComplete = async () => {
+    if (selectedTasks.size === 0) return;
+
+    if (confirm(`Mark ${selectedTasks.size} task(s) as complete?`)) {
+      for (const taskId of selectedTasks) {
+        await completeTask(taskId);
+      }
+      setSelectedTasks(new Set());
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedTasks.size === 0) return;
+
+    if (confirm(`Delete ${selectedTasks.size} task(s)? This cannot be undone.`)) {
+      for (const taskId of selectedTasks) {
+        await deleteTask(taskId);
+      }
+      setSelectedTasks(new Set());
+    }
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -388,7 +454,61 @@ export default function TasksPage() {
           >
             Manage Categories
           </button>
+          <button
+            className={`${styles.batchModeBtn} ${batchMode ? styles.batchModeBtnActive : ''}`}
+            onClick={toggleBatchMode}
+          >
+            {batchMode ? 'Exit Batch Mode' : 'Batch Actions'}
+          </button>
         </div>
+
+        {batchMode && (
+          <div className={styles.batchToolbar}>
+            <div className={styles.batchInfo}>
+              {selectedTasks.size > 0 ? (
+                <span>{selectedTasks.size} task(s) selected</span>
+              ) : (
+                <span>Select tasks to perform batch actions</span>
+              )}
+            </div>
+            <div className={styles.batchActions}>
+              {tasks.length > 0 && (
+                <>
+                  <button
+                    className={styles.batchActionBtn}
+                    onClick={selectedTasks.size === tasks.length ? deselectAllTasks : selectAllTasks}
+                  >
+                    {selectedTasks.size === tasks.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                  {selectedTasks.size > 0 && activeTab === 'active' && (
+                    <>
+                      <button
+                        className={styles.batchActionBtn}
+                        onClick={handleBatchComplete}
+                      >
+                        Complete Selected
+                      </button>
+                      <button
+                        className={`${styles.batchActionBtn} ${styles.batchActionDanger}`}
+                        onClick={handleBatchDelete}
+                      >
+                        Delete Selected
+                      </button>
+                    </>
+                  )}
+                  {selectedTasks.size > 0 && activeTab === 'completed' && (
+                    <button
+                      className={`${styles.batchActionBtn} ${styles.batchActionDanger}`}
+                      onClick={handleBatchDelete}
+                    >
+                      Delete Selected
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className={styles.content}>
           {loading ? (
@@ -432,11 +552,14 @@ export default function TasksPage() {
                           isSubtask={false}
                           activeTab={activeTab}
                           expandedTasks={expandedTasks}
+                          batchMode={batchMode}
+                          isSelected={selectedTasks.has(task.id)}
                           onComplete={handleCompleteTask}
                           onEdit={handleEditTask}
                           onDelete={handleDeleteTask}
                           onAddSubtask={handleAddSubtask}
                           onToggleExpand={toggleTaskExpanded}
+                          onToggleSelection={toggleTaskSelection}
                         />
                       ))}
                     </div>
