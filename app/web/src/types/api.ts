@@ -35,8 +35,18 @@ export interface Reminder {
   title: string;
   body?: string;
   due_at_utc: string;
+  due_at_local: string;
+  timezone: string;
   status: 'active' | 'completed' | 'snoozed';
   repeat_rrule?: string;
+  category_id?: string;
+  category_name?: string;
+  task_id?: string;
+  task_title?: string;
+  calendar_event_id?: string;
+  event_title?: string;
+  offset_days?: number;
+  offset_type?: 'before' | 'after';
   created_at: string;
   updated_at: string;
 }
@@ -45,7 +55,14 @@ export interface CreateReminderRequest {
   title: string;
   body?: string;
   due_at_utc: string;
+  due_at_local: string;
+  timezone: string;
   repeat_rrule?: string;
+  category_id?: string;
+  task_id?: string;
+  calendar_event_id?: string;
+  offset_days?: number;
+  offset_type?: 'before' | 'after';
 }
 
 // Documents
@@ -88,6 +105,8 @@ export interface CalendarEvent {
   location_text?: string;
   rrule?: string;
   status: string;
+  category_id?: string;
+  category_name?: string;
   is_recurring_instance?: boolean;
 }
 
@@ -99,6 +118,73 @@ export interface CreateEventRequest {
   timezone?: string;
   location_text?: string;
   rrule?: string;
+  category_id?: string;
+}
+
+// Tasks
+export interface Task {
+  id: string;
+  user_id: string;
+  parent_task_id?: string;
+  title: string;
+  description?: string;
+  category_id?: string;
+  category_name?: string;
+  starts_at?: string;
+  ends_at?: string;
+  all_day: boolean;
+  timezone: string;
+  rrule?: string;
+  status: 'active' | 'completed' | 'cancelled';
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+  subtasks?: Task[];
+}
+
+export interface CreateTaskRequest {
+  title: string;
+  description?: string;
+  category_id?: string;
+  starts_at?: string;
+  ends_at?: string;
+  all_day?: boolean;
+  timezone: string;
+  rrule?: string;
+  parent_task_id?: string;
+}
+
+export interface UpdateTaskRequest {
+  title?: string;
+  description?: string;
+  category_id?: string;
+  starts_at?: string;
+  ends_at?: string;
+  all_day?: boolean;
+  timezone?: string;
+  rrule?: string;
+  status?: 'active' | 'completed' | 'cancelled';
+  completed_at?: string;
+  parent_task_id?: string;
+}
+
+// Categories
+export interface Category {
+  id: string;
+  user_id: string;
+  name: string;
+  color?: string;
+  created_at: string;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  color?: string;
+}
+
+export interface UpdateCategoryRequest {
+  name?: string;
+  color?: string;
 }
 
 // Chat
