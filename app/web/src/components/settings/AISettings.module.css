@@ -1,0 +1,431 @@
+.aiSettings {
+  max-width: 800px;
+  padding: 0;
+}
+
+/* Section Layout */
+.section {
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 0.5rem 0;
+}
+
+.sectionSubtitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0 0 0.5rem 0;
+}
+
+.sectionDescription {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+/* Form Elements */
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.formGroup:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary, #374151);
+  margin-bottom: 0.5rem;
+}
+
+.labelValue {
+  font-weight: 500;
+  color: var(--primary-color, #3b82f6);
+  margin-left: 0.5rem;
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  color: var(--text-primary, #111827);
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  color: var(--text-primary, #111827);
+  background: var(--bg-secondary, #f9fafb);
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 0.5rem;
+  resize: vertical;
+  min-height: 200px;
+  transition: all 0.2s;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: var(--bg-primary, #fff);
+}
+
+.helpText {
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #6b7280);
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
+/* Radio Groups */
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1rem;
+  background: var(--bg-secondary, #f9fafb);
+  border: 2px solid var(--border-color, #e5e7eb);
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.radioLabel:hover {
+  background: var(--bg-primary, #fff);
+  border-color: var(--primary-color-light, #93c5fd);
+}
+
+.radioLabel:has(.radio:checked) {
+  background: var(--bg-primary, #fff);
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.radio {
+  margin-top: 0.125rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--primary-color, #3b82f6);
+}
+
+.radioContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.radioTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.radioDescription {
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1.4;
+}
+
+/* Slider */
+.slider {
+  width: 100%;
+  height: 0.375rem;
+  background: var(--bg-secondary, #e5e7eb);
+  border-radius: 0.375rem;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: var(--primary-color, #3b82f6);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.slider::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  background: var(--primary-color, #3b82f6);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.sliderLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* Buttons */
+.resetButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  background: transparent;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.resetButton:hover {
+  color: var(--text-primary, #374151);
+  background: var(--bg-secondary, #f9fafb);
+  border-color: var(--text-secondary, #9ca3af);
+}
+
+.resetButton:active {
+  transform: translateY(1px);
+}
+
+/* Actions Section */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 0;
+}
+
+.saveButton {
+  padding: 0.75rem 2rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary-color, #3b82f6);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: var(--primary-color-dark, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.saveButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.saveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.saveMessage {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.saveMessageSuccess {
+  color: #059669;
+  background: #d1fae5;
+}
+
+.saveMessageError {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .section {
+    background: var(--bg-primary, #1e293b);
+    border-color: var(--border-color, #334155);
+  }
+
+  .sectionTitle,
+  .sectionSubtitle,
+  .radioTitle,
+  .label {
+    color: var(--text-primary, #f1f5f9);
+  }
+
+  .sectionDescription,
+  .radioDescription,
+  .helpText,
+  .sliderLabels {
+    color: var(--text-secondary, #94a3b8);
+  }
+
+  .input,
+  .select {
+    background: var(--bg-secondary, #0f172a);
+    border-color: var(--border-color, #334155);
+    color: var(--text-primary, #f1f5f9);
+  }
+
+  .input:focus,
+  .select:focus {
+    background: var(--bg-primary, #1e293b);
+    border-color: var(--primary-color, #3b82f6);
+  }
+
+  .textarea {
+    background: var(--bg-secondary, #0f172a);
+    border-color: var(--border-color, #334155);
+    color: var(--text-primary, #f1f5f9);
+  }
+
+  .textarea:focus {
+    background: var(--bg-primary, #1e293b);
+  }
+
+  .radioLabel {
+    background: var(--bg-secondary, #0f172a);
+    border-color: var(--border-color, #334155);
+  }
+
+  .radioLabel:hover {
+    background: var(--bg-primary, #1e293b);
+    border-color: var(--primary-color-light, #60a5fa);
+  }
+
+  .radioLabel:has(.radio:checked) {
+    background: var(--bg-primary, #1e293b);
+  }
+
+  .slider {
+    background: var(--bg-secondary, #334155);
+  }
+
+  .resetButton {
+    color: var(--text-secondary, #94a3b8);
+    border-color: var(--border-color, #334155);
+  }
+
+  .resetButton:hover {
+    color: var(--text-primary, #f1f5f9);
+    background: var(--bg-secondary, #334155);
+    border-color: var(--text-secondary, #64748b);
+  }
+
+  .saveMessageSuccess {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.1);
+  }
+
+  .saveMessageError {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 767px) {
+  .section {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.125rem;
+  }
+
+  .sectionSubtitle {
+    font-size: 1rem;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .radioLabel {
+    padding: 0.875rem;
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .saveButton {
+    width: 100%;
+  }
+
+  .saveMessage {
+    text-align: center;
+  }
+}

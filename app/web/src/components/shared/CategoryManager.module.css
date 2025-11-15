@@ -1,0 +1,235 @@
+.categoryManager {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 600px;
+  min-height: 400px;
+}
+
+.loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary, #666);
+  font-style: italic;
+}
+
+.categoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary, #666);
+  font-style: italic;
+}
+
+.categoryItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 0.5rem;
+  background-color: var(--bg-primary, #fff);
+  transition: all 0.2s;
+}
+
+.categoryItem:hover {
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.categoryMain {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.colorIndicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.categoryName {
+  font-size: 0.9375rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.categoryName:hover {
+  background-color: var(--bg-hover, #f5f5f5);
+}
+
+.editInput {
+  flex: 1;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--primary-color, #3b82f6);
+  border-radius: 0.25rem;
+  font-size: 0.9375rem;
+  background-color: var(--bg-primary, #fff);
+}
+
+.editInput:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.categoryActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.colorPicker {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.colorOption {
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.colorOption:hover {
+  transform: scale(1.1);
+}
+
+.colorOptionActive {
+  border-color: var(--text-primary, #000);
+  box-shadow: 0 0 0 2px var(--bg-primary, #fff);
+}
+
+.actionButton {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--border-color, #ddd);
+  background-color: var(--bg-primary, #fff);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.actionButton:hover {
+  background-color: var(--bg-hover, #f5f5f5);
+}
+
+.deleteButton {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--error-color, #ef4444);
+  background-color: transparent;
+  color: var(--error-color, #ef4444);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.deleteButton:hover {
+  background-color: var(--error-color, #ef4444);
+  color: white;
+}
+
+.deleteConfirm {
+  background-color: var(--error-color, #ef4444);
+  color: white;
+}
+
+.createSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 2rem;
+  border-top: 2px dashed var(--border-color, #ddd);
+}
+
+.createTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.createForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.input {
+  padding: 0.625rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 0.375rem;
+  font-size: 0.9375rem;
+  background-color: var(--bg-primary, #fff);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.createButton {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background-color: var(--primary-color, #3b82f6);
+  color: white;
+  border-radius: 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.createButton:hover {
+  background-color: var(--primary-hover, #2563eb);
+}
+
+.createButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .categoryItem {
+    background-color: var(--bg-primary, #1a1a1a);
+    border-color: var(--border-color, #444);
+  }
+
+  .categoryItem:hover {
+    border-color: var(--primary-color, #3b82f6);
+  }
+
+  .categoryName:hover {
+    background-color: var(--bg-hover, #2a2a2a);
+  }
+
+  .editInput,
+  .input,
+  .actionButton {
+    background-color: var(--bg-primary, #1a1a1a);
+    border-color: var(--border-color, #444);
+    color: var(--text-primary, #e0e0e0);
+  }
+
+  .actionButton:hover {
+    background-color: var(--bg-hover, #2a2a2a);
+  }
+
+  .colorOptionActive {
+    border-color: var(--text-primary, #fff);
+    box-shadow: 0 0 0 2px var(--bg-primary, #1a1a1a);
+  }
+}

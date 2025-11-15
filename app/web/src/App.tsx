@@ -7,6 +7,8 @@ import { ProtectedRoute } from '@components/auth/ProtectedRoute';
 import ChatPage from '@pages/ChatPage';
 import NotesPage from '@pages/NotesPage';
 import DocumentsPage from '@pages/DocumentsPage';
+import { TasksPage } from '@pages/TasksPage';
+import { EventsPage } from '@pages/EventsPage';
 import RemindersPage from '@pages/RemindersPage';
 import CalendarPage from '@pages/CalendarPage';
 import SearchPage from '@pages/SearchPage';
@@ -51,6 +53,26 @@ export default function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <DocumentsPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <TasksPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/events"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <EventsPage />
                 </MainLayout>
               </ProtectedRoute>
             }

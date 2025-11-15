@@ -1,0 +1,175 @@
+.recurrenceInput {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.typeSelector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.radioLabel input[type="radio"] {
+  cursor: pointer;
+}
+
+.weeklyOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-radius: 0.5rem;
+}
+
+.dayButtons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dayButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color, #ddd);
+  background-color: var(--bg-primary, #fff);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.dayButton:hover {
+  background-color: var(--bg-hover, #e5e5e5);
+}
+
+.dayButtonActive {
+  background-color: var(--primary-color, #3b82f6);
+  color: white;
+  border-color: var(--primary-color, #3b82f6);
+}
+
+.presets {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.presetButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color, #ddd);
+  background-color: var(--bg-primary, #fff);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.presetButton:hover {
+  background-color: var(--bg-hover, #e5e5e5);
+}
+
+.monthlyOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-radius: 0.5rem;
+}
+
+.monthlyLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.select {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 0.375rem;
+  background-color: var(--bg-primary, #fff);
+  font-size: 0.875rem;
+}
+
+.select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.yearlyOptions {
+  padding: 1rem;
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-radius: 0.5rem;
+}
+
+.yearlyLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.input {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 0.375rem;
+  background-color: var(--bg-primary, #fff);
+  font-size: 0.875rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .weeklyOptions,
+  .monthlyOptions,
+  .yearlyOptions {
+    background-color: var(--bg-secondary, #2a2a2a);
+  }
+
+  .dayButton,
+  .presetButton,
+  .select,
+  .input {
+    background-color: var(--bg-primary, #1a1a1a);
+    border-color: var(--border-color, #444);
+    color: var(--text-primary, #e0e0e0);
+  }
+
+  .dayButton:hover,
+  .presetButton:hover {
+    background-color: var(--bg-hover, #333);
+  }
+}

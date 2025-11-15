@@ -24,6 +24,7 @@ class ReminderService:
         Returns standardized response format.
         """
         try:
+            # Validate calendar event if provided
             if data.calendar_event_id:
                 event = await self.db.fetchrow(
                     "SELECT id, user_id, status FROM calendar_events WHERE id = $1",
@@ -43,6 +44,44 @@ class ReminderService:
                         "error": {
                             "code": "INVALID_EVENT",
                             "message": "Cannot link reminder to cancelled event",
+                        },
+                    }
+
+            # Validate task if provided
+            if data.task_id:
+                task = await self.db.fetchrow(
+                    "SELECT id, user_id, status FROM tasks WHERE id = $1",
+                    data.task_id,
+                )
+                if not task or task["user_id"] != user_id:
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_TASK",
+                            "message": "Task not found for this user",
+                        },
+                    }
+                if task["status"] == "cancelled":
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_TASK",
+                            "message": "Cannot link reminder to cancelled task",
+                        },
+                    }
+
+            # Validate category if provided
+            if data.category_id:
+                category = await self.db.fetchrow(
+                    "SELECT id, user_id FROM reminder_categories WHERE id = $1",
+                    data.category_id,
+                )
+                if not category or category["user_id"] != user_id:
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_CATEGORY",
+                            "message": "Category not found for this user",
                         },
                     }
 
@@ -81,8 +120,10 @@ class ReminderService:
                     """
                     INSERT INTO reminders (
                         user_id, title, body, due_at_utc, due_at_local,
-                        timezone, repeat_rrule, note_id, calendar_event_id, idempotency_key_ref, status
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
+                        timezone, repeat_rrule, note_id, calendar_event_id,
+                        category_id, task_id, offset_days, offset_type,
+                        idempotency_key_ref, status
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'active')
                     RETURNING *
                     """,
                     user_id,
@@ -94,6 +135,10 @@ class ReminderService:
                     data.repeat_rrule,
                     data.note_id,
                     data.calendar_event_id,
+                    data.category_id,
+                    data.task_id,
+                    data.offset_days,
+                    data.offset_type,
                     idempotency_key_ref,
                 )
 
@@ -182,13 +227,21 @@ class ReminderService:
         status: Optional[str] = None,
         limit: int = 500
     ) -> List[dict]:
-        """List user's reminders"""
+        """List user's reminders with category, task, and event names"""
         # Whitelist of valid reminder statuses to prevent SQL injection
         VALID_STATUSES = {"active", "dismissed", "snoozed", "completed"}
 
         query = """
-            SELECT * FROM reminders
-            WHERE user_id = $1
+            SELECT
+                r.*,
+                rc.name as category_name,
+                t.title as task_title,
+                ce.title as event_title
+            FROM reminders r
+            LEFT JOIN reminder_categories rc ON r.category_id = rc.id
+            LEFT JOIN tasks t ON r.task_id = t.id
+            LEFT JOIN calendar_events ce ON r.calendar_event_id = ce.id
+            WHERE r.user_id = $1
         """
         params = [user_id]
 
@@ -202,10 +255,10 @@ class ReminderService:
                 )
                 # Return empty list for invalid status
                 return []
-            query += " AND status = $2"
+            query += " AND r.status = $2"
             params.append(status)
 
-        query += " ORDER BY due_at_utc ASC LIMIT $" + str(len(params) + 1)
+        query += " ORDER BY r.due_at_utc ASC LIMIT $" + str(len(params) + 1)
         params.append(limit)
 
         reminders = await self.db.fetch(query, *params)
@@ -236,10 +289,12 @@ class ReminderService:
         updates = []
         params = []
         param_idx = 1
-        
+
         for field, value in data.dict(exclude_unset=True).items():
             if field == "schema_version":
                 continue
+
+            # Validate calendar_event_id if being updated
             if field == "calendar_event_id" and value is not None:
                 event = await self.db.fetchrow(
                     "SELECT id, user_id, status FROM calendar_events WHERE id = $1",
@@ -261,6 +316,45 @@ class ReminderService:
                             "message": "Cannot link reminder to cancelled event",
                         },
                     }
+
+            # Validate task_id if being updated
+            if field == "task_id" and value is not None:
+                task = await self.db.fetchrow(
+                    "SELECT id, user_id, status FROM tasks WHERE id = $1",
+                    value,
+                )
+                if not task or task["user_id"] != user_id:
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_TASK",
+                            "message": "Task not found for this user",
+                        },
+                    }
+                if task["status"] == "cancelled":
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_TASK",
+                            "message": "Cannot link reminder to cancelled task",
+                        },
+                    }
+
+            # Validate category_id if being updated
+            if field == "category_id" and value is not None:
+                category = await self.db.fetchrow(
+                    "SELECT id, user_id FROM reminder_categories WHERE id = $1",
+                    value,
+                )
+                if not category or category["user_id"] != user_id:
+                    return {
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_CATEGORY",
+                            "message": "Category not found for this user",
+                        },
+                    }
+
             updates.append(f"{field} = ${param_idx}")
             params.append(value)
             param_idx += 1

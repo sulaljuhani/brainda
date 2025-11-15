@@ -1,8 +1,17 @@
-.reminderForm {
+.taskForm {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   max-width: 600px;
+}
+
+.subtaskNotice {
+  padding: 0.75rem;
+  background-color: var(--info-bg, #e0f2fe);
+  border-left: 4px solid var(--primary-color, #3b82f6);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
 }
 
 .formGroup {
@@ -52,13 +61,18 @@
   min-height: 80px;
 }
 
-.infoNote {
-  padding: 0.75rem;
-  background-color: var(--info-bg, #eff6ff);
-  border-left: 4px solid var(--primary-color, #3b82f6);
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  color: var(--text-primary);
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
 }
 
 .formActions {
@@ -107,16 +121,16 @@
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
+  .subtaskNotice {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--text-primary, #e0e0e0);
+  }
+
   .input,
   .textarea,
   .select {
     background-color: var(--bg-primary, #1a1a1a);
     border-color: var(--border-color, #444);
-    color: var(--text-primary, #e0e0e0);
-  }
-
-  .infoNote {
-    background-color: rgba(59, 130, 246, 0.1);
     color: var(--text-primary, #e0e0e0);
   }
 
