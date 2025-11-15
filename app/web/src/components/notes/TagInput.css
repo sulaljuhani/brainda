@@ -3,14 +3,14 @@
 }
 
 .tag-input-wrapper {
-  border: 1px solid var(--color-gray-300, #d1d5db);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.375rem;
-  background-color: white;
-  transition: all 0.2s ease;
+  background-color: var(--bg-secondary);
+  transition: all 0.15s ease;
 }
 
 .tag-input-wrapper:focus-within {
-  border-color: var(--color-primary, #d97706);
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
 }
 
@@ -28,7 +28,7 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.5rem;
-  background-color: var(--color-primary, #d97706);
+  background-color: var(--accent-primary);
   color: white;
   border-radius: 0.25rem;
   font-size: 0.875rem;
@@ -63,7 +63,7 @@
 }
 
 .tag-input-field::placeholder {
-  color: var(--color-gray-400, #9ca3af);
+  color: var(--text-tertiary);
 }
 
 .tag-suggestions {
@@ -71,8 +71,8 @@
   top: calc(100% + 0.25rem);
   left: 0;
   right: 0;
-  background-color: white;
-  border: 1px solid var(--color-gray-200, #e5e7eb);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-default);
   border-radius: 0.375rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   max-height: 200px;
@@ -88,13 +88,13 @@
   background: none;
   cursor: pointer;
   font-size: 0.875rem;
-  color: var(--color-gray-700, #374151);
+  color: var(--text-secondary);
   transition: background-color 0.2s ease;
 }
 
 .tag-suggestion-item:hover,
 .tag-suggestion-item--focused {
-  background-color: var(--color-gray-100, #f3f4f6);
+  background-color: var(--bg-tertiary);
 }
 
 .tag-suggestion-item:first-child {

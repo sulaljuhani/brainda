@@ -1,7 +1,7 @@
 .dashboardPage {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--space-8);
 }
 
 .header {
@@ -54,7 +54,7 @@
   background-color: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.2s;
@@ -67,15 +67,15 @@
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  gap: var(--space-6);
 }
 
 .statCard {
   background: var(--bg-primary, #fff);
   border: 1px solid var(--border-color, #ddd);
   border-radius: 12px;
-  padding: 1.5rem;
-  transition: all 0.2s;
+  padding: var(--space-6);
+  transition: all 0.15s;
 }
 
 .statCard:hover {
@@ -108,7 +108,7 @@
 .statGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .statItem {
@@ -118,7 +118,7 @@
   padding: 0.75rem;
   background: var(--bg-secondary, #f9f9f9);
   border-radius: 8px;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .statItem:hover {
@@ -162,7 +162,7 @@
 /* Mobile responsive */
 @media (max-width: 768px) {
   .dashboardPage {
-    padding: 1rem;
+    padding: var(--space-4);
   }
 
   .statsGrid {

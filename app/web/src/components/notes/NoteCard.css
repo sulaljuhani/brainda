@@ -1,10 +1,10 @@
 .note-card {
-  background-color: white;
-  border: 1px solid var(--color-gray-200, #e5e7eb);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-default);
   border-radius: 0.5rem;
   padding: 1.25rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -12,13 +12,13 @@
 }
 
 .note-card:hover {
-  border-color: var(--color-primary, #d97706);
+  border-color: var(--accent-primary);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
 }
 
 .note-card:focus-visible {
-  outline: 2px solid var(--color-primary, #d97706);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
@@ -30,21 +30,21 @@
 
 .note-card-icon {
   flex-shrink: 0;
-  color: var(--color-primary, #d97706);
+  color: var(--accent-primary);
   padding-top: 0.125rem;
 }
 
 .note-card-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--color-gray-900, #111827);
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.4;
   word-break: break-word;
 }
 
 .note-card-preview {
-  color: var(--color-gray-600, #4b5563);
+  color: var(--text-secondary);
   font-size: 0.875rem;
   line-height: 1.5;
   margin: 0;
@@ -59,7 +59,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--color-gray-500, #6b7280);
+  color: var(--text-tertiary);
 }
 
 .note-card-tags-list {
@@ -72,8 +72,8 @@
 .note-card-tag {
   display: inline-block;
   padding: 0.125rem 0.5rem;
-  background-color: var(--color-gray-100, #f3f4f6);
-  color: var(--color-gray-700, #374151);
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
   border-radius: 0.25rem;
   font-size: 0.75rem;
   font-weight: 500;
@@ -82,7 +82,7 @@
 .note-card-tag-more {
   display: inline-block;
   padding: 0.125rem 0.5rem;
-  color: var(--color-gray-500, #6b7280);
+  color: var(--text-tertiary);
   font-size: 0.75rem;
   font-weight: 500;
 }
@@ -92,7 +92,7 @@
   align-items: center;
   justify-content: space-between;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--color-gray-100, #f3f4f6);
+  border-top: 1px solid var(--bg-tertiary);
 }
 
 .note-card-date {
@@ -100,7 +100,7 @@
   align-items: center;
   gap: 0.375rem;
   font-size: 0.75rem;
-  color: var(--color-gray-500, #6b7280);
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 640px) {

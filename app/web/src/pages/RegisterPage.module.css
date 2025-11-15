@@ -4,12 +4,12 @@
   justify-content: center;
   min-height: 100vh;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  padding: 1rem;
+  padding: var(--space-4);
 }
 
 .card {
   background: #1f2937;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
   max-width: 28rem;
   width: 100%;
@@ -18,7 +18,7 @@
 }
 
 .header {
-  padding: 2rem 2rem 1.5rem;
+  padding: var(--space-8) 2rem 1.5rem;
   text-align: center;
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: white;
@@ -40,18 +40,18 @@
 }
 
 .content {
-  padding: 2rem;
+  padding: var(--space-8);
 }
 
 .error {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 1.5rem 2rem 0;
+  margin: var(--space-6) 2rem 0;
   padding: 0.75rem 1rem;
   background-color: #7f1d1d;
   border: 1px solid #991b1b;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   color: #fecaca;
   font-size: 0.875rem;
 }
@@ -70,7 +70,7 @@
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .label {
@@ -89,7 +89,7 @@
 .input {
   padding: 0.75rem 1rem;
   border: 1px solid #374151;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   font-size: 1rem;
   color: #f3f4f6;
   background: #111827;
@@ -131,7 +131,7 @@
   color: white;
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   margin-top: 0.5rem;
@@ -171,8 +171,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
-  padding: 2rem 0;
+  gap: var(--space-6);
+  padding: var(--space-8) 0;
 }
 
 .authIcon {
@@ -215,7 +215,7 @@
 .divider {
   display: flex;
   align-items: center;
-  margin: 1.5rem 0;
+  margin: var(--space-6) 0;
   color: #6b7280;
   font-size: 0.875rem;
 }
@@ -258,7 +258,7 @@
 }
 
 .footer {
-  padding: 1.5rem 2rem;
+  padding: var(--space-6) 2rem;
   background-color: #111827;
   border-top: 1px solid #374151;
 }
@@ -273,11 +273,11 @@
 
 @media (max-width: 640px) {
   .container {
-    padding: 0.5rem;
+    padding: var(--space-2);
   }
 
   .header {
-    padding: 1.5rem 1.5rem 1rem;
+    padding: var(--space-6) 1.5rem 1rem;
   }
 
   .title {
@@ -289,10 +289,10 @@
   }
 
   .content {
-    padding: 1.5rem;
+    padding: var(--space-6);
   }
 
   .footer {
-    padding: 1rem 1.5rem;
+    padding: var(--space-4) 1.5rem;
   }
 }
