@@ -20,6 +20,7 @@ class CalendarEventCreate(BaseModel):
     timezone: str = Field("UTC", min_length=2, max_length=64)
     location_text: Optional[str] = Field(None, max_length=512)
     rrule: Optional[str] = None
+    category_id: Optional[UUID] = None
 
     @validator("timezone")
     def validate_timezone(cls, value: str) -> str:
@@ -59,6 +60,7 @@ class CalendarEventUpdate(BaseModel):
         None,
         description="confirmed, tentative, cancelled",
     )
+    category_id: Optional[UUID] = None
 
     @validator("timezone")
     def validate_timezone(cls, value: Optional[str]) -> Optional[str]:
@@ -100,6 +102,8 @@ class CalendarEventResponse(BaseModel):
     rrule: Optional[str]
     status: str
     source: str
+    category_id: Optional[UUID]
+    category_name: Optional[str]
     created_at: datetime
     updated_at: datetime
 

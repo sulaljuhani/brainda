@@ -33,6 +33,8 @@ class CalendarService:
             "rrule": record["rrule"],
             "status": record["status"],
             "source": record["source"],
+            "category_id": str(record["category_id"]) if record.get("category_id") else None,
+            "category_name": record.get("category_name"),
             "created_at": record["created_at"].isoformat() if record["created_at"] else None,
             "updated_at": record["updated_at"].isoformat() if record["updated_at"] else None,
         }
@@ -50,6 +52,21 @@ class CalendarService:
                     "message": "End time must be after start time",
                 },
             }
+
+        # Validate category if provided
+        if data.category_id:
+            category = await self.db.fetchrow(
+                "SELECT id, user_id FROM event_categories WHERE id = $1",
+                data.category_id,
+            )
+            if not category or category["user_id"] != user_id:
+                return {
+                    "success": False,
+                    "error": {
+                        "code": "INVALID_CATEGORY",
+                        "message": "Category not found for this user",
+                    },
+                }
 
         if data.rrule:
             try:
@@ -79,8 +96,8 @@ class CalendarService:
             """
             INSERT INTO calendar_events (
                 user_id, title, description, starts_at, ends_at, timezone,
-                location_text, rrule
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                location_text, rrule, category_id
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
             """,
             user_id,
@@ -91,6 +108,7 @@ class CalendarService:
             data.timezone,
             data.location_text,
             data.rrule,
+            data.category_id,
         )
 
         logger.info(
@@ -147,6 +165,21 @@ class CalendarService:
                     "error": {
                         "code": "VALIDATION_ERROR",
                         "message": "Status must be confirmed, tentative, or cancelled",
+                    },
+                }
+
+        # Validate category if being updated
+        if "category_id" in update_payload and update_payload["category_id"] is not None:
+            category = await self.db.fetchrow(
+                "SELECT id, user_id FROM event_categories WHERE id = $1",
+                update_payload["category_id"],
+            )
+            if not category or category["user_id"] != user_id:
+                return {
+                    "success": False,
+                    "error": {
+                        "code": "INVALID_CATEGORY",
+                        "message": "Category not found for this user",
                     },
                 }
 
@@ -265,24 +298,25 @@ class CalendarService:
                         "message": "Invalid status filter",
                     },
                 }
-            status_filter = "AND status = $4"
+            status_filter = "AND ce.status = $4"
             params.append(status)
         else:
-            status_filter = "AND status != 'cancelled'"
+            status_filter = "AND ce.status != 'cancelled'"
 
         query = f"""
-            SELECT *
-            FROM calendar_events
-            WHERE user_id = $1
+            SELECT ce.*, ec.name as category_name
+            FROM calendar_events ce
+            LEFT JOIN event_categories ec ON ce.category_id = ec.id
+            WHERE ce.user_id = $1
               {status_filter}
               AND (
-                    rrule IS NOT NULL
+                    ce.rrule IS NOT NULL
                     OR (
-                        starts_at <= $3
-                        AND (ends_at IS NULL OR ends_at >= $2)
+                        ce.starts_at <= $3
+                        AND (ce.ends_at IS NULL OR ce.ends_at >= $2)
                     )
                 )
-            ORDER BY starts_at ASC
+            ORDER BY ce.starts_at ASC
         """
 
         records = await self.db.fetch(query, *params)
