@@ -4,9 +4,10 @@ import { SecuritySettings } from '@components/settings/SecuritySettings';
 import { NotificationSettings } from '@components/settings/NotificationSettings';
 import { AppearanceSettings } from '@components/settings/AppearanceSettings';
 import { IntegrationSettings } from '@components/settings/IntegrationSettings';
+import { AISettings } from '@components/settings/AISettings';
 import styles from './SettingsPage.module.css';
 
-type SettingSection = 'profile' | 'security' | 'notifications' | 'appearance' | 'integrations';
+type SettingSection = 'profile' | 'security' | 'notifications' | 'appearance' | 'integrations' | 'ai';
 
 interface SectionConfig {
   id: SettingSection;
@@ -17,6 +18,7 @@ interface SectionConfig {
 const sections: SectionConfig[] = [
   { id: 'profile', label: 'Profile', icon: '👤' },
   { id: 'security', label: 'Security', icon: '🔒' },
+  { id: 'ai', label: 'AI & Chat', icon: '🤖' },
   { id: 'notifications', label: 'Notifications', icon: '🔔' },
   { id: 'appearance', label: 'Appearance', icon: '🎨' },
   { id: 'integrations', label: 'Integrations', icon: '🔗' },
@@ -31,6 +33,8 @@ export default function SettingsPage() {
         return <ProfileSettings />;
       case 'security':
         return <SecuritySettings />;
+      case 'ai':
+        return <AISettings />;
       case 'notifications':
         return <NotificationSettings />;
       case 'appearance':
