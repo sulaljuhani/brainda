@@ -23,7 +23,7 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -76,7 +76,7 @@
   font-weight: var(--font-medium);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .viewToggleBtn:hover {
@@ -112,7 +112,7 @@
   font-size: var(--text-2xl);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .navBtn:hover {
@@ -129,7 +129,7 @@
   font-weight: var(--font-medium);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .todayBtn:hover {
@@ -151,7 +151,7 @@
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .createEventBtn:hover {
@@ -222,7 +222,7 @@
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .retryBtn:hover {

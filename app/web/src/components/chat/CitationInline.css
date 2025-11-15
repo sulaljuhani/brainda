@@ -4,7 +4,7 @@
 }
 
 .citation-inline__number {
-  color: var(--color-primary, #d97706);
+  color: var(--accent-primary);
   font-weight: 600;
   cursor: pointer;
   margin: 0 0.125rem;
@@ -79,6 +79,6 @@
 
 .citation-inline__score {
   font-size: 0.75rem;
-  color: var(--color-primary, #d97706);
+  color: var(--accent-primary);
   font-weight: 500;
 }

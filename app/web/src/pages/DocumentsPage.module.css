@@ -1,5 +1,5 @@
 .container {
-  padding: 2rem;
+  padding: var(--space-8);
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -32,7 +32,7 @@
 .controlsSection {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
   margin-bottom: 1.5rem;
 }
 
@@ -57,7 +57,7 @@
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 8px;
   font-size: 0.875rem;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .searchInput:focus {
@@ -80,7 +80,7 @@
   cursor: pointer;
   font-size: 0.75rem;
   color: var(--text-secondary, #6b7280);
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .clearButton:hover {
@@ -91,19 +91,19 @@
 
 .filterButtons {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .filterButton {
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) 1rem;
   background: var(--bg-secondary, #f9fafb);
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 6px;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   color: var(--text-primary, #111827);
 }
 
@@ -151,7 +151,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem;
+  padding: var(--space-4);
   background: var(--error-light, #fee2e2);
   border: 1px solid var(--error-color, #ef4444);
   border-radius: 8px;
@@ -204,13 +204,13 @@
 .documentsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 /* Tablet */
 @media (max-width: 768px) {
   .container {
-    padding: 1.5rem;
+    padding: var(--space-6);
   }
 
   .title {
@@ -225,7 +225,7 @@
 /* Mobile */
 @media (max-width: 640px) {
   .container {
-    padding: 1rem;
+    padding: var(--space-4);
   }
 
   .title {
@@ -249,7 +249,7 @@
   }
 
   .filterButton {
-    padding: 0.5rem 0.75rem;
+    padding: var(--space-2) 0.75rem;
     font-size: 0.8125rem;
   }
 

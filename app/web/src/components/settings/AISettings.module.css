@@ -74,7 +74,7 @@
   background: var(--bg-primary, #fff);
   border: 1px solid var(--border-color, #d1d5db);
   border-radius: 0.5rem;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .input:focus,
@@ -95,7 +95,7 @@
   border-radius: 0.5rem;
   resize: vertical;
   min-height: 200px;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .textarea:focus {
@@ -128,7 +128,7 @@
   border: 2px solid var(--border-color, #e5e7eb);
   border-radius: 0.625rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .radioLabel:hover {
@@ -190,7 +190,7 @@
   background: var(--primary-color, #3b82f6);
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .slider::-webkit-slider-thumb:hover {
@@ -205,7 +205,7 @@
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .slider::-moz-range-thumb:hover {
@@ -231,7 +231,7 @@
   border: 1px solid var(--border-color, #d1d5db);
   border-radius: 0.5rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .resetButton:hover {
@@ -261,7 +261,7 @@
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .saveButton:hover:not(:disabled) {

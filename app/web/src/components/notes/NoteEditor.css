@@ -13,7 +13,7 @@
 .note-editor-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--color-gray-900, #111827);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -36,7 +36,7 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-gray-700, #374151);
+  color: var(--text-secondary);
   margin-bottom: 0.375rem;
 }
 
@@ -59,16 +59,16 @@
 }
 
 .note-editor-preview {
-  border: 1px solid var(--color-gray-200, #e5e7eb);
+  border: 1px solid var(--border-default);
   border-radius: 0.375rem;
   padding: 0.75rem;
-  background-color: var(--color-gray-50, #f9fafb);
+  background-color: var(--bg-elevated);
   overflow-y: auto;
   max-height: 400px;
 }
 
 .note-editor-preview-content {
-  color: var(--color-gray-900, #111827);
+  color: var(--text-primary);
   font-size: 0.875rem;
   line-height: 1.6;
 }
@@ -82,7 +82,7 @@
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
   font-weight: 600;
-  color: var(--color-gray-900, #111827);
+  color: var(--text-primary);
 }
 
 .note-editor-preview-content h1 {
@@ -112,7 +112,7 @@
 }
 
 .note-editor-preview-content code {
-  background-color: var(--color-gray-100, #f3f4f6);
+  background-color: var(--bg-tertiary);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-family: 'Courier New', monospace;
@@ -120,7 +120,7 @@
 }
 
 .note-editor-preview-content pre {
-  background-color: var(--color-gray-100, #f3f4f6);
+  background-color: var(--bg-tertiary);
   padding: 1rem;
   border-radius: 0.375rem;
   overflow-x: auto;
@@ -133,16 +133,16 @@
 }
 
 .note-editor-preview-content blockquote {
-  border-left: 4px solid var(--color-gray-300, #d1d5db);
+  border-left: 4px solid var(--border-subtle);
   padding-left: 1rem;
   margin-left: 0;
   margin-bottom: 1rem;
-  color: var(--color-gray-600, #4b5563);
+  color: var(--text-secondary);
   font-style: italic;
 }
 
 .note-editor-preview-content a {
-  color: var(--color-primary, #d97706);
+  color: var(--accent-primary);
   text-decoration: underline;
 }
 
@@ -154,13 +154,13 @@
 
 .note-editor-preview-content th,
 .note-editor-preview-content td {
-  border: 1px solid var(--color-gray-300, #d1d5db);
+  border: 1px solid var(--border-subtle);
   padding: 0.5rem;
   text-align: left;
 }
 
 .note-editor-preview-content th {
-  background-color: var(--color-gray-100, #f3f4f6);
+  background-color: var(--bg-tertiary);
   font-weight: 600;
 }
 
@@ -169,7 +169,7 @@
   justify-content: flex-end;
   gap: 0.75rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--color-gray-200, #e5e7eb);
+  border-top: 1px solid var(--border-default);
 }
 
 @media (max-width: 768px) {

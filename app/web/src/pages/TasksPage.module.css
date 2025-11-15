@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 2rem;
+  padding: var(--space-8);
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -34,16 +34,16 @@
 .createBtn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding: 0.75rem 1.5rem;
   background-color: var(--primary-color, #3b82f6);
   color: white;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .createBtn:hover {
@@ -53,17 +53,17 @@
 }
 
 .errorBanner {
-  padding: 1rem;
+  padding: var(--space-4);
   background-color: #fee;
   border-left: 4px solid var(--error-color, #ef4444);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   margin-bottom: 1rem;
   color: var(--error-color, #ef4444);
 }
 
 .tabs {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   border-bottom: 2px solid var(--border-color, #ddd);
   margin-bottom: 2rem;
 }
@@ -77,7 +77,7 @@
   font-weight: 600;
   color: var(--text-secondary, #666);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
   margin-bottom: -2px;
 }
 
@@ -95,11 +95,11 @@
   padding: 0.75rem 1.5rem;
   background: none;
   border: 1px dashed var(--border-color, #ddd);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   color: var(--text-secondary, #666);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .manageCategoriesBtn:hover {
@@ -112,11 +112,11 @@
   padding: 0.75rem 1.5rem;
   background: none;
   border: 1px solid var(--primary-color, #3b82f6);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   color: var(--primary-color, #3b82f6);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .batchModeBtn:hover {
@@ -136,12 +136,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
+  padding: var(--space-4);
   background-color: rgba(59, 130, 246, 0.05);
   border: 1px solid var(--primary-color, #3b82f6);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   margin-bottom: 1rem;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .batchInfo {
@@ -152,20 +152,20 @@
 
 .batchActions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .batchActionBtn {
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) 1rem;
   background-color: var(--primary-color, #3b82f6);
   color: white;
   border: none;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .batchActionBtn:hover {
@@ -228,7 +228,7 @@
 .taskGroup {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .groupHeader {
@@ -275,8 +275,8 @@
   padding: 1.25rem;
   background-color: var(--bg-primary, #fff);
   border: 1px solid var(--border-color, #ddd);
-  border-radius: 0.5rem;
-  transition: all 0.2s;
+  border-radius: var(--radius-md);
+  transition: all 0.15s;
 }
 
 .taskCard:hover {
@@ -291,7 +291,7 @@
 
 .taskMain {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: flex-start;
 }
 
@@ -302,7 +302,7 @@
   color: var(--text-tertiary, #999);
   cursor: grab;
   padding: 0;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .dragHandle:hover {
@@ -320,7 +320,7 @@
   color: var(--text-secondary, #666);
   cursor: pointer;
   padding: 0;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .checkbox:hover {
@@ -332,13 +332,13 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .taskHeader {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .taskTitle {
@@ -356,7 +356,7 @@
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .expandButton:hover {
@@ -373,7 +373,7 @@
 
 .taskDates {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   font-size: 0.875rem;
   color: var(--text-secondary, #666);
 }
@@ -383,7 +383,7 @@
   padding: 0.25rem 0.75rem;
   background-color: var(--primary-bg, #eff6ff);
   color: var(--primary-color, #3b82f6);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 600;
   width: fit-content;
@@ -391,17 +391,17 @@
 
 .taskActions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
   justify-content: flex-end;
 }
 
 .actionButton,
 .deleteButton {
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+  padding: var(--space-2) 1rem;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .actionButton {
@@ -464,12 +464,12 @@
 /* Mobile responsive */
 @media (max-width: 768px) {
   .tasksPage {
-    padding: 1rem;
+    padding: var(--space-4);
   }
 
   .header {
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-4);
   }
 
   .createBtn {
