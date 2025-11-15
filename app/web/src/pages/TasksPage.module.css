@@ -1,0 +1,399 @@
+.tasksPage {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.headerContent {
+  flex: 1;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary, #666);
+  margin: 0;
+}
+
+.createBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.createBtn:hover {
+  background-color: var(--primary-hover, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.errorBanner {
+  padding: 1rem;
+  background-color: #fee;
+  border-left: 4px solid var(--error-color, #ef4444);
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+  color: var(--error-color, #ef4444);
+}
+
+.tabs {
+  display: flex;
+  gap: 1rem;
+  border-bottom: 2px solid var(--border-color, #ddd);
+  margin-bottom: 2rem;
+}
+
+.tab {
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tabActive {
+  color: var(--primary-color, #3b82f6);
+  border-bottom-color: var(--primary-color, #3b82f6);
+}
+
+.manageCategoriesBtn {
+  margin-left: auto;
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: 1px dashed var(--border-color, #ddd);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.manageCategoriesBtn:hover {
+  background-color: var(--bg-hover, #f5f5f5);
+  border-style: solid;
+  color: var(--text-primary);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.loadingState,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--text-secondary, #666);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color, #ddd);
+  border-top-color: var(--primary-color, #3b82f6);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.taskGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.taskGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border-color, #ddd);
+}
+
+.categoryColor {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.groupTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.groupCount {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.taskWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.taskCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background-color: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.taskCard:hover {
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.subtask {
+  background-color: var(--bg-secondary, #f9f9f9);
+  margin-left: 2rem;
+}
+
+.taskMain {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.checkbox {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.checkbox:hover {
+  color: var(--success-color, #10b981);
+  transform: scale(1.1);
+}
+
+.taskContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.taskHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.taskTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.expandButton {
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+}
+
+.expandButton:hover {
+  background-color: var(--bg-hover, #f5f5f5);
+  color: var(--text-primary);
+}
+
+.taskDescription {
+  font-size: 0.9375rem;
+  color: var(--text-secondary, #666);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.taskDates {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+}
+
+.recurringBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background-color: var(--primary-bg, #eff6ff);
+  color: var(--primary-color, #3b82f6);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.taskActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.actionButton,
+.deleteButton {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.actionButton {
+  background-color: transparent;
+  border: 1px solid var(--border-color, #ddd);
+  color: var(--text-primary);
+}
+
+.actionButton:hover {
+  background-color: var(--bg-hover, #f5f5f5);
+}
+
+.deleteButton {
+  background-color: transparent;
+  border: 1px solid var(--error-color, #ef4444);
+  color: var(--error-color, #ef4444);
+}
+
+.deleteButton:hover {
+  background-color: var(--error-color, #ef4444);
+  color: white;
+}
+
+.subtaskContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .taskCard {
+    background-color: var(--bg-primary, #1a1a1a);
+    border-color: var(--border-color, #444);
+  }
+
+  .subtask {
+    background-color: var(--bg-secondary, #2a2a2a);
+  }
+
+  .manageCategoriesBtn {
+    border-color: var(--border-color, #444);
+  }
+
+  .manageCategoriesBtn:hover {
+    background-color: var(--bg-hover, #2a2a2a);
+  }
+
+  .expandButton:hover,
+  .actionButton:hover {
+    background-color: var(--bg-hover, #2a2a2a);
+  }
+
+  .errorBanner {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .tasksPage {
+    padding: 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .createBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+  }
+
+  .manageCategoriesBtn {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .subtask {
+    margin-left: 1rem;
+  }
+
+  .taskActions {
+    flex-wrap: wrap;
+  }
+}
