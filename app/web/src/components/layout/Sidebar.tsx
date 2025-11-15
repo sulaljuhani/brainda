@@ -20,6 +20,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'chat', label: 'Chat', icon: '💬', path: '/' },
   { id: 'notes', label: 'Notes', icon: '📝', path: '/notes' },
   { id: 'documents', label: 'Documents', icon: '📄', path: '/documents' },
+  { id: 'tasks', label: 'Tasks', icon: '✓', path: '/tasks' },
+  { id: 'events', label: 'Events', icon: '📅', path: '/events' },
   { id: 'reminders', label: 'Reminders', icon: '⏰', path: '/reminders' },
   { id: 'calendar', label: 'Calendar', icon: '📆', path: '/calendar' },
   { id: 'search', label: 'Search', icon: '🔎', path: '/search' },

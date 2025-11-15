@@ -1,11 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Bell, CheckCircle, Clock } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Bell, CheckCircle, Clock } from 'lucide-react';
 import { useReminders } from '@hooks/useReminders';
-import { useCalendar } from '@hooks/useCalendar';
 import { ReminderList } from '@components/reminders/ReminderList';
 import { ReminderForm } from '@components/reminders/ReminderForm';
-import { EventForm } from '@components/calendar/EventForm';
-import type { CreateReminderRequest, CreateEventRequest } from '../types/api';
+import type { CreateReminderRequest } from '../types/api';
 import styles from './RemindersPage.module.css';
 
 type TabType = 'active' | 'completed' | 'snoozed';
@@ -21,24 +19,8 @@ export default function RemindersPage() {
     deleteReminder,
   } = useReminders();
 
-  // Fetch calendar events for the next 30 days
-  const dateRange = useMemo(() => {
-    const start = new Date();
-    const end = new Date();
-    end.setDate(end.getDate() + 30);
-    return {
-      start: start.toISOString(),
-      end: end.toISOString(),
-    };
-  }, []);
-
-  const { events, createEvent } = useCalendar(dateRange.start, dateRange.end);
-
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [showForm, setShowForm] = useState(false);
-  const [showEventForm, setShowEventForm] = useState(false);
-  const [showCreateDropdown, setShowCreateDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Filter reminders by status
   const filteredReminders = useMemo(() => {
@@ -56,7 +38,6 @@ export default function RemindersPage() {
 
   const handleCreateReminder = async (data: CreateReminderRequest) => {
     await createReminder(data);
-    setShowForm(false);
   };
 
   const handleSnooze = async (id: string, minutes: number) => {
@@ -89,79 +70,22 @@ export default function RemindersPage() {
     { id: 'completed' as TabType, label: 'Completed', icon: CheckCircle, count: counts.completed },
   ];
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowCreateDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleCreateEvent = () => {
-    setShowEventForm(true);
-    setShowCreateDropdown(false);
-  };
-
-  const handleCreateOneTimeTask = () => {
-    setShowForm(true);
-    setShowCreateDropdown(false);
-  };
-
-  const handleCreateRecurringTask = () => {
-    setShowEventForm(true);
-    setShowCreateDropdown(false);
-  };
-
-  const handleEventSubmit = async (data: CreateEventRequest) => {
-    await createEvent(data);
-    setShowEventForm(false);
-  };
-
   return (
     <div className={styles.remindersPage}>
       <div className={styles.header}>
         <div className={styles.headerContent}>
-          <h1 className={styles.title}>Tasks</h1>
+          <h1 className={styles.title}>Reminders</h1>
           <p className={styles.subtitle}>
-            Manage your tasks and never miss important deadlines
+            Manage your reminders and never miss important deadlines
           </p>
         </div>
-        <div className={styles.createBtnContainer} ref={dropdownRef}>
-          <button
-            className={styles.createBtn}
-            onClick={() => setShowCreateDropdown(!showCreateDropdown)}
-          >
-            <Plus size={20} />
-            New Item
-          </button>
-
-          {showCreateDropdown && (
-            <div className={styles.createDropdown}>
-              <button
-                className={styles.dropdownItem}
-                onClick={handleCreateEvent}
-              >
-                Event
-              </button>
-              <button
-                className={styles.dropdownItem}
-                onClick={handleCreateRecurringTask}
-              >
-                Recurring Task
-              </button>
-              <button
-                className={styles.dropdownItem}
-                onClick={handleCreateOneTimeTask}
-              >
-                One-Time Task
-              </button>
-            </div>
-          )}
-        </div>
+        <button
+          className={styles.createBtn}
+          onClick={() => setShowForm(true)}
+        >
+          <span>+</span>
+          New Reminder
+        </button>
       </div>
 
       {error && (
@@ -203,29 +127,20 @@ export default function RemindersPage() {
             onDelete={handleDelete}
             emptyMessage={
               activeTab === 'active'
-                ? 'No active tasks. Create one to get started!'
+                ? 'No active reminders. Create one to get started!'
                 : activeTab === 'snoozed'
-                ? 'No snoozed tasks'
-                : 'No completed tasks'
+                ? 'No snoozed reminders'
+                : 'No completed reminders'
             }
           />
         )}
       </div>
 
-      {showForm && (
-        <ReminderForm
-          onSubmit={handleCreateReminder}
-          onCancel={() => setShowForm(false)}
-        />
-      )}
-
-      {showEventForm && (
-        <EventForm
-          isOpen={showEventForm}
-          onClose={() => setShowEventForm(false)}
-          onSubmit={handleEventSubmit}
-        />
-      )}
+      <ReminderForm
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        onSubmit={handleCreateReminder}
+      />
     </div>
   );
 }
