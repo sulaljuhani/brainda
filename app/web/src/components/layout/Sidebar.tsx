@@ -18,6 +18,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'chat', label: 'Chat', icon: '💬', path: '/' },
+  { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
   { id: 'notes', label: 'Notes', icon: '📝', path: '/notes' },
   { id: 'documents', label: 'Documents', icon: '📄', path: '/documents' },
   { id: 'tasks', label: 'Tasks', icon: '✓', path: '/tasks' },

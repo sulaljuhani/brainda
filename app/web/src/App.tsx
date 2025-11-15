@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@components/auth/ProtectedRoute';
 
 // Page imports
 import ChatPage from '@pages/ChatPage';
+import DashboardPage from '@pages/DashboardPage';
 import NotesPage from '@pages/NotesPage';
 import DocumentsPage from '@pages/DocumentsPage';
 import { TasksPage } from '@pages/TasksPage';
@@ -104,6 +105,16 @@ export default function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <CategoriesPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <DashboardPage />
                 </MainLayout>
               </ProtectedRoute>
             }
