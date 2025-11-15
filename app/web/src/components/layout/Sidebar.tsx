@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'events', label: 'Events', icon: '📅', path: '/events' },
   { id: 'reminders', label: 'Reminders', icon: '⏰', path: '/reminders' },
   { id: 'calendar', label: 'Calendar', icon: '📆', path: '/calendar' },
+  { id: 'categories', label: 'Categories', icon: '🏷️', path: '/categories' },
   { id: 'search', label: 'Search', icon: '🔎', path: '/search' },
 ];
 

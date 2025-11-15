@@ -216,6 +216,24 @@
   align-items: flex-start;
 }
 
+.dragHandle {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-tertiary, #999);
+  cursor: grab;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.dragHandle:hover {
+  color: var(--text-secondary, #666);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
 .checkbox {
   flex-shrink: 0;
   background: none;

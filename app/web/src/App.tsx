@@ -11,6 +11,7 @@ import { TasksPage } from '@pages/TasksPage';
 import { EventsPage } from '@pages/EventsPage';
 import RemindersPage from '@pages/RemindersPage';
 import CalendarPage from '@pages/CalendarPage';
+import CategoriesPage from '@pages/CategoriesPage';
 import SearchPage from '@pages/SearchPage';
 import SettingsPage from '@pages/SettingsPage';
 import LoginPage from '@pages/LoginPage';
@@ -93,6 +94,16 @@ export default function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <CalendarPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categories"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <CategoriesPage />
                 </MainLayout>
               </ProtectedRoute>
             }

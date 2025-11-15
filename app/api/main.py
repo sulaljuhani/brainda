@@ -1008,6 +1008,7 @@ from api.routers import (
     memory,
     tasks,
     categories,
+    settings,
 )
 app.include_router(reminders.router)
 app.include_router(devices.router)
@@ -1019,6 +1020,7 @@ app.include_router(auth.router)
 app.include_router(memory.router)
 app.include_router(tasks.router)
 app.include_router(categories.router)
+app.include_router(settings.router)
 
 # Mount static files from web/dist directory (Vite build output)
 # This must be done AFTER all API routes are registered

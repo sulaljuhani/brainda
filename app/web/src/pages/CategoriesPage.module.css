@@ -1,0 +1,275 @@
+.categoriesPage {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.categorySection {
+  background: var(--background-secondary);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 1.5rem 0;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.categoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.categoryItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.categoryItem:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.categoryMain {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.colorIndicator {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.categoryName {
+  font-size: 1rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.categoryName:hover {
+  color: var(--accent-color);
+}
+
+.editInput {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 2px solid var(--accent-color);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.categoryActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.colorPicker {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.colorOption {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.colorOption:hover {
+  transform: scale(1.15);
+}
+
+.colorOptionActive {
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--background-secondary);
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.actionButton:hover {
+  background: var(--accent-color-hover);
+}
+
+.deleteButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: transparent;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.deleteButton:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.deleteConfirm {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.deleteConfirm:hover {
+  background: #dc2626;
+}
+
+.createSection {
+  border-top: 1px solid var(--border-color);
+  padding-top: 2rem;
+}
+
+.createTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.createForm {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--background-primary);
+  color: var(--text-primary);
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.createButton {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.createButton:hover {
+  background: var(--accent-color-hover);
+}
+
+@media (max-width: 768px) {
+  .categoriesPage {
+    padding: 1rem;
+  }
+
+  .content {
+    gap: 2rem;
+  }
+
+  .categorySection {
+    padding: 1.5rem;
+  }
+
+  .categoryItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .categoryActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .createForm {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .input {
+    width: 100%;
+  }
+
+  .createButton {
+    width: 100%;
+  }
+}
