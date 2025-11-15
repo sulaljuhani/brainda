@@ -1,8 +1,17 @@
+/* Container for sidebar + chat */
+.chat-page-container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
 .chat-page {
   display: flex;
   flex-direction: column;
+  flex: 1;
   height: 100%;
   background: var(--color-surface, #ffffff);
+  min-width: 0;
 }
 
 /* Header */
@@ -130,6 +139,10 @@
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
+  .chat-page-container {
+    background: var(--bg-primary, #0f172a);
+  }
+
   .chat-page {
     background: var(--bg-primary, #0f172a);
   }
@@ -181,9 +194,13 @@
 
 /* Mobile responsive styles */
 @media (max-width: 767px) {
-  .chat-page {
+  .chat-page-container {
     /* Account for mobile navigation at bottom */
     height: calc(100vh - var(--mobile-header-height) - var(--mobile-nav-height));
+  }
+
+  .chat-page {
+    height: 100%;
   }
 
   .chat-page__header {
@@ -221,8 +238,12 @@
 
 /* Tablet responsive styles */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .chat-page {
+  .chat-page-container {
     height: calc(100vh - var(--header-height));
+  }
+
+  .chat-page {
+    height: 100%;
   }
 
   .chat-page__suggestions {

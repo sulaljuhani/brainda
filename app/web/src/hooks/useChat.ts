@@ -1,11 +1,28 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { chatService } from '../services/chatService';
+import { chatConversationsService } from '../services/chatConversationsService';
 import type { ChatMessage } from '@types/*';
 
-export function useChat() {
+interface UseChatOptions {
+  conversationId?: string | null;
+  onConversationCreated?: (conversationId: string) => void;
+}
+
+export function useChat(options: UseChatOptions = {}) {
+  const { conversationId, onConversationCreated } = options;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(
+    conversationId || null
+  );
+
+  // Update current conversation ID when prop changes
+  useEffect(() => {
+    if (conversationId !== undefined) {
+      setCurrentConversationId(conversationId);
+    }
+  }, [conversationId]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -23,6 +40,20 @@ export function useChat() {
     setError(null);
 
     try {
+      // Save user message to database
+      const savedUserMessage = await chatConversationsService.createMessage({
+        conversation_id: currentConversationId || undefined,
+        role: 'user',
+        content: text,
+      });
+
+      // Update conversation ID if it was just created
+      if (!currentConversationId && savedUserMessage.conversation_id) {
+        setCurrentConversationId(savedUserMessage.conversation_id);
+        onConversationCreated?.(savedUserMessage.conversation_id);
+      }
+
+      // Get AI response via streaming
       const stream = await chatService.sendMessage(text);
       const reader = stream.getReader();
       const decoder = new TextDecoder();
@@ -60,6 +91,15 @@ export function useChat() {
           return newMessages;
         });
       }
+
+      // Save assistant message to database
+      if (assistantMessage) {
+        await chatConversationsService.createMessage({
+          conversation_id: savedUserMessage.conversation_id,
+          role: 'assistant',
+          content: assistantMessage,
+        });
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMessage);
@@ -75,11 +115,15 @@ export function useChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, currentConversationId, onConversationCreated]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
+  }, []);
+
+  const loadMessages = useCallback((loadedMessages: ChatMessage[]) => {
+    setMessages(loadedMessages);
   }, []);
 
   return {
@@ -88,5 +132,7 @@ export function useChat() {
     error,
     sendMessage,
     clearMessages,
+    loadMessages,
+    conversationId: currentConversationId,
   };
 }

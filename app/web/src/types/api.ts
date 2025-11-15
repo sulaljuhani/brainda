@@ -263,6 +263,39 @@ export interface OpenMemorySettings {
   url?: string;
 }
 
+// Chat Conversations
+export interface ChatConversation {
+  id: string;
+  user_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count?: number;
+}
+
+export interface ChatMessagePersisted {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  tool_calls?: any[];
+  citations?: any[];
+  created_at: string;
+}
+
+export interface ConversationWithMessages {
+  conversation: ChatConversation;
+  messages: ChatMessagePersisted[];
+}
+
+export interface CreateMessageRequest {
+  conversation_id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  tool_calls?: any[];
+  citations?: any[];
+}
+
 // API Responses
 export interface ApiResponse<T> {
   success: boolean;

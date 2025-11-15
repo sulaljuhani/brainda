@@ -1,0 +1,37 @@
+.new-conversation-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--primary-color, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.new-conversation-btn:hover {
+  background: var(--primary-color-dark, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.new-conversation-btn:active {
+  transform: translateY(0);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .new-conversation-btn {
+    background: var(--primary-color, #3b82f6);
+  }
+
+  .new-conversation-btn:hover {
+    background: var(--primary-color-dark, #2563eb);
+  }
+}
