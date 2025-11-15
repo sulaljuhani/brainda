@@ -8,6 +8,44 @@
   margin-bottom: var(--space-6);
 }
 
+.calendarFilters {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.filterBtn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filterBtn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.filterBtnActive {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.filterBtnActive:hover {
+  background: var(--accent-hover);
+  color: white;
+}
+
 .calendarTitle h1 {
   font-size: var(--text-3xl);
   font-weight: var(--font-bold);
@@ -99,6 +137,11 @@
   border-color: var(--accent-primary);
 }
 
+.createBtnContainer {
+  position: relative;
+  margin-left: auto;
+}
+
 .createEventBtn {
   background: var(--accent-primary);
   color: white;
@@ -109,11 +152,45 @@
   font-weight: var(--font-medium);
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-left: auto;
 }
 
 .createEventBtn:hover {
   background: var(--accent-hover);
+}
+
+.createDropdown {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdownItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dropdownItem:last-child {
+  border-bottom: none;
+}
+
+.dropdownItem:hover {
+  background: var(--bg-tertiary);
 }
 
 .calendarContent {

@@ -32,10 +32,18 @@ export function GoogleCalendarConnect() {
     }
   };
 
-  const handleConnect = () => {
-    // Redirect to Google OAuth flow
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    window.location.href = `${apiUrl}/api/v1/calendar/google/connect`;
+  const handleConnect = async () => {
+    try {
+      // Get the authorization URL from the API
+      const response = await api.get<{ authorization_url: string; state: string }>(
+        '/calendar/google/connect'
+      );
+      // Redirect to Google OAuth flow
+      window.location.href = response.authorization_url;
+    } catch (error) {
+      console.error('Failed to initiate Google Calendar connection:', error);
+      alert('Failed to connect to Google Calendar. Please try again.');
+    }
   };
 
   const handleDisconnect = async () => {

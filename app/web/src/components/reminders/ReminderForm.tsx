@@ -81,7 +81,7 @@ export function ReminderForm({ onSubmit, onCancel }: ReminderFormProps) {
       setInterval(1);
       setCount(undefined);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create reminder');
+      setError(err instanceof Error ? err.message : 'Failed to create task');
     } finally {
       setSubmitting(false);
     }
@@ -98,7 +98,7 @@ export function ReminderForm({ onSubmit, onCancel }: ReminderFormProps) {
     <div className={styles.formOverlay} onClick={onCancel}>
       <div className={styles.formContainer} onClick={(e) => e.stopPropagation()}>
         <div className={styles.formHeader}>
-          <h2 className={styles.formTitle}>New Reminder</h2>
+          <h2 className={styles.formTitle}>New One-Time Task</h2>
           <button onClick={onCancel} className={styles.closeBtn} aria-label="Close">
             <X size={20} />
           </button>
@@ -256,7 +256,7 @@ export function ReminderForm({ onSubmit, onCancel }: ReminderFormProps) {
               className={styles.submitBtn}
               disabled={submitting}
             >
-              {submitting ? 'Creating...' : 'Create Reminder'}
+              {submitting ? 'Creating...' : 'Create Task'}
             </button>
           </div>
         </form>

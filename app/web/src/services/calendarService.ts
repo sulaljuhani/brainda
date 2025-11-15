@@ -13,7 +13,12 @@ export const calendarService = {
 
   create: async (data: CreateEventRequest): Promise<CalendarEvent> => {
     const res = await api.post<any>('/calendar/events', data);
-    return (res?.data as CalendarEvent) || (res as CalendarEvent);
+    // Backend returns {success: true, data: {...}} structure
+    if (res?.data) {
+      return res.data as CalendarEvent;
+    }
+    // Fallback for direct response
+    return res as CalendarEvent;
   },
 
   delete: (id: string) => api.delete<void>(`/calendar/events/${id}`),

@@ -3,6 +3,7 @@ import { Plus, Search, Grid, List, X } from 'lucide-react';
 import { useNotes } from '@hooks/useNotes';
 import { NoteCard } from '@components/notes/NoteCard';
 import { NoteEditor } from '@components/notes/NoteEditor';
+import { NoteDetail } from '@components/notes/NoteDetail';
 import { Button } from '@components/shared/Button';
 import { Input } from '@components/shared/Input';
 import { LoadingSpinner } from '@components/shared/LoadingSpinner';
@@ -93,7 +94,6 @@ export default function NotesPage() {
 
   // If a note is selected, show detail view
   if (selectedNote) {
-    const NoteDetail = require('@components/notes/NoteDetail').NoteDetail;
     return (
       <NoteDetail
         note={selectedNote}
