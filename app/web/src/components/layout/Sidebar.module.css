@@ -5,9 +5,118 @@
   padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-3);
   transition: width 0.25s ease, padding 0.25s ease;
   overflow-x: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+}
+
+.logo {
+  font-family: var(--font-sans);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.logo:hover {
+  color: var(--text-secondary);
+}
+
+.iconButton {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.iconButton:hover {
+  background: #2f2f2f;
+  color: var(--text-primary);
+}
+
+.searchSection {
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.searchForm {
+  flex: 1;
+  max-width: calc(100% - 44px);
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  transition: all 0.15s ease;
+}
+
+.searchBar:focus-within {
+  border-color: #2f2f2f;
+}
+
+.searchIcon {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+}
+
+.searchInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.newChatIconButton {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.newChatIconButton:hover {
+  background: #2f2f2f;
+  color: var(--text-primary);
 }
 
 .sidebar.collapsed {
@@ -15,6 +124,18 @@
   padding-left: var(--space-3);
   padding-right: var(--space-3);
   align-items: center;
+}
+
+/* Desktop: Always show sidebar */
+@media (min-width: 1024px) {
+  .sidebar {
+    position: static;
+    transform: none !important;
+  }
+
+  .sidebar.collapsed {
+    width: var(--sidebar-collapsed);
+  }
 }
 
 .nav {
@@ -35,7 +156,6 @@
   font-size: var(--text-sm);
   border: none;
   background: transparent;
-  border-left: 3px solid transparent;
   width: 100%;
   text-align: left;
   font-family: var(--font-sans);
@@ -44,13 +164,12 @@
 
 .navItem:hover {
   color: var(--text-primary);
-  background: var(--chatgpt-sidebar-hover);
+  background: #2f2f2f;
 }
 
 .navItem.active {
   color: var(--text-primary);
-  background: var(--bg-primary);
-  border-left-color: var(--accent-primary);
+  background: #2f2f2f;
   font-weight: var(--font-medium);
 }
 
@@ -93,6 +212,9 @@
   margin-bottom: var(--space-2);
   padding-left: var(--space-2);
   font-weight: var(--font-medium);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .recentItem {
@@ -108,8 +230,46 @@
 }
 
 .recentItem:hover {
-  background: var(--chatgpt-sidebar-hover);
+  background: #2f2f2f;
   color: var(--text-primary);
+}
+
+.chatHistorySection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  overflow: hidden;
+}
+
+.newChatButton {
+  margin-bottom: var(--space-2);
+}
+
+.conversationList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.emptyState {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.userMenuSection {
+  margin-top: auto;
+  padding-top: var(--space-3);
 }
 
 .collapseSection {
@@ -134,7 +294,7 @@
 }
 
 .collapseButton:hover {
-  background: var(--chatgpt-sidebar-hover);
+  background: #2f2f2f;
   color: var(--text-primary);
 }
 
@@ -143,13 +303,13 @@
   .sidebar {
     position: fixed;
     left: 0;
-    top: var(--mobile-header-height);
+    top: 0;
     bottom: var(--mobile-nav-height);
     z-index: 200;
     transform: translateX(-100%);
     width: 280px;
     box-shadow: var(--shadow-xl);
-    background: var(--bg-primary);
+    background: var(--bg-secondary);
   }
 
   /* Show sidebar when not collapsed on mobile */
@@ -168,7 +328,7 @@
   .sidebar {
     position: fixed;
     left: 0;
-    top: var(--header-height);
+    top: 0;
     bottom: 0;
     z-index: 90;
     transform: translateX(-100%);

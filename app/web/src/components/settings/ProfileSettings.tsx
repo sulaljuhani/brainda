@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@contexts/AuthContext';
 import { settingsService } from '@services/settingsService';
+import { LogOut } from 'lucide-react';
 import styles from './SettingsSection.module.css';
 
 export function ProfileSettings() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
   const [loading, setLoading] = useState(false);
@@ -99,6 +102,21 @@ export function ProfileSettings() {
           </button>
         </div>
       </form>
+
+      <div className={styles.dangerZone}>
+        <h3 className={styles.dangerZoneTitle}>Account Actions</h3>
+        <button
+          type="button"
+          className={styles.logoutButton}
+          onClick={async () => {
+            await logout();
+            navigate('/login');
+          }}
+        >
+          <LogOut size={18} />
+          Sign Out
+        </button>
+      </div>
     </div>
   );
 }

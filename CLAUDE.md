@@ -507,7 +507,151 @@ Tests are **integration tests**, not unit tests:
 4. Verify `/vault` volume is mounted in worker container
 5. Test with: `echo "test" >> vault/notes/test.md` and check `file_sync_state.last_embedded_at`
 
+## Frontend Architecture
+
+### Tech Stack
+
+**Location**: `app/web/`
+
+**Framework**: React 18 with TypeScript
+**Build Tool**: Vite 7
+**Routing**: React Router v6
+**Styling**: CSS Modules + CSS Variables
+
+### Project Structure
+
+```
+app/web/
+├── src/
+│   ├── components/       # Reusable UI components
+│   │   ├── chat/         # Chat-specific components (MessageList, ChatInput, ConversationItem)
+│   │   ├── layout/       # Layout components (Header, Sidebar, MobileNav)
+│   │   ├── shared/       # Shared components (LoadingSpinner, etc.)
+│   │   └── search/       # Search components
+│   ├── pages/            # Page-level components (ChatPage, NotesPage, etc.)
+│   ├── layouts/          # Layout wrappers (MainLayout)
+│   ├── hooks/            # Custom React hooks
+│   ├── contexts/         # React contexts
+│   └── App.tsx           # Root application component
+├── public/               # Static assets
+└── package.json          # Frontend dependencies
+```
+
+### Key Components
+
+**MainLayout** (`src/layouts/MainLayout.tsx`):
+- Root layout wrapper for all authenticated pages
+- Manages sidebar collapse/expand state
+- Handles mobile/tablet responsive behavior
+- Integrates Header, Sidebar, and MobileNav components
+- Provides global search functionality (Cmd+K / Ctrl+K)
+
+**Sidebar** (`src/components/layout/Sidebar.tsx`):
+- Main navigation sidebar
+- **Conditionally shows chat history** when on chat page (`/` or `/chat`)
+- Shows standard navigation items on other pages
+- Integrates with `useChatConversations` hook for conversation management
+- Props:
+  - `currentConversationId`: Currently active conversation
+  - `onConversationSelect`: Handler for selecting a conversation
+  - `onNewConversation`: Handler for starting new chat
+- Responsive: Fixed position on mobile/tablet, static on desktop
+- Swipe-to-close gesture support on mobile
+
+**ChatPage** (`src/pages/ChatPage.tsx`):
+- Main chat interface
+- Manages conversation state via `useChat` and `useConversation` hooks
+- **Exposes handlers to MainLayout** via `window.__chatPageHandlers` for sidebar integration
+- Shows welcome screen with suggested prompts when no messages
+- Components: MessageList, ChatInput
+- Uses `useCallback` for memoized handlers to prevent infinite re-renders
+
+### State Management Pattern
+
+**Chat History Integration**:
+The chat history sidebar integration uses a window-based communication pattern:
+
+1. **ChatPage** exposes handlers via window object:
+```typescript
+window.__chatPageHandlers = {
+  currentConversationId: string | null,
+  onConversationSelect: (id: string) => void,
+  onNewConversation: () => void,
+};
+```
+
+2. **MainLayout** retrieves handlers and passes to Sidebar:
+```typescript
+const chatHandlers = isChatPage ? window.__chatPageHandlers : null;
+<Sidebar {...chatHandlers} />
+```
+
+3. **Sidebar** conditionally renders chat history when on chat page
+
+**Important**: Use `useCallback` for all handler functions to prevent infinite re-renders in the useEffect dependency array.
+
+### Running Frontend Locally
+
+```bash
+cd app/web
+
+# Install dependencies
+npm install
+
+# Start dev server (with hot reload)
+npm run dev
+# Opens on http://localhost:3000 (or next available port)
+
+# Type check
+npm run type-check
+
+# Build for production
+npm run build
+
+# Run tests
+npm test
+npm run test:coverage
+```
+
+### Development Best Practices
+
+**Component Communication**:
+- ✅ **GOOD**: Use window object for cross-component communication (ChatPage ↔ Sidebar)
+- ✅ **GOOD**: Wrap handlers in `useCallback` with proper dependencies
+- ❌ **BAD**: Creating new function instances on every render
+- ❌ **BAD**: Passing unstable references to useEffect dependencies
+
+**Responsive Design**:
+- Mobile-first approach with CSS custom properties
+- Breakpoints: Mobile (<768px), Tablet (768-1023px), Desktop (≥1024px)
+- Use `useIsMobileOrTablet` hook for conditional behavior
+- Sidebar is fixed/overlay on mobile/tablet, static on desktop
+
+**Styling**:
+- Use CSS Modules for component-scoped styles
+- CSS variables defined in root for theming
+- Dark mode support via CSS variables
+- Follow existing naming convention: `.component__element--modifier`
+
+### Custom Hooks
+
+**useChatConversations** (`src/hooks/useChatConversations.ts`):
+- Fetches and manages chat conversation list
+- Provides `deleteConversation` mutation
+- Returns: `{ conversations, isLoading, error, deleteConversation }`
+
+**useChat** (`src/hooks/useChat.ts`):
+- Manages chat messages and streaming
+- Handles conversation creation
+- Returns: `{ messages, isLoading, sendMessage, clearMessages, loadMessages }`
+
+**useConversation** (`src/hooks/useConversation.ts`):
+- Loads messages for a specific conversation ID
+- Returns: `{ messages, isLoading }`
+
 ## Common Pitfalls
+
+### Backend Pitfalls
 
 1. **Forgetting user_id filter**: Always filter queries by user_id
 2. **Using @lru_cache on DB functions**: Causes race conditions
@@ -517,3 +661,13 @@ Tests are **integration tests**, not unit tests:
 6. **File watcher on Windows**: Must use PollingObserver
 7. **Idempotency keys**: Don't forget to pass `Idempotency-Key` header for POST/PUT/PATCH
 8. **Google Calendar tokens**: Must be encrypted with Fernet, not stored as plaintext
+
+### Frontend Pitfalls
+
+1. **Infinite re-renders**: Not using `useCallback` for handler functions passed to useEffect dependencies
+2. **Stale closures**: Forgetting dependencies in useCallback/useEffect/useMemo hooks
+3. **Cross-component state**: Using window object requires cleanup in useEffect return
+4. **CSS Modules**: Importing styles as `import styles from './Component.module.css'`, not regular CSS
+5. **Path aliases**: Use `@components`, `@hooks`, `@pages` instead of relative paths like `../../../`
+6. **Type safety**: Always provide proper TypeScript types for props and state
+7. **Mobile testing**: Test responsive behavior on mobile/tablet, not just desktop

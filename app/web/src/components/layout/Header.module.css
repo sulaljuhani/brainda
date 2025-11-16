@@ -8,7 +8,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-4);
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-default);
   z-index: 100;
 }
@@ -108,7 +108,7 @@
 }
 
 .iconButton:hover {
-  background: var(--bg-tertiary);
+  background: #2f2f2f;
   color: var(--text-primary);
 }
 

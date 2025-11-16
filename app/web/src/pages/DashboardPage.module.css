@@ -71,8 +71,8 @@
 }
 
 .statCard {
-  background: var(--bg-primary, #fff);
-  border: 1px solid var(--border-color, #ddd);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
   border-radius: 12px;
   padding: var(--space-6);
   transition: all 0.15s;
@@ -116,7 +116,7 @@
   flex-direction: column;
   align-items: center;
   padding: 0.75rem;
-  background: var(--bg-secondary, #f9f9f9);
+  background: var(--bg-secondary);
   border-radius: 8px;
   transition: all 0.15s;
 }
@@ -126,8 +126,8 @@
 }
 
 .statHighlight {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent-primary);
 }
 
 .statValue {
@@ -143,21 +143,7 @@
   text-align: center;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .statCard {
-    background-color: var(--bg-primary, #1a1a1a);
-    border-color: var(--border-color, #444);
-  }
-
-  .statItem {
-    background-color: var(--bg-secondary, #2a2a2a);
-  }
-
-  .statItem:hover {
-    background: rgba(59, 130, 246, 0.15);
-  }
-}
+/* Dark mode support - removed as we use consistent dark theme */
 
 /* Mobile responsive */
 @media (max-width: 768px) {

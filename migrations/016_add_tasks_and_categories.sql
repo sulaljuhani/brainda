@@ -115,26 +115,38 @@ ALTER TABLE reminders
 ADD COLUMN IF NOT EXISTS offset_type TEXT;
 
 -- Add constraint to ensure offset_type is valid
-ALTER TABLE reminders
-ADD CONSTRAINT IF NOT EXISTS check_offset_type
-CHECK (offset_type IS NULL OR offset_type IN ('before', 'after'));
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_offset_type') THEN
+        ALTER TABLE reminders ADD CONSTRAINT check_offset_type
+        CHECK (offset_type IS NULL OR offset_type IN ('before', 'after'));
+    END IF;
+END $$;
 
 -- Add constraint to ensure offset fields are consistent
-ALTER TABLE reminders
-ADD CONSTRAINT IF NOT EXISTS check_offset_consistency
-CHECK (
-    (offset_days IS NULL AND offset_type IS NULL) OR
-    (offset_days IS NOT NULL AND offset_type IS NOT NULL)
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_offset_consistency') THEN
+        ALTER TABLE reminders ADD CONSTRAINT check_offset_consistency
+        CHECK (
+            (offset_days IS NULL AND offset_type IS NULL) OR
+            (offset_days IS NOT NULL AND offset_type IS NOT NULL)
+        );
+    END IF;
+END $$;
 
 -- Add constraint to ensure reminder is linked to at most one entity
-ALTER TABLE reminders
-ADD CONSTRAINT IF NOT EXISTS check_single_link
-CHECK (
-    (task_id IS NULL AND calendar_event_id IS NULL) OR
-    (task_id IS NOT NULL AND calendar_event_id IS NULL) OR
-    (task_id IS NULL AND calendar_event_id IS NOT NULL)
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_single_link') THEN
+        ALTER TABLE reminders ADD CONSTRAINT check_single_link
+        CHECK (
+            (task_id IS NULL AND calendar_event_id IS NULL) OR
+            (task_id IS NOT NULL AND calendar_event_id IS NULL) OR
+            (task_id IS NULL AND calendar_event_id IS NOT NULL)
+        );
+    END IF;
+END $$;
 
 -- Index for task linkage
 CREATE INDEX IF NOT EXISTS idx_reminders_task ON reminders(task_id) WHERE task_id IS NOT NULL;

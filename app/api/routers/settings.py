@@ -7,8 +7,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
+import asyncpg
 from api.dependencies import get_db, get_current_user
-from common.db import Database
 import logging
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class UpdateUserSettingsRequest(BaseModel):
 @router.get("/settings", response_model=UserSettingsResponse)
 async def get_user_settings(
     user_id: UUID = Depends(get_current_user),
-    db: Database = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Get user settings
 
@@ -90,7 +90,7 @@ async def get_user_settings(
 async def update_user_settings(
     updates: UpdateUserSettingsRequest,
     user_id: UUID = Depends(get_current_user),
-    db: Database = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Update user settings
 

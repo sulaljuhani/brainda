@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--bg-primary);
+  background: var(--bg-app);
   position: relative;
 }
 
@@ -10,17 +10,22 @@
   display: flex;
   flex: 1;
   overflow: hidden;
-  margin-top: var(--header-height);
+  position: relative;
+  height: 100vh;
 }
 
 .content {
   flex: 1;
   overflow-y: auto;
-  background: radial-gradient(
-    circle at top left,
-    rgba(234, 156, 62, 0.08),
-    transparent 50%
-  );
+  background: var(--bg-app);
+  width: 100%;
+}
+
+/* Desktop: Content should adjust for sidebar */
+@media (min-width: 1024px) {
+  .content {
+    margin-left: 0;
+  }
 }
 
 /* Backdrop overlay for mobile sidebar */
@@ -48,7 +53,7 @@
 /* Mobile responsive layout adjustments */
 @media (max-width: 767px) {
   .mainContainer {
-    margin-top: var(--mobile-header-height);
+    height: calc(100vh - var(--mobile-nav-height));
   }
 
   .content {

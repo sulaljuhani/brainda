@@ -1,3 +1,6 @@
+/* Import Colors (Single Source of Truth) */
+@import './colors.css';
+
 /* CSS Reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -5,59 +8,8 @@
   padding: 0;
 }
 
-/* CSS Variables (Design Tokens) - ChatGPT Theme */
+/* CSS Variables (Design Tokens) */
 :root {
-  /* Colors - ChatGPT Dark Mode (exact match) */
-  --bg-primary: #343541;        /* Main chat background */
-  --bg-secondary: #202123;      /* Sidebar background */
-  --bg-tertiary: #2A2B32;       /* Hover state, subtle backgrounds */
-  --bg-elevated: #444654;       /* Assistant message bubble, elevated surfaces */
-  --bg-user-message: #343541;   /* User message bubble */
-  --bg-input: #40414F;          /* Input boxes */
-
-  --text-primary: #ECECF1;      /* Main text */
-  --text-secondary: #ACACBE;    /* Dimmer metadata text */
-  --text-tertiary: #8E8EA0;     /* Subtle text, placeholders */
-  --text-inverse: #1a1a1a;      /* For light backgrounds */
-
-  --accent-primary: #10A37F;    /* ChatGPT green (primary actions) */
-  --accent-hover: #0E8C6D;      /* Button hover state */
-  --accent-active: #1A7F64;     /* Active/pressed state */
-  --accent-soft: #1E7058;       /* Muted accent */
-
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #3b82f6;
-
-  --border-subtle: #565869;     /* Dividers, borders */
-  --border-default: #4A4B53;    /* Default borders */
-  --border-strong: #6B6D7F;     /* Strong borders */
-
-  /* ChatGPT-specific tokens */
-  --chatgpt-sidebar-hover: #2A2B32;
-  --chatgpt-code-bg: #1E1E1E;
-  --chatgpt-scrollbar-thumb: #565869;
-  --chatgpt-chip-bg: #202123;
-  --chatgpt-chip-border: #4D4F5C;
-
-  /* Light mode color tokens (for backward compatibility) */
-  --color-primary: #10A37F;
-  --color-primary-dark: #0E8C6D;
-  --color-danger: #dc2626;
-  --color-danger-dark: #b91c1c;
-
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-
   /* Shadows - ChatGPT style */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
@@ -122,24 +74,6 @@
   --radius-chatgpt-input: 0.5rem;      /* 8px */
   --radius-chatgpt-bubble: 0.375rem;   /* 6px */
   --radius-chatgpt-card: 0.75rem;      /* 12px */
-
-  /* Aliases for chat components */
-  --color-primary: var(--accent-primary);
-  --color-primary-dark: var(--accent-active);
-  --color-secondary: var(--info);
-  --color-text: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-surface: var(--bg-elevated);
-  --color-background: var(--bg-secondary);
-  --color-border: var(--border-default);
-  --color-hover: var(--bg-tertiary);
-  --color-success: var(--success);
-  --color-error: var(--error);
-  --color-warning: var(--warning);
-  --color-info: var(--info);
-  --color-error-bg: #3a1a1a;
-  --color-skeleton-base: #2a2a2a;
-  --color-skeleton-highlight: #3a3a3a;
 }
 
 /* Base Styles */
@@ -152,7 +86,7 @@ body {
   font-size: var(--text-base);
   line-height: 1.6;
   color: var(--text-primary);
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

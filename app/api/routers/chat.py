@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+import asyncpg
 from api.dependencies import get_db, get_current_user
-from common.db import Database
 import logging
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ async def list_conversations(
     limit: int = 50,
     offset: int = 0,
     user_id: UUID = Depends(get_current_user),
-    db: Database = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """List all conversations for the current user
 
@@ -102,7 +102,7 @@ async def list_conversations(
 async def get_conversation(
     conversation_id: UUID,
     user_id: UUID = Depends(get_current_user),
-    db: Database = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Get a conversation with all its messages"""
     try:
@@ -163,7 +163,7 @@ async def get_conversation(
 async def create_message(
     message: CreateMessageRequest,
     user_id: UUID = Depends(get_current_user),
-    db: Database = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Create a new chat message
 
@@ -235,7 +235,7 @@ async def create_message(
 async def delete_conversation(
     conversation_id: UUID,
     user_id: UUID = Depends(get_current_user),
-    db: Database = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a conversation and all its messages"""
     try:
@@ -265,7 +265,7 @@ async def update_conversation_title(
     conversation_id: UUID,
     payload: UpdateTitleRequest,
     user_id: UUID = Depends(get_current_user),
-    db: Database = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Update conversation title"""
     try:

@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserMenu } from '@components/auth/UserMenu';
 import { HamburgerMenu } from './HamburgerMenu';
+import { Bell, Settings } from 'lucide-react';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -10,15 +10,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuToggle, menuOpen = false }: HeaderProps) {
-  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
 
   return (
     <header className={styles.header}>
@@ -30,25 +22,11 @@ export function Header({ onMenuToggle, menuOpen = false }: HeaderProps) {
         <div className={styles.logo} onClick={() => navigate('/')}>
           Brainda
         </div>
-
-        <form className={styles.searchForm} onSubmit={handleSearch}>
-          <div className={styles.searchBar}>
-            <span className={styles.searchIcon}>🔍</span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search workspace..."
-              className={styles.searchInput}
-            />
-            <kbd className={styles.kbd}>⌘K</kbd>
-          </div>
-        </form>
       </div>
 
       <div className={styles.right}>
         <button className={styles.iconButton} aria-label="Notifications">
-          🔔
+          <Bell size={20} />
           {/* Add badge if needed */}
         </button>
 
@@ -57,10 +35,8 @@ export function Header({ onMenuToggle, menuOpen = false }: HeaderProps) {
           aria-label="Settings"
           onClick={() => navigate('/settings')}
         >
-          ⚙️
+          <Settings size={20} />
         </button>
-
-        <UserMenu />
       </div>
     </header>
   );

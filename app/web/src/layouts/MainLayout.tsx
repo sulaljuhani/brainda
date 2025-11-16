@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect } from 'react';
-import { Header } from '@components/layout/Header';
+import { useLocation } from 'react-router-dom';
 import { Sidebar } from '@components/layout/Sidebar';
 import { MobileNav } from '@components/layout/MobileNav';
 import { GlobalSearch } from '@components/search/GlobalSearch';
@@ -12,13 +12,27 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const location = useLocation();
   const isMobileOrTablet = useIsMobileOrTablet();
+  const isChatPage = location.pathname === '/' || location.pathname === '/chat';
+  const [, forceUpdate] = useState({});
   // On mobile/tablet, sidebar starts collapsed (hidden)
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(
     'sidebar-collapsed',
     isMobileOrTablet
   );
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Get chat handlers from ChatPage if on chat page
+  const chatHandlers = isChatPage ? (window as any).__chatPageHandlers : null;
+
+  // Force re-render when chat handlers are available
+  useEffect(() => {
+    if (isChatPage && !chatHandlers) {
+      const timer = setTimeout(() => forceUpdate({}), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isChatPage, chatHandlers]);
 
   // Auto-collapse sidebar on mobile/tablet resize
   useEffect(() => {
@@ -47,14 +61,13 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className={styles.layout}>
-      <Header
-        onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        menuOpen={!sidebarCollapsed}
-      />
       <div className={styles.mainContainer}>
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          currentConversationId={chatHandlers?.currentConversationId}
+          onConversationSelect={chatHandlers?.onConversationSelect}
+          onNewConversation={chatHandlers?.onNewConversation}
         />
         <main className={styles.content}>
           {children}

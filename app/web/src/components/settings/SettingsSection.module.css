@@ -56,8 +56,8 @@
 .select:focus,
 .textarea:focus {
   outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary);
+  border-color: #2f2f2f;
+  box-shadow: 0 0 0 1px #2f2f2f;
 }
 
 .textarea {
@@ -124,7 +124,7 @@
 }
 
 .toggleActive {
-  background: var(--accent-primary);
+  background: var(--text-primary);
 }
 
 .toggle::after {
@@ -172,8 +172,8 @@
   padding: var(--space-3) var(--space-6);
   border: none;
   border-radius: var(--radius-md);
-  background: var(--accent-primary);
-  color: var(--text-inverse);
+  background: transparent;
+  color: var(--text-primary);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   font-family: var(--font-sans);
@@ -182,8 +182,7 @@
 }
 
 .primaryButton:hover:not(:disabled) {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
+  background: #2f2f2f;
 }
 
 .primaryButton:disabled {
@@ -193,7 +192,7 @@
 
 .secondaryButton {
   padding: var(--space-3) var(--space-6);
-  border: 1px solid var(--border-default);
+  border: none;
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-primary);
@@ -205,8 +204,7 @@
 }
 
 .secondaryButton:hover:not(:disabled) {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  background: #2f2f2f;
 }
 
 .secondaryButton:disabled {
@@ -216,10 +214,10 @@
 
 .dangerButton {
   padding: var(--space-3) var(--space-6);
-  border: 1px solid var(--error);
+  border: none;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--error);
+  color: var(--text-secondary);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   font-family: var(--font-sans);
@@ -228,8 +226,8 @@
 }
 
 .dangerButton:hover:not(:disabled) {
-  background: var(--error);
-  color: white;
+  background: #2f2f2f;
+  color: var(--text-primary);
 }
 
 .dangerButton:disabled {
@@ -245,8 +243,8 @@
 }
 
 .cardActive {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary);
+  border-color: #2f2f2f;
+  box-shadow: 0 0 0 1px #2f2f2f;
 }
 
 .cardHeader {
@@ -288,4 +286,38 @@
 .badgeError {
   background: color-mix(in srgb, var(--error) 20%, transparent);
   color: var(--error);
+}
+
+.dangerZone {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border-default);
+}
+
+.dangerZoneTitle {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+}
+
+.logoutButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.logoutButton:hover {
+  background: #2f2f2f;
+  color: var(--text-primary);
 }

@@ -1,0 +1,109 @@
+/* =========================================
+   Brainda Color System
+   ChatGPT-like Colors - Dark Mode Only (No Green)
+   ========================================= */
+
+/* -------------------------------
+   PALETTE (raw colors)
+   ------------------------------- */
+:root {
+  /* ChatGPT-like backgrounds */
+  --color-bg-primary: #343541;      /* Main background (dark gray-blue) */
+  --color-bg-secondary: #40414f;    /* Chat area / card background */
+  --color-bg-hover: #444654;        /* Hover background (buttons, inputs) */
+  --color-bg-light: #f7f7f8;        /* Light theme main background (not used) */
+
+  /* ChatGPT-like text colors */
+  --color-text-primary: #ececf1;    /* Main text color (dark mode) */
+  --color-text-secondary: #acacbe;  /* Secondary / subtle text */
+  --color-text-light: #2e2e2e;      /* Text on light backgrounds (not used) */
+
+  /* ChatGPT accent colors - NOT USED (no green policy) */
+  --color-accent-green: #10a37f;         /* ChatGPT signature green (DISABLED) */
+  --color-accent-green-hover: #1a7f64;   /* Hovered accent green (DISABLED) */
+  --color-accent-blue: #19c37d;          /* Alternate accent (DISABLED) */
+
+  /* Border & Input colors */
+  --color-border: #565869;          /* Divider lines and borders */
+  --color-input-bg: #40414f;        /* Message input box background */
+  --color-input-border: #565869;    /* Input border */
+
+  /* Link color - using text color instead of green */
+  --color-link: var(--color-text-primary); /* Link / interactive color (no green) */
+
+  /* Status colors */
+  --color-error: #ef4444;           /* Error / warning red */
+  --color-warning: #eab308;         /* Warning yellow */
+  --color-info: #2563eb;            /* Info blue */
+
+  /* ---------------------------------
+       SEMANTIC TOKENS (Dark Mode Only)
+     --------------------------------- */
+
+  /* Backgrounds */
+  --bg-app: var(--color-bg-secondary);          /* All pages background */
+  --bg-primary: var(--color-bg-secondary);      /* Main content background */
+  --bg-secondary: var(--color-bg-primary);      /* Sidebar background (darker) */
+  --bg-tertiary: var(--color-bg-hover);         /* Hover states */
+  --bg-elevated: var(--color-bg-hover);         /* Elevated surfaces */
+  --bg-input: var(--color-bg-hover);            /* Input boxes */
+
+  /* Chat-specific backgrounds */
+  --bg-chat-user: var(--color-bg-hover);        /* User message bubbles */
+  --bg-chat-assistant: var(--color-bg-secondary); /* Assistant message bubbles */
+  --bg-user-message: var(--color-bg-hover);
+
+  /* Text */
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-secondary);
+  --text-inverse: #ffffff;
+
+  /* Borders */
+  --border-subtle: #444654;
+  --border-default: #444654;
+  --border-strong: #565869;
+
+  /* Accent colors (semantic) - NO GREEN */
+  --accent-primary: var(--color-text-primary);
+  --accent-hover: var(--color-bg-hover);
+  --accent-active: var(--color-bg-hover);
+  --accent-soft: var(--color-bg-hover);
+
+  /* Status colors */
+  --status-error: var(--color-red);
+  --status-warning: var(--color-yellow);
+  --status-info: var(--color-blue);
+  --success: var(--color-text-primary);
+  --warning: var(--color-yellow);
+  --error: var(--color-red);
+  --info: var(--color-blue);
+
+  /* ChatGPT-specific tokens */
+  --chatgpt-sidebar-hover: var(--color-bg-hover);
+  --chatgpt-code-bg: var(--color-bg-primary);
+  --chatgpt-scrollbar-thumb: #565869;
+  --chatgpt-chip-bg: var(--color-bg-primary);
+  --chatgpt-chip-border: var(--color-bg-hover);
+
+  /* Legacy compatibility */
+  --color-primary: #ececec;
+  --color-primary-dark: var(--color-gray-800);
+  --color-secondary: var(--color-blue);
+  --color-danger: var(--color-red);
+  --color-danger-dark: #b91c1c;
+
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-surface: var(--bg-elevated);
+  --color-background: var(--bg-secondary);
+  --color-border: var(--border-default);
+  --color-hover: var(--bg-tertiary);
+  --color-success: #ececec;
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-error-bg: #3a1a1a;
+  --color-skeleton-base: #2a2a2a;
+  --color-skeleton-highlight: #3a3a3a;
+}

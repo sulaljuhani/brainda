@@ -1,8 +1,8 @@
 .chat-input {
   width: 100%;
   padding: var(--space-3) var(--space-4);
-  background: linear-gradient(to top, var(--bg-primary) 0%, var(--bg-primary) 100%);
-  border-top: 1px solid var(--border-default);
+  background: transparent;
+  border: none;
 }
 
 .chat-input__wrapper {
@@ -10,18 +10,18 @@
   align-items: flex-end;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: var(--bg-input);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-chatgpt-input);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
   max-width: 768px;
   margin: 0 auto;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: var(--shadow-chatgpt-soft);
+  box-shadow: none;
 }
 
 .chat-input__wrapper:focus-within {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary);
+  border-color: var(--border-default);
+  box-shadow: none;
 }
 
 .chat-input__textarea {
@@ -57,16 +57,17 @@
   width: 2rem;
   height: 2rem;
   padding: 0;
-  background: var(--accent-primary);
+  background: transparent;
   border: none;
   border-radius: var(--radius-full);
-  color: white;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .chat-input__send-button:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: #2f2f2f;
+  color: var(--text-primary);
 }
 
 .chat-input__send-button:active:not(:disabled) {
@@ -76,7 +77,7 @@
 .chat-input__send-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  background: var(--text-tertiary);
+  background: transparent;
 }
 
 .chat-input__counter {

@@ -6,8 +6,8 @@ Provides analytics and statistics endpoints for the dashboard.
 from uuid import UUID
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+import asyncpg
 from api.dependencies import get_db, get_current_user
-from common.db import Database
 import logging
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class OverviewStats(BaseModel):
 @router.get("/overview", response_model=OverviewStats)
 async def get_overview_stats(
     user_id: UUID = Depends(get_current_user),
-    db: Database = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Get overview statistics for the current user"""
 

@@ -1,18 +1,8 @@
-/* Container for sidebar + chat - ChatGPT style */
-.chat-page-container {
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg-primary);
-}
-
 .chat-page {
   display: flex;
   flex-direction: column;
-  flex: 1;
   height: 100%;
-  background: var(--bg-primary);
-  min-width: 0;
+  background: var(--bg-app);
 }
 
 /* Header - ChatGPT style */
@@ -22,7 +12,7 @@
   align-items: center;
   padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border-default);
-  background: var(--bg-primary);
+  background: var(--bg-app);
   flex-shrink: 0;
 }
 
@@ -143,13 +133,9 @@
 
 /* Mobile responsive styles */
 @media (max-width: 767px) {
-  .chat-page-container {
+  .chat-page {
     /* Account for mobile navigation at bottom */
     height: calc(100vh - var(--mobile-header-height) - var(--mobile-nav-height));
-  }
-
-  .chat-page {
-    height: 100%;
   }
 
   .chat-page__header {
@@ -187,12 +173,8 @@
 
 /* Tablet responsive styles */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .chat-page-container {
-    height: calc(100vh - var(--header-height));
-  }
-
   .chat-page {
-    height: 100%;
+    height: calc(100vh - var(--header-height));
   }
 
   .chat-page__suggestions {
