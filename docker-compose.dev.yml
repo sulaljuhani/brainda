@@ -10,9 +10,30 @@ services:
       - ./vault:/vault
       - ./uploads:/uploads
       - ./migrations:/app/migrations
+      - ./memory_vault:/memory_vault
       - ./entrypoint.sh:/entrypoint.sh
     # Enable hot reload for FastAPI
     command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend development server with hot reload
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vib-frontend
+    init: true
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app/web:/app/web  # Hot reload for frontend code
+      - /app/web/node_modules  # Prevent host overwriting container node_modules
+    working_dir: /app/web
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      # Use Docker service name for API communication between containers
+      - VITE_API_URL=http://orchestrator:8000
+    depends_on:
+      - orchestrator
 
   worker:
     volumes:

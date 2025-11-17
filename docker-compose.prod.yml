@@ -1,0 +1,148 @@
+# Production Docker Compose - includes built frontend served by FastAPI
+# Usage: docker compose -f docker-compose.prod.yml up -d --build
+version: '3.8'
+
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: vib-orchestrator
+    init: true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./vault:/vault
+      - ./uploads:/uploads
+      - ./migrations:/app/migrations
+      - ./memory_vault:/memory_vault
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - QDRANT_URL=${QDRANT_URL}
+      - API_TOKEN=${API_TOKEN}
+      - LOG_LEVEL=${LOG_LEVEL}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/bin/sh",
+          "-c",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:15
+    container_name: vib-postgres
+    init: true
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./migrations:/app/migrations
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vib-redis
+    init: true
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: vib-qdrant
+    init: true
+    ports:
+      - "6333:6333"
+    environment:
+      QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS: 2
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/bin/bash",
+          "-c",
+          "exec 3<>/dev/tcp/localhost/6333 && printf 'GET /collections HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && timeout 5 cat <&3 | grep -q '200 OK'",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: vib-worker
+    init: true
+    volumes:
+      - ./vault:/vault
+      - ./uploads:/uploads
+    env_file:
+      - .env
+    environment:
+      - SERVICE=worker
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - QDRANT_URL=${QDRANT_URL}
+      - API_TOKEN=${API_TOKEN}
+      - LOG_LEVEL=${LOG_LEVEL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: vib-beat
+    init: true
+    env_file:
+      - .env
+    environment:
+      - SERVICE=beat
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - QDRANT_URL=${QDRANT_URL}
+      - API_TOKEN=${API_TOKEN}
+      - LOG_LEVEL=${LOG_LEVEL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  qdrant_data:
