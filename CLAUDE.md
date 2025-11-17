@@ -15,13 +15,37 @@ The application uses **container-based service selection** via `entrypoint.sh`:
 - If `SERVICE=beat`: Runs Celery beat scheduler (`celery -A worker.tasks beat`)
 - Otherwise: Runs FastAPI orchestrator (`uvicorn api.main:app`)
 
-**6 Docker services** defined in `docker-compose.yml`:
+**Docker Services (varies by configuration mode):**
+
+**Base Services** (all modes):
 1. **orchestrator** (vib-orchestrator): FastAPI API server on port 8000
 2. **worker** (vib-worker): Celery background task processor
 3. **beat** (vib-beat): Celery beat scheduler for periodic tasks
 4. **postgres** (vib-postgres): PostgreSQL 15 database on port 5434
 5. **redis** (vib-redis): Redis 7 message broker/cache on port 6379
 6. **qdrant** (vib-qdrant): Vector database on port 6333
+
+**Additional in Development Mode** (`docker-compose.dev.yml`):
+7. **frontend** (vib-frontend): Vite dev server on port 3000 with hot reload
+
+**Production Mode** (`docker-compose.prod.yml`):
+- Uses `Dockerfile.prod` multi-stage build
+- Frontend built and served from orchestrator (no separate frontend service)
+- Single endpoint: http://localhost:8000
+
+### Docker Configuration Files
+
+**Dockerfiles:**
+- `Dockerfile`: Original backend-only Dockerfile (legacy)
+- `Dockerfile.dev`: Development Dockerfile (code mounted as volumes, no copy)
+- `Dockerfile.prod`: Production multi-stage build (Node.js → Python, includes built frontend)
+
+**Docker Compose Files:**
+- `docker-compose.yml`: Base configuration (backend services only)
+- `docker-compose.dev.yml`: Development overlay (adds frontend service, enables hot reload)
+- `docker-compose.prod.yml`: Production configuration (uses Dockerfile.prod, optimized builds)
+
+**See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for comprehensive Docker configuration guide.**
 
 ### Critical Volumes
 
@@ -38,25 +62,98 @@ The application uses **container-based service selection** via `entrypoint.sh`:
 
 ## Commands
 
-### Building and Running
+### Docker Configuration Modes
+
+VIB supports three Docker configuration modes. **See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for comprehensive documentation.**
+
+#### Development Mode (Recommended for Active Development)
+
+**Best for**: Daily development with hot reload for frontend + backend
 
 ```bash
-# Start all services (production mode)
-docker compose up -d
-
-# Rebuild specific service after code changes
-docker compose up -d --build orchestrator
-docker compose up -d --build worker
+# Start all services including frontend with hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 # View logs
-docker compose logs -f orchestrator
-docker compose logs -f worker
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f orchestrator frontend
 
 # Stop all services
-docker compose down
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
-### Development Mode (Hot Reload)
+**Access:**
+- Frontend: http://localhost:3000 (Vite dev server with hot reload)
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+**Features:**
+- ✅ Frontend hot reload (Vite dev server)
+- ✅ Backend hot reload (FastAPI `--reload`)
+- ✅ No rebuilds needed for code changes
+- ✅ Separate frontend container (`vib-frontend`)
+- ✅ All code mounted as volumes
+
+#### Production Mode (Recommended for Deployment)
+
+**Best for**: Production deployment, testing production builds
+
+```bash
+# Build and start all services (frontend built and served from FastAPI)
+docker compose -f docker-compose.prod.yml up -d --build
+
+# View logs
+docker compose -f docker-compose.prod.yml logs -f orchestrator
+
+# Stop all services
+docker compose -f docker-compose.prod.yml down
+```
+
+**Access:**
+- Everything: http://localhost:8000 (frontend + backend on single port)
+
+**Features:**
+- ✅ Multi-stage Docker build (Node.js → Python)
+- ✅ Frontend built and optimized (Vite production build)
+- ✅ Served from FastAPI static files
+- ✅ Single endpoint for frontend + backend
+- ✅ Smaller image size
+- ✅ Production-optimized
+
+#### Legacy Mode (Not Recommended)
+
+**Best for**: Only if you need to run frontend outside Docker
+
+```bash
+# Start backend services only
+docker compose up -d
+
+# Manually run frontend (separate terminal)
+cd app/web
+npm install
+npm run dev
+```
+
+**Why not recommended**: Requires manual process management, no container benefits for frontend
+
+### Building and Running (General Commands)
+
+```bash
+# Rebuild specific service after dependency changes
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build orchestrator
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build worker
+
+# View logs
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f orchestrator
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f worker
+
+# Restart specific service
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart orchestrator
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart frontend
+```
+
+### Manual Development Mode (No Docker - Advanced)
+
+**Only use if you need to run services outside Docker for debugging**
 
 ```bash
 # Start infrastructure only
@@ -75,6 +172,10 @@ celery -A worker.tasks worker --loglevel=info
 
 # Run Celery beat (separate terminal)
 celery -A worker.tasks beat --loglevel=info
+
+# Run Frontend (separate terminal)
+cd app/web
+npm run dev
 ```
 
 ### Testing
@@ -464,21 +565,38 @@ Auth is a dependency, not middleware, so it runs after CORS.
 
 ### Hot Reload During Development
 
-**Code changes that require rebuild**:
-- Dependencies in `requirements.txt`
-- Dockerfile or entrypoint.sh
-- Environment variables in `.env`
+**Development Mode** (`docker-compose.dev.yml`) provides the best hot reload experience:
 
-**Code changes with hot reload** (no rebuild needed):
-- Python files in `app/api/` (orchestrator auto-reloads)
-- Python files in `app/worker/` (restart worker: `docker compose restart worker`)
-- SQL migrations (run manually)
+**Code changes with automatic hot reload** (no rebuild, no restart needed):
+- **Frontend** files in `app/web/src/` - Vite automatically reloads browser
+- **Backend** Python files in `app/api/` - FastAPI orchestrator auto-reloads
+- **Styling** files in `app/web/src/` - CSS changes reflect immediately
+
+**Code changes requiring service restart** (no rebuild needed):
+- Python files in `app/worker/` → `docker compose -f docker-compose.yml -f docker-compose.dev.yml restart worker`
+- Python files in `app/worker/tasks.py` → `docker compose -f docker-compose.yml -f docker-compose.dev.yml restart worker`
+
+**Code changes requiring rebuild**:
+- Dependencies in `requirements.txt` or `package.json`
+- Dockerfile, Dockerfile.dev, or Dockerfile.prod
+- Environment variables in `.env` (restart needed)
+- Docker compose files
 
 **Smart rebuild** (preserves Docker layer cache):
 ```bash
-# Only rebuild if requirements changed
-docker compose up -d --build orchestrator
+# Development mode - rebuild after dependency changes
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build orchestrator frontend
+
+# Production mode - rebuild frontend + backend
+docker compose -f docker-compose.prod.yml up -d --build orchestrator
 ```
+
+**Development Workflow Best Practices**:
+1. **Use development mode** for daily coding: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`
+2. **Code changes** in `app/web/src` or `app/api/` → No action needed (auto-reload)
+3. **Worker changes** → `docker compose -f docker-compose.yml -f docker-compose.dev.yml restart worker`
+4. **Dependency changes** → Rebuild with `--build` flag
+5. **Test production builds** before deploying: `docker compose -f docker-compose.prod.yml up -d --build`
 
 ### Testing Philosophy
 
@@ -590,7 +708,26 @@ const chatHandlers = isChatPage ? window.__chatPageHandlers : null;
 
 **Important**: Use `useCallback` for all handler functions to prevent infinite re-renders in the useEffect dependency array.
 
-### Running Frontend Locally
+### Running Frontend
+
+**Recommended: Docker Development Mode** (Integrated with Backend)
+
+```bash
+# Start entire stack including frontend with hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# View frontend logs
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f frontend
+
+# Restart frontend after config changes
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart frontend
+```
+
+Access at: http://localhost:3000 (Vite dev server with hot reload)
+
+**Alternative: Manual Mode** (Standalone Frontend - Not Recommended)
+
+Only use this if you need to run frontend outside Docker:
 
 ```bash
 cd app/web
@@ -602,10 +739,27 @@ npm install
 npm run dev
 # Opens on http://localhost:3000 (or next available port)
 
+# Note: Backend must be running at http://localhost:8000
+# Start backend separately: docker compose up -d
+```
+
+**Production Build** (For Testing or Deployment)
+
+```bash
+# Build frontend and serve from FastAPI (production mode)
+docker compose -f docker-compose.prod.yml up -d --build
+
+# Access everything at http://localhost:8000
+```
+
+**Frontend Development Tasks**
+
+```bash
 # Type check
+cd app/web
 npm run type-check
 
-# Build for production
+# Build for production (manual)
 npm run build
 
 # Run tests
