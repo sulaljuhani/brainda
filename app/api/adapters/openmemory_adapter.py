@@ -16,8 +16,12 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
+from common.circuit_breaker import get_circuit_breaker, CircuitBreakerOpen
 
 logger = structlog.get_logger()
+
+# Timeout configuration for OpenMemory
+OPENMEMORY_TIMEOUT = int(os.getenv("OPENMEMORY_TIMEOUT", "10"))
 
 
 class OpenMemoryError(RuntimeError):
@@ -31,7 +35,7 @@ class OpenMemoryAdapter:
         self,
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
-        timeout: int = 30,
+        timeout: Optional[int] = None,
         retry_attempts: int = 3,
     ):
         """Initialize OpenMemory adapter.
@@ -39,14 +43,15 @@ class OpenMemoryAdapter:
         Args:
             base_url: OpenMemory server URL (defaults to OPENMEMORY_URL env var)
             api_key: API key for authentication (defaults to OPENMEMORY_API_KEY env var)
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (defaults to OPENMEMORY_TIMEOUT env var)
             retry_attempts: Number of retry attempts for failed requests
         """
         self.base_url = (base_url or os.getenv("OPENMEMORY_URL", "http://localhost:8080")).rstrip("/")
         self.api_key = api_key or os.getenv("OPENMEMORY_API_KEY", "")
-        self.timeout = timeout
+        self.timeout = timeout or OPENMEMORY_TIMEOUT
         self.retry_attempts = retry_attempts
         self._client: Optional[httpx.AsyncClient] = None
+        self._circuit_breaker = get_circuit_breaker("openmemory")
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""

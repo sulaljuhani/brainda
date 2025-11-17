@@ -9,6 +9,7 @@ services:
       dockerfile: Dockerfile.prod
     container_name: vib-orchestrator
     init: true
+    restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
@@ -24,6 +25,15 @@ services:
       - QDRANT_URL=${QDRANT_URL}
       - API_TOKEN=${API_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL}
+    # Resource limits for 16GB RAM system (single user)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     healthcheck:
       test:
         [
@@ -35,6 +45,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,45 +58,83 @@ services:
     image: postgres:15
     container_name: vib-postgres
     init: true
+    restart: unless-stopped
     ports:
       - "5434:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      # Connection pooling and performance tuning for single user
+      POSTGRES_MAX_CONNECTIONS: 50
+      POSTGRES_SHARED_BUFFERS: 256MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./migrations:/app/migrations
+    # Resource limits for database (can use more RAM for caching)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
     container_name: vib-redis
     init: true
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save 60 1000
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    # Resource limits for Redis (increased for single user with more RAM)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   qdrant:
     image: qdrant/qdrant:latest
     container_name: vib-qdrant
     init: true
+    restart: unless-stopped
     ports:
       - "6333:6333"
     environment:
       QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS: 2
+      QDRANT__SERVICE__GRPC_PORT: 6334
     volumes:
       - qdrant_data:/qdrant/storage
+    # Resource limits for vector database (can be intensive)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     healthcheck:
       test:
         [
@@ -97,6 +146,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 20s
 
   worker:
     build:
@@ -104,6 +154,7 @@ services:
       dockerfile: Dockerfile.prod
     container_name: vib-worker
     init: true
+    restart: unless-stopped
     volumes:
       - ./vault:/vault
       - ./uploads:/uploads
@@ -116,6 +167,15 @@ services:
       - QDRANT_URL=${QDRANT_URL}
       - API_TOKEN=${API_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL}
+    # Resource limits for Celery worker (embedding tasks can be intensive)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,6 +188,7 @@ services:
       dockerfile: Dockerfile.prod
     container_name: vib-beat
     init: true
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -137,6 +198,15 @@ services:
       - QDRANT_URL=${QDRANT_URL}
       - API_TOKEN=${API_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL}
+    # Resource limits for Celery beat (lightweight scheduler)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
     depends_on:
       postgres:
         condition: service_healthy
@@ -146,3 +216,4 @@ services:
 volumes:
   postgres_data:
   qdrant_data:
+  redis_data:

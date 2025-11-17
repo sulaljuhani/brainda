@@ -11,8 +11,13 @@ from typing import Any, AsyncGenerator, Dict, Optional
 import httpx
 import structlog
 from tenacity import AsyncRetrying, RetryError, retry_if_exception_type, stop_after_attempt, wait_exponential
+from common.circuit_breaker import get_circuit_breaker, CircuitBreakerOpen
 
 logger = structlog.get_logger()
+
+# Timeout configurations (in seconds)
+DEFAULT_HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "30"))
+LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "60"))
 
 try:  # pragma: no cover - optional dependency loaded at runtime
     import tiktoken
@@ -155,7 +160,12 @@ class OpenAIAdapter(BaseLLMAdapter):
 
         base_url = os.getenv("OPENAI_BASE_URL")
         self._model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self._client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=LLM_TIMEOUT,
+        )
+        self._circuit_breaker = get_circuit_breaker("openai")
 
     async def complete(
         self,
@@ -181,7 +191,11 @@ class OpenAIAdapter(BaseLLMAdapter):
             return response
 
         try:
-            response = await self._retry(_call)
+            # Wrap in circuit breaker to prevent runaway costs
+            response = await self._circuit_breaker.call(self._retry, _call)
+        except CircuitBreakerOpen as exc:
+            logger.error("openai_circuit_breaker_open", error=str(exc))
+            raise LLMAdapterError(str(exc)) from exc
         except RetryError as exc:  # pragma: no cover - defensive
             raise LLMAdapterError("OpenAI completion failed") from exc
         message = response.choices[0].message.content or ""
