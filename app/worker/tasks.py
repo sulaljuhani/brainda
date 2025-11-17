@@ -1059,3 +1059,61 @@ def sync_google_calendar_pull(user_id_str: str):
             await conn.close()
 
     asyncio.run(_run())
+
+
+@celery_app.task(bind=True, max_retries=3, name="worker.tasks.process_chat_file_task")
+def process_chat_file_task(self, file_id: str, user_id: str):
+    """Process chat file attachment (OCR, transcription, embedding).
+
+    Args:
+        file_id: UUID of the chat file to process
+        user_id: UUID of the user who uploaded the file
+
+    This task extracts text from files based on type:
+    - Images: OCR (if available)
+    - PDFs: Text extraction
+    - Text files: Direct read
+    - Audio: Transcription (if available)
+
+    After extraction, generates embeddings and stores in Qdrant.
+    """
+    async def _process():
+        from api.services.chat_file_service import ChatFileService
+
+        conn = await _connect_db()
+        try:
+            service = ChatFileService(conn)
+            result = await service.process_file(
+                uuid.UUID(file_id),
+                uuid.UUID(user_id),
+            )
+
+            if not result["success"]:
+                raise Exception(result["error"])
+
+            logger.info(
+                "chat_file_processed",
+                file_id=file_id,
+                user_id=user_id,
+                has_text=bool(result.get("extracted_text"))
+            )
+
+            return result
+        except Exception as exc:
+            logger.error(
+                "process_chat_file_failed",
+                file_id=file_id,
+                user_id=user_id,
+                error=str(exc)
+            )
+            raise
+        finally:
+            await conn.close()
+
+    try:
+        result = asyncio.run(_process())
+        return result
+    except Exception as exc:
+        logger.error("process_chat_file_task_failed", file_id=file_id, error=str(exc))
+        # Retry with exponential backoff
+        raise self.retry(exc=exc, countdown=60)

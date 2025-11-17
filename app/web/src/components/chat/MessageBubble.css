@@ -193,3 +193,72 @@
 .message-bubble__copy:active {
   transform: scale(0.95);
 }
+
+/* Attachments */
+.message-bubble__attachments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.message-bubble__attachment {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+}
+
+.message-bubble__attachment-image {
+  max-width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: contain;
+  display: block;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.message-bubble__attachment-image:hover {
+  opacity: 0.9;
+}
+
+.message-bubble__attachment-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: background 0.15s ease;
+}
+
+.message-bubble__attachment-link:hover {
+  background: var(--bg-tertiary);
+}
+
+.message-bubble__attachment-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.message-bubble__attachment-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-bubble__attachment-filename {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message-bubble__attachment-meta {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}

@@ -30,6 +30,41 @@ export const chatConversationsService = {
   },
 
   /**
+   * Create a new message with file attachments
+   * Uses multipart/form-data to upload files
+   */
+  createMessageWithFiles: async (
+    content: string,
+    files: File[],
+    conversationId?: string
+  ): Promise<ChatMessagePersisted> => {
+    const formData = new FormData();
+    formData.append('content', content);
+    if (conversationId) {
+      formData.append('conversation_id', conversationId);
+    }
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    const token = localStorage.getItem('sessionToken');
+    const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/v1/chat/messages/with-files`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to upload files' }));
+      throw new Error(error.detail || 'Failed to upload files');
+    }
+
+    return response.json();
+  },
+
+  /**
    * Delete a conversation and all its messages
    */
   deleteConversation: async (conversationId: string): Promise<void> => {

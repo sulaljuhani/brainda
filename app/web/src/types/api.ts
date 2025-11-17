@@ -188,6 +188,19 @@ export interface UpdateCategoryRequest {
 }
 
 // Chat
+export interface FileAttachment {
+  id: string;
+  type: 'image' | 'pdf' | 'audio' | 'document' | 'other';
+  filename: string;
+  url: string;
+  thumbnail_url?: string;
+  mime_type: string;
+  size_bytes: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  extracted_text?: string;
+  metadata?: Record<string, any>;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -195,6 +208,7 @@ export interface ChatMessage {
   timestamp: Date;
   toolCall?: ToolCall;
   citations?: Citation[];
+  attachments?: FileAttachment[];
 }
 
 export interface ToolCall {
@@ -281,6 +295,7 @@ export interface ChatMessagePersisted {
   content: string;
   tool_calls?: any[];
   citations?: any[];
+  attachments?: FileAttachment[];
   created_at: string;
 }
 
