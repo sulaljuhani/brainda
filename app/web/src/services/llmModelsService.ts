@@ -34,6 +34,36 @@ export interface UpdateLLMModelRequest {
   is_active?: boolean;
 }
 
+export interface TestProviderRequest {
+  provider: 'openai' | 'anthropic' | 'ollama' | 'custom';
+  config: Record<string, any>;
+}
+
+export interface DiscoveredModel {
+  id: string;
+  name: string;
+  description?: string;
+  created?: number;
+  size?: number;
+  modified_at?: string;
+}
+
+export interface DiscoverModelsResponse {
+  success: boolean;
+  provider: string;
+  models: DiscoveredModel[];
+  note?: string;
+  message?: string;
+}
+
+export interface BulkCreateModelsRequest {
+  provider: 'openai' | 'anthropic' | 'ollama' | 'custom';
+  config: Record<string, any>;
+  models: string[];  // List of model IDs to create
+  temperature?: number;
+  set_first_as_default?: boolean;
+}
+
 export const llmModelsService = {
   // List all LLM models
   list: (includeInactive = false): Promise<LLMModel[]> =>
@@ -62,4 +92,16 @@ export const llmModelsService = {
   // Set as default
   setDefault: (id: string): Promise<{ success: boolean; message: string }> =>
     api.post(`/llm-models/${id}/set-default`, {}),
+
+  // Test provider credentials
+  testProvider: (data: TestProviderRequest): Promise<{ success: boolean; message: string; provider: string }> =>
+    api.post('/llm-models/test-provider', data),
+
+  // Discover available models from provider
+  discoverModels: (provider: string, config: Record<string, any>): Promise<DiscoverModelsResponse> =>
+    api.post('/llm-models/discover-models', { provider, config }),
+
+  // Bulk create models
+  bulkCreate: (data: BulkCreateModelsRequest): Promise<{ success: boolean; created: number; models: LLMModel[] }> =>
+    api.post('/llm-models/bulk-create', data),
 };

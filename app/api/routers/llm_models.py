@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 import asyncpg
 import logging
+import asyncio
 
 from api.dependencies import get_db, get_current_user
 from api.services.llm_models_service import LLMModelsService
+from api.adapters.llm_adapter import build_adapter_from_config, LLMAdapterError
 
 logger = logging.getLogger(__name__)
 
@@ -255,3 +257,270 @@ async def set_default_llm_model(
     except Exception as e:
         logger.error(f"Error setting default LLM model: {e}")
         raise HTTPException(status_code=500, detail="Failed to set default model")
+
+
+# Provider management and model discovery endpoints
+
+class TestProviderRequest(BaseModel):
+    """Request to test provider credentials."""
+    provider: str = Field(..., pattern="^(openai|anthropic|ollama|custom)$")
+    config: Dict[str, Any]
+
+
+class ProviderModelInfo(BaseModel):
+    """Information about an available model from a provider."""
+    id: str
+    name: str
+    description: Optional[str] = None
+    context_length: Optional[int] = None
+
+
+class DiscoverModelsRequest(BaseModel):
+    """Request to discover available models from a provider."""
+    provider: str = Field(..., pattern="^(openai|anthropic|ollama|custom)$")
+    config: Dict[str, Any]
+
+
+class CreateBulkModelsRequest(BaseModel):
+    """Request to create multiple models at once."""
+    provider: str = Field(..., pattern="^(openai|anthropic|ollama|custom)$")
+    config: Dict[str, Any]
+    models: List[str]  # List of model IDs to create
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    set_first_as_default: bool = False
+
+
+@router.post("/test-provider")
+async def test_provider_credentials(
+    request: TestProviderRequest,
+    user_id: UUID = Depends(get_current_user),
+):
+    """Test provider credentials by making a simple API call."""
+    try:
+        # Build a temporary adapter with the provided config
+        adapter = build_adapter_from_config(
+            provider=request.provider,
+            model_name="test-model",  # Placeholder
+            config=request.config,
+            temperature=0.7,
+        )
+
+        # Try a simple completion to test the connection
+        try:
+            response = await asyncio.wait_for(
+                adapter.complete("test", max_tokens=5),
+                timeout=10.0
+            )
+            return {
+                "success": True,
+                "message": f"Successfully connected to {request.provider}",
+                "provider": request.provider,
+            }
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=408,
+                detail=f"Connection to {request.provider} timed out"
+            )
+        except Exception as e:
+            error_msg = str(e)
+            if "api_key" in error_msg.lower() or "auth" in error_msg.lower():
+                raise HTTPException(
+                    status_code=401,
+                    detail=f"Authentication failed: {error_msg}"
+                )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Connection failed: {error_msg}"
+            )
+
+    except LLMAdapterError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error testing provider: {e}")
+        raise HTTPException(status_code=500, detail="Failed to test provider")
+
+
+@router.post("/discover-models")
+async def discover_available_models(
+    request: DiscoverModelsRequest,
+    user_id: UUID = Depends(get_current_user),
+):
+    """Discover available models from a provider.
+
+    Returns a list of model IDs/names that can be used with this provider.
+    """
+    try:
+        if request.provider == "openai":
+            return await _discover_openai_models(request.config)
+        elif request.provider == "anthropic":
+            return await _discover_anthropic_models(request.config)
+        elif request.provider == "ollama":
+            return await _discover_ollama_models(request.config)
+        elif request.provider == "custom":
+            # Custom providers don't have a standard way to list models
+            return {
+                "success": True,
+                "provider": "custom",
+                "models": [],
+                "message": "Custom providers require manual model specification"
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Unknown provider")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error discovering models: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to discover models: {str(e)}")
+
+
+@router.post("/bulk-create")
+async def bulk_create_models(
+    request: CreateBulkModelsRequest,
+    user_id: UUID = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Create multiple models at once from a provider."""
+    try:
+        service = LLMModelsService(db)
+        created_models = []
+
+        for idx, model_id in enumerate(request.models):
+            # Generate a friendly name
+            name = f"{request.provider.capitalize()} - {model_id}"
+
+            is_default = request.set_first_as_default and idx == 0
+
+            try:
+                model = await service.create_model(
+                    user_id=user_id,
+                    name=name,
+                    provider=request.provider,
+                    model_name=model_id,
+                    config=request.config,
+                    temperature=request.temperature,
+                    is_default=is_default,
+                )
+                created_models.append(model)
+            except Exception as e:
+                logger.warning(f"Failed to create model {model_id}: {e}")
+                # Continue with other models
+
+        return {
+            "success": True,
+            "created": len(created_models),
+            "models": [mask_sensitive_config(m) for m in created_models],
+        }
+
+    except Exception as e:
+        logger.error(f"Error bulk creating models: {e}")
+        raise HTTPException(status_code=500, detail="Failed to bulk create models")
+
+
+# Helper functions for model discovery
+
+async def _discover_openai_models(config: Dict[str, Any]):
+    """Discover available OpenAI models."""
+    try:
+        from openai import AsyncOpenAI
+    except ImportError:
+        raise HTTPException(status_code=500, detail="OpenAI package not installed")
+
+    api_key = config.get("api_key")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="api_key required")
+
+    base_url = config.get("base_url")
+    client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=10.0)
+
+    try:
+        models_response = await asyncio.wait_for(client.models.list(), timeout=10.0)
+        models = [
+            {
+                "id": model.id,
+                "name": model.id,
+                "created": model.created,
+            }
+            for model in models_response.data
+            if any(prefix in model.id for prefix in ["gpt-", "o1-", "text-"])
+        ]
+
+        return {
+            "success": True,
+            "provider": "openai",
+            "models": models,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch OpenAI models: {str(e)}")
+
+
+async def _discover_anthropic_models(config: Dict[str, Any]):
+    """Discover available Anthropic models."""
+    # Anthropic doesn't have a models list API, so we return the known models
+    models = [
+        {
+            "id": "claude-3-5-sonnet-20241022",
+            "name": "Claude 3.5 Sonnet (Oct 2024)",
+            "description": "Most intelligent model",
+        },
+        {
+            "id": "claude-3-5-haiku-20241022",
+            "name": "Claude 3.5 Haiku (Oct 2024)",
+            "description": "Fast and efficient",
+        },
+        {
+            "id": "claude-3-opus-20240229",
+            "name": "Claude 3 Opus",
+            "description": "Previous generation flagship",
+        },
+        {
+            "id": "claude-3-sonnet-20240229",
+            "name": "Claude 3 Sonnet",
+            "description": "Balanced performance",
+        },
+        {
+            "id": "claude-3-haiku-20240307",
+            "name": "Claude 3 Haiku",
+            "description": "Fast and compact",
+        },
+    ]
+
+    return {
+        "success": True,
+        "provider": "anthropic",
+        "models": models,
+        "note": "Anthropic models are curated. Check Anthropic docs for latest models."
+    }
+
+
+async def _discover_ollama_models(config: Dict[str, Any]):
+    """Discover available Ollama models."""
+    import httpx
+
+    base_url = config.get("base_url", "http://ollama:11434")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{base_url}/api/tags")
+            response.raise_for_status()
+            data = response.json()
+
+            models = [
+                {
+                    "id": model["name"],
+                    "name": model["name"],
+                    "size": model.get("size"),
+                    "modified_at": model.get("modified_at"),
+                }
+                for model in data.get("models", [])
+            ]
+
+            return {
+                "success": True,
+                "provider": "ollama",
+                "models": models,
+            }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch Ollama models: {str(e)}")
