@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-OpenMemory Integration Examples for VIB
+OpenMemory Integration Examples for Brainda
 
-This script demonstrates how to use OpenMemory integration in VIB for:
+This script demonstrates how to use OpenMemory integration in Brainda for:
 - Storing explicit memories
 - Searching memories semantically
 - Previewing conversation context
 - Managing user memories
 
 Prerequisites:
-    - VIB running with OpenMemory enabled
+    - Brainda running with OpenMemory enabled
     - Valid session token or API token
     - OPENMEMORY_URL configured
 """
@@ -21,7 +21,7 @@ from uuid import uuid4
 
 
 # Configuration
-BASE_URL = os.getenv("VIB_URL", "http://localhost:8000")
+BASE_URL = os.getenv("BRAINDA_URL", "http://localhost:8000")
 API_TOKEN = os.getenv("API_TOKEN", "your-api-token-here")
 
 # Use session token or API token
@@ -234,7 +234,7 @@ async def chat_with_memory(message: str):
 async def main():
     """Run all examples."""
     print("=" * 60)
-    print("OpenMemory Integration Examples for VIB")
+    print("OpenMemory Integration Examples for Brainda")
     print("=" * 60)
 
     # 1. Health check

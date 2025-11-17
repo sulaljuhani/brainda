@@ -1,7 +1,7 @@
 # UI.md - Modern Interface Design Specification
 
 ## Overview
-VIB UI follows a chat-first, modern design philosophy inspired by claude.ai - clean, minimal, dark mode by default, with exceptional attention to typography, spacing, and user experience.
+Brainda UI follows a chat-first, modern design philosophy inspired by claude.ai - clean, minimal, dark mode by default, with exceptional attention to typography, spacing, and user experience.
 
 ---
 
@@ -129,7 +129,7 @@ VIB UI follows a chat-first, modern design philosophy inspired by claude.ai - cl
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Header (56px fixed)                                        │
-│  ┌──────────────┐  VIB           [Search]  [Settings] [•]  │
+│  ┌──────────────┐  Brainda           [Search]  [Settings] [•]  │
 └─────────────────────────────────────────────────────────────┘
 │                                                              │
 │  ┌─────────────┐  ┌──────────────────────────────────────┐ │
@@ -203,7 +203,7 @@ VIB UI follows a chat-first, modern design philosophy inspired by claude.ai - cl
 
 ```tsx
 <Header>
-  <Logo>VIB</Logo>
+  <Logo>Brainda</Logo>
   <SearchBar />
   <UserMenu>
     <NotificationBadge />
@@ -800,7 +800,7 @@ VIB UI follows a chat-first, modern design philosophy inspired by claude.ai - cl
 - Always with semantic meaning
 
 **Custom Icons:**
-- VIB logo
+- Brainda logo
 - Tool type icons (note, reminder, search, document)
 - Status icons (success, error, warning, info)
 
@@ -1050,7 +1050,7 @@ VIB UI follows a chat-first, modern design philosophy inspired by claude.ai - cl
 
 **Version**: 1.0.0
 **Last Updated**: 2025-01-20
-**Maintainer**: VIB Team
+**Maintainer**: Brainda Team
 **Status**: Ready for Implementation
 
-This document serves as the single source of truth for the VIB interface design. All UI decisions should reference and extend this specification.
+This document serves as the single source of truth for the Brainda interface design. All UI decisions should reference and extend this specification.

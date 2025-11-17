@@ -2,7 +2,7 @@
 
 ## Context
 
-You are implementing **Stage 5** of the VIB project (chat-first notes, reminders & knowledge assistant). The MVP (Stages 0-4) is **already complete** and working:
+You are implementing **Stage 5** of the Brainda project (chat-first notes, reminders & knowledge assistant). The MVP (Stages 0-4) is **already complete** and working:
 
 - ✅ Infrastructure with Docker services
 - ✅ Chat interface with streaming responses
@@ -741,7 +741,7 @@ done
 wait
 
 # Count reminders with this title
-COUNT=$(docker exec vib-postgres psql -U postgres -d vib -c \
+COUNT=$(docker exec brainda-postgres psql -U postgres -d vib -c \
   "SELECT COUNT(*) FROM reminders WHERE title = 'Dup test';" | grep -oP '\d+' | head -1)
 
 if [ "$COUNT" != "1" ]; then
@@ -784,7 +784,7 @@ echo "✓ Aggressive retry test passed"
 
 ```bash
 # Apply migration
-docker exec vib-postgres psql -U vib -d vib -f /app/migrations/004_add_idempotency.sql
+docker exec brainda-postgres psql -U vib -d vib -f /app/migrations/004_add_idempotency.sql
 
 # Restart services
 docker-compose restart orchestrator worker

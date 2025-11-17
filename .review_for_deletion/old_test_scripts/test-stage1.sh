@@ -34,7 +34,7 @@ echo "Test 1: Creating note..."
 NOTE=$(curl -sf -X POST http://localhost:8003/api/v1/notes \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"title": "TestNote", "body": "Hello VIB", "tags": ["test"]}')
+  -d '{"title": "TestNote", "body": "Hello Brainda", "tags": ["test"]}')
 NOTE_ID=$(echo $NOTE | jq -r '.data.id')
 MD_PATH=$(echo $NOTE | jq -r '.data.md_path')
 echo "Created note: $NOTE_ID"
@@ -54,7 +54,7 @@ echo ""
 echo "Test 3: Waiting for embedding (up to 2 minutes)..."
 EMBEDDING_READY=0
 for i in {1..12}; do
-  docker exec vib-postgres psql -U vib -d vib -t -c \
+  docker exec brainda-postgres psql -U brainda  -d brainda -t -c \
     "SELECT embedding_model FROM file_sync_state WHERE file_path = '${MD_PATH}';" \
     | grep -q "all-MiniLM-L6-v2:1" && EMBEDDING_READY=1 && break
   sleep 10
@@ -69,7 +69,7 @@ echo ""
 
 # Test 4: Check file_sync_state (final confirmation)
 echo "Test 4: Checking sync state..."
-docker exec vib-postgres psql -U vib -d vib -t -c \
+docker exec brainda-postgres psql -U brainda  -d brainda -t -c \
   "SELECT embedding_model FROM file_sync_state WHERE file_path = '${MD_PATH}';" \
   | grep "all-MiniLM-L6-v2:1" || exit 1
 echo "✓ Sync state updated"
@@ -88,7 +88,7 @@ echo "Test 6: Testing deduplication..."
 NOTE2=$(curl -sf -X POST http://localhost:8003/api/v1/notes \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"title": "TestNote", "body": "Hello VIB again", "tags": ["test"]}')
+  -d '{"title": "TestNote", "body": "Hello Brainda again", "tags": ["test"]}')
 DEDUPED=$(echo $NOTE2 | jq -r '.deduplicated')
 if [ "$DEDUPED" = "true" ]; then
     echo "✓ Deduplication working"

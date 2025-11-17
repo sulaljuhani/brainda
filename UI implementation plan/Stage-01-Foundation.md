@@ -418,10 +418,10 @@ body {
 
 ---
 
-### Task 1.9: Rename All "VIB" References
+### Task 1.9: Rename All "Brainda" References
 
 **Search and replace** in existing files:
-- `app/web/components/*.tsx`: Change "VIB" → "Brainda"
+- `app/web/components/*.tsx`: Change "Brainda" → "Brainda"
 - `app/web/public/index.html`: Update title and references
 
 **Files to update**:
@@ -431,7 +431,7 @@ body {
 **Command to find all references**:
 ```bash
 cd /home/user/brainda/app/web
-grep -r "VIB" --include="*.tsx" --include="*.ts" --include="*.html"
+grep -r "Brainda" --include="*.tsx" --include="*.ts" --include="*.html"
 ```
 
 ---
@@ -563,7 +563,7 @@ curl http://localhost:3000/api/v1/health
 - [x] Development server running
 - [x] Production build working
 - [x] FastAPI serving built frontend
-- [x] All "VIB" renamed to "Brainda"
+- [x] All "Brainda" renamed to "Brainda"
 - [x] Environment variables configured
 
 ---

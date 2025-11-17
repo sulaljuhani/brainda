@@ -6,7 +6,7 @@
 ## Phase 1: Initial Assessment & Understanding
 - **Purpose:** Validates idempotency key behavior, reminder creation concurrency, and light-weight mobile/session readiness checks for the reminders API. 【F:tests/stage5.sh†L1-L315】
 - **Key Functions:** `test_idempotency_*` variants exercise CRUD flows; `test_mobile_api_endpoints` and `test_session_token_format` provide smoke checks. 【F:tests/stage5.sh†L7-L315】
-- **Dependencies:** Relies on `curl`, `jq`, Postgres via `psql_query`, `docker exec vib-worker`, shared helpers from `tests/common.sh`, and environment values (`BASE_URL`, `TOKEN`, `TEST_DIR`, `TIMESTAMP`). 【F:tests/stage5.sh†L19-L315】
+- **Dependencies:** Relies on `curl`, `jq`, Postgres via `psql_query`, `docker exec brainda-worker`, shared helpers from `tests/common.sh`, and environment values (`BASE_URL`, `TOKEN`, `TEST_DIR`, `TIMESTAMP`). 【F:tests/stage5.sh†L19-L315】
 
 ## Phase 2: Testing Methodology Review
 - **Organization:** Tests are defined as shell functions and registered in `run_stage5`. However, there is no grouping/ordering based on destructive state, and cleanup is absent so later runs inherit prior reminders. 【F:tests/stage5.sh†L297-L315】
@@ -40,7 +40,7 @@
 
 ## Phase 8: Security & Safety Review
 - SQL queries interpolate `$title`/`$idem_key` directly; while values originate from the script, quoting via `psql_query` should use parameterization or at least `sql_escape` helpers to avoid breakage if titles contain apostrophes.
-- `docker exec vib-worker ...` assumes access without checking container existence or permissions; failures would emit noisy stack traces without context.
+- `docker exec brainda-worker ...` assumes access without checking container existence or permissions; failures would emit noisy stack traces without context.
 
 ## Phase 9: Integration & Dependencies Review
 - Script assumes `tests/common.sh` has defined `psql_query`, `log`, and `run_test`, but `tests/stage5.sh` does not source it itself; it relies on the runner to do so, which should be documented in the header comment.

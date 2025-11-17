@@ -81,7 +81,7 @@ notes_check() {
     db_constraint)
       local user
       user=$(get_test_user_id)
-      if docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d "${POSTGRES_DB:-vib}" -c "INSERT INTO notes (id,user_id,title,body,tags,md_path) VALUES (gen_random_uuid(),'$user','$NOTE_FIXTURE_TITLE','dup test','{}','notes/tmp-$TIMESTAMP.md');" >/dev/null 2>&1; then
+      if docker exec brainda-postgres psql -U "${POSTGRES_USER:-vib}" -d "${POSTGRES_DB:-vib}" -c "INSERT INTO notes (id,user_id,title,body,tags,md_path) VALUES (gen_random_uuid(),'$user','$NOTE_FIXTURE_TITLE','dup test','{}','notes/tmp-$TIMESTAMP.md');" >/dev/null 2>&1; then
         error "Duplicate insert succeeded"
         rc=1
       else
@@ -155,7 +155,7 @@ notes_check() {
     chat_search)
       mkdir -p "$TEST_DIR"
       local payload status response result_count
-      payload=$(jq -n --arg msg "Search my notes for VIB" '{message:$msg}')
+      payload=$(jq -n --arg msg "Search my notes for Brainda" '{message:$msg}')
       status=$(curl -sS -o "$TEST_DIR/chat-search.json" -w "%{http_code}" -X POST "$BASE_URL/api/v1/chat" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload" || echo "000")
       response=$(cat "$TEST_DIR/chat-search.json" 2>/dev/null || echo "")
       assert_status_code "$status" "200" "Chat search endpoint responded" || rc=1

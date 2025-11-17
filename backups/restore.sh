@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restore VIB data from a backup set created by backup.sh
+# Restore Brainda data from a backup set created by backup.sh
 
 set -euo pipefail
 
@@ -39,7 +39,7 @@ UPLOADS_ARCHIVE="$BACKUP_ROOT/files/uploads-$TIMESTAMP.tar.gz"
 REQUESTED_SNAPSHOT="$BACKUP_ROOT/qdrant/snapshot-$TIMESTAMP.tar.gz"
 SNAPSHOT_FILE=""
 
-POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-vib-postgres}
+POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-brainda-postgres}
 PG_USER=${POSTGRES_USER:-postgres}
 PG_DB=${POSTGRES_DB:-vib}
 QDRANT_URL=${QDRANT_URL:-http://localhost:6333}

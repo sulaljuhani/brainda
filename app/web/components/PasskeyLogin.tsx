@@ -24,7 +24,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 async function storeToken(key: string, value: string) {
   return new Promise<void>((resolve) => {
-    const request = indexedDB.open('vib-auth', 1);
+    const request = indexedDB.open('brainda-auth', 1);
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;

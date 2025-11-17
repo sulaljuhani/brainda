@@ -15,7 +15,7 @@ def get_celery_client() -> Celery:
     configured handle.
     """
     broker_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
-    celery_app = Celery("vib-worker", broker=broker_url, backend=broker_url)
+    celery_app = Celery("brainda-worker", broker=broker_url, backend=broker_url)
     celery_app.conf.update(
         task_serializer="json",
         accept_content=["json"],

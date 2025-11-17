@@ -20,7 +20,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: vib-frontend
+    container_name: brainda-frontend
     init: true
     ports:
       - "3000:3000"

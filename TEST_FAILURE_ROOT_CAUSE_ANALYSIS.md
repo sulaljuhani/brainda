@@ -63,11 +63,11 @@ if __name__ == '__main__':
 **Error**: Reminder ID not found in orchestrator logs
 
 ### Root Cause
-The scheduler IS being started correctly in `app/api/main.py:61`, but the test is searching for logs in the wrong container. The test checks `vib-orchestrator` logs:
+The scheduler IS being started correctly in `app/api/main.py:61`, but the test is searching for logs in the wrong container. The test checks `brainda-orchestrator` logs:
 
 **Test Code**: `tests/stage2.sh:39`
 ```bash
-logs=$(docker logs vib-orchestrator --tail 400 2>&1)
+logs=$(docker logs brainda-orchestrator --tail 400 2>&1)
 ```
 
 However, the scheduler runs in the **orchestrator container** which logs to stdout, and the log message "reminder_scheduled" is produced at `app/worker/scheduler.py:40-42`. The issue is that scheduler logs may not be captured in time, or the test baseline is already including the log entry.
@@ -92,7 +92,7 @@ test_reminder_scheduler_entry() {
     local elapsed=0
     while [[ $elapsed -lt $timeout ]]; do
         local job_exists
-        job_exists=$(docker exec vib-redis redis-cli EXISTS "apscheduler.jobs.reminder_${reminder_id}" 2>/dev/null || echo "0")
+        job_exists=$(docker exec brainda-redis redis-cli EXISTS "apscheduler.jobs.reminder_${reminder_id}" 2>/dev/null || echo "0")
         if [[ "$job_exists" == "1" ]]; then
             success "Reminder $reminder_id scheduled in APScheduler"
             return 0
@@ -419,7 +419,7 @@ async def create_calendar_event(
 **Fix 2: Verify dependencies**
 ```bash
 # Check if python-dateutil is installed
-docker exec vib-orchestrator pip list | grep dateutil
+docker exec brainda-orchestrator pip list | grep dateutil
 
 # If not, add to requirements.txt:
 python-dateutil>=2.8.2

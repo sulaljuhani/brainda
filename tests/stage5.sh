@@ -386,7 +386,7 @@ test_idempotency_key_expiry() {
 test_idempotency_cleanup_job() {
   log "Testing idempotency cleanup job exists..."
   # Check if cleanup task is registered in Celery beat
-  if docker exec vib-worker bash -c "celery -A app.worker inspect registered" 2>/dev/null | grep -q "cleanup.*idempotency"; then
+  if docker exec brainda-worker bash -c "celery -A app.worker inspect registered" 2>/dev/null | grep -q "cleanup.*idempotency"; then
     success "Idempotency cleanup task registered in Celery"
     return 0
   else

@@ -104,7 +104,7 @@ For each stage, test across these categories:
 - [ ] Production build succeeds (`npm run build`)
 - [ ] `dist/` folder contains `index.html` and `assets/`
 - [ ] API proxy works (`curl http://localhost:3000/api/v1/health`)
-- [ ] All "VIB" references renamed to "Brainda"
+- [ ] All "Brainda" references renamed to "Brainda"
 - [ ] Environment variables load correctly
 - [ ] Path aliases work (`@components`, `@hooks`, etc.)
 - [ ] Global CSS variables defined and applied

@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --timeout=100 --upgrade pip \
  && pip install --timeout=100 -r /app/api/requirements.txt
 
-# Install a shim so `docker exec vib-worker celery call ...` waits and prints SUCCESS
+# Install a shim so `docker exec brainda-worker celery call ...` waits and prints SUCCESS
 RUN sh -c 'set -eu; CEL=$(command -v celery); mv "$CEL" /usr/local/bin/celery-real'
 COPY scripts/celery-wrapper.sh /usr/local/bin/celery
 RUN chmod +x /usr/local/bin/celery

@@ -1,6 +1,6 @@
 # README.md
 
-## Project: VIB — Chat-First Notes, Reminders & Knowledge Assistant
+## Project: Brainda — Chat-First Notes, Reminders & Knowledge Assistant
 
 ### One-liner
 
@@ -1294,7 +1294,7 @@ open http://localhost:3000  # or https://your-domain.com
 ### First Steps
 1. Login with API token or email/password
 2. Register device for push notifications (click "Enable notifications")
-3. Create first note: "Add a note titled 'Test' with content 'Hello VIB'"
+3. Create first note: "Add a note titled 'Test' with content 'Hello Brainda'"
 4. Set reminder: "Remind me in 5 minutes to check the system"
 5. Upload test PDF: drag/drop in chat
 6. Search: "What did I upload?"
@@ -1379,7 +1379,7 @@ docs(api): update calendar endpoint examples
 - Review RRULE expansion for DST transitions
 
 **Celery worker not processing jobs:**
-- Check worker logs: `docker logs vib-worker`
+- Check worker logs: `docker logs brainda-worker`
 - Verify Redis connection: `redis-cli ping`
 - Check queue depth: `celery -A worker inspect active`
 - Review job retention (may be deleted after 30 days)

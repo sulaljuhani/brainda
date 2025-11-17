@@ -112,7 +112,7 @@ const GLOBAL_STYLES = `
     font-family: var(--font-sans);
   }
 
-  .vib-app {
+  .brainda-app {
     min-height: 100vh;
     background: radial-gradient(circle at top left, rgba(234, 156, 62, 0.12), transparent 50%),
       var(--bg-primary);
@@ -121,7 +121,7 @@ const GLOBAL_STYLES = `
     flex-direction: column;
   }
 
-  .vib-header {
+  .brainda-header {
     height: var(--header-height);
     display: flex;
     align-items: center;
@@ -135,20 +135,20 @@ const GLOBAL_STYLES = `
     backdrop-filter: var(--backdrop-blur);
   }
 
-  .vib-header-section {
+  .brainda-header-section {
     display: flex;
     align-items: center;
     gap: var(--space-4);
   }
 
-  .vib-logo {
+  .brainda-logo {
     font-family: var(--font-display);
     font-weight: var(--font-semibold);
     font-size: var(--text-xl);
     letter-spacing: 0.12em;
   }
 
-  .vib-search {
+  .brainda-search {
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -161,14 +161,14 @@ const GLOBAL_STYLES = `
     box-shadow: var(--shadow-sm);
   }
 
-  .vib-search:focus-within {
+  .brainda-search:focus-within {
     width: 320px;
     border-color: var(--accent-primary);
     box-shadow: 0 0 0 1px var(--accent-primary);
     background: var(--bg-elevated);
   }
 
-  .vib-search input {
+  .brainda-search input {
     flex: 1;
     border: none;
     outline: none;
@@ -177,7 +177,7 @@ const GLOBAL_STYLES = `
     font-size: var(--text-sm);
   }
 
-  .vib-icon-button {
+  .brainda-icon-button {
     position: relative;
     width: 36px;
     height: 36px;
@@ -191,13 +191,13 @@ const GLOBAL_STYLES = `
     transition: all 0.2s ease;
   }
 
-  .vib-icon-button:hover {
+  .brainda-icon-button:hover {
     color: var(--accent-primary);
     border-color: var(--accent-primary);
     transform: translateY(-1px);
   }
 
-  .vib-notification-badge {
+  .brainda-notification-badge {
     position: absolute;
     top: -6px;
     right: -4px;
@@ -210,7 +210,7 @@ const GLOBAL_STYLES = `
     box-shadow: var(--shadow-md);
   }
 
-  .vib-avatar {
+  .brainda-avatar {
     width: 36px;
     height: 36px;
     border-radius: var(--radius-full);
@@ -223,13 +223,13 @@ const GLOBAL_STYLES = `
     box-shadow: var(--shadow-md);
   }
 
-  .vib-main {
+  .brainda-main {
     display: flex;
     flex: 1;
     overflow: hidden;
   }
 
-  .vib-sidebar {
+  .brainda-sidebar {
     width: var(--sidebar-width);
     background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
     border-right: 1px solid var(--border-subtle);
@@ -240,20 +240,20 @@ const GLOBAL_STYLES = `
     transition: width 0.25s ease;
   }
 
-  .vib-sidebar.collapsed {
+  .brainda-sidebar.collapsed {
     width: var(--sidebar-collapsed);
     padding-left: var(--space-3);
     padding-right: var(--space-3);
     align-items: center;
   }
 
-  .vib-nav {
+  .brainda-nav {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
   }
 
-  .vib-nav-item {
+  .brainda-nav-item {
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -266,18 +266,18 @@ const GLOBAL_STYLES = `
     border-left: 2px solid transparent;
   }
 
-  .vib-nav-item:hover {
+  .brainda-nav-item:hover {
     color: var(--text-primary);
     background: rgba(255, 255, 255, 0.04);
   }
 
-  .vib-nav-item.active {
+  .brainda-nav-item.active {
     color: var(--accent-primary);
     background: rgba(217, 119, 6, 0.14);
     border-left-color: var(--accent-primary);
   }
 
-  .vib-nav-icon {
+  .brainda-nav-icon {
     width: 28px;
     height: 28px;
     border-radius: var(--radius-full);
@@ -287,15 +287,15 @@ const GLOBAL_STYLES = `
     font-size: var(--text-sm);
   }
 
-  .vib-sidebar.collapsed .vib-nav-item {
+  .brainda-sidebar.collapsed .brainda-nav-item {
     justify-content: center;
   }
 
-  .vib-sidebar.collapsed .vib-nav-item span {
+  .brainda-sidebar.collapsed .brainda-nav-item span {
     display: none;
   }
 
-  .vib-section-title {
+  .brainda-section-title {
     font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -303,7 +303,7 @@ const GLOBAL_STYLES = `
     margin-bottom: var(--space-2);
   }
 
-  .vib-recent-item {
+  .brainda-recent-item {
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
     color: var(--text-secondary);
@@ -312,21 +312,21 @@ const GLOBAL_STYLES = `
     cursor: pointer;
   }
 
-  .vib-recent-item:hover {
+  .brainda-recent-item:hover {
     background: rgba(255, 255, 255, 0.04);
     color: var(--text-primary);
   }
 
-  .vib-divider {
+  .brainda-divider {
     height: 1px;
     background: var(--border-subtle);
   }
 
-  .vib-collapse {
+  .brainda-collapse {
     margin-top: auto;
   }
 
-  .vib-collapse button {
+  .brainda-collapse button {
     width: 100%;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-subtle);
@@ -341,17 +341,17 @@ const GLOBAL_STYLES = `
     transition: all 0.2s ease;
   }
 
-  .vib-collapse button:hover {
+  .brainda-collapse button:hover {
     color: var(--accent-primary);
     border-color: var(--accent-primary);
     transform: translateY(-1px);
   }
 
-  .vib-sidebar.collapsed .vib-collapse button span {
+  .brainda-sidebar.collapsed .brainda-collapse button span {
     display: none;
   }
 
-  .vib-chat {
+  .brainda-chat {
     flex: 1;
     display: flex;
     justify-content: center;
@@ -359,7 +359,7 @@ const GLOBAL_STYLES = `
     padding: var(--space-6);
   }
 
-  .vib-calendar-pane {
+  .brainda-calendar-pane {
     width: 360px;
     border-left: 1px solid var(--border-subtle);
     background: color-mix(in srgb, var(--bg-tertiary) 85%, transparent);
@@ -482,7 +482,7 @@ const GLOBAL_STYLES = `
     color: var(--error);
   }
 
-  .vib-chat-surface {
+  .brainda-chat-surface {
     max-width: var(--max-chat-width);
     width: 100%;
     display: flex;
@@ -490,7 +490,7 @@ const GLOBAL_STYLES = `
     gap: var(--space-6);
   }
 
-  .vib-message-list {
+  .brainda-message-list {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -501,28 +501,28 @@ const GLOBAL_STYLES = `
     scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
   }
 
-  .vib-message-list::-webkit-scrollbar {
+  .brainda-message-list::-webkit-scrollbar {
     width: 6px;
   }
 
-  .vib-message-list::-webkit-scrollbar-thumb {
+  .brainda-message-list::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-full);
   }
 
-  .vib-message {
+  .brainda-message {
     display: flex;
     gap: var(--space-3);
     align-items: flex-start;
-    animation: vib-fade-in 0.25s ease;
+    animation: brainda-fade-in 0.25s ease;
   }
 
-  .vib-message.user {
+  .brainda-message.user {
     flex-direction: row-reverse;
     text-align: right;
   }
 
-  .vib-avatar-ring {
+  .brainda-avatar-ring {
     width: 36px;
     height: 36px;
     border-radius: var(--radius-full);
@@ -532,26 +532,26 @@ const GLOBAL_STYLES = `
     background: rgba(255, 255, 255, 0.04);
   }
 
-  .vib-avatar-ring.ai {
+  .brainda-avatar-ring.ai {
     background: radial-gradient(circle at 30% 30%, rgba(234, 156, 62, 0.3), rgba(33, 33, 33, 0.9));
     border-color: rgba(217, 119, 6, 0.4);
   }
 
-  .vib-message-content {
+  .brainda-message-content {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
     max-width: 100%;
   }
 
-  .vib-message-bubble {
+  .brainda-message-bubble {
     font-size: var(--text-base);
     line-height: 1.6;
     letter-spacing: 0.01em;
     color: var(--text-primary);
   }
 
-  .vib-message.user .vib-message-bubble {
+  .brainda-message.user .brainda-message-bubble {
     background: rgba(217, 119, 6, 0.14);
     border: 1px solid rgba(234, 156, 62, 0.3);
     border-radius: var(--radius-lg);
@@ -559,11 +559,11 @@ const GLOBAL_STYLES = `
     box-shadow: var(--shadow-sm);
   }
 
-  .vib-message.assistant .vib-message-bubble {
+  .brainda-message.assistant .brainda-message-bubble {
     padding: var(--space-1) 0;
   }
 
-  .vib-tool-call {
+  .brainda-tool-call {
     border: 1px solid rgba(16, 185, 129, 0.24);
     background: rgba(16, 185, 129, 0.1);
     border-radius: var(--radius-lg);
@@ -574,20 +574,20 @@ const GLOBAL_STYLES = `
     font-size: var(--text-sm);
   }
 
-  .vib-tool-call-header {
+  .brainda-tool-call-header {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     font-weight: var(--font-medium);
   }
 
-  .vib-tool-call-result {
+  .brainda-tool-call-result {
     color: var(--success);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
   }
 
-  .vib-message-meta {
+  .brainda-message-meta {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     display: flex;
@@ -595,13 +595,13 @@ const GLOBAL_STYLES = `
     align-items: center;
   }
 
-  .vib-message-actions {
+  .brainda-message-actions {
     display: flex;
     gap: var(--space-2);
     flex-wrap: wrap;
   }
 
-  .vib-message-actions button {
+  .brainda-message-actions button {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-full);
@@ -612,13 +612,13 @@ const GLOBAL_STYLES = `
     transition: all 0.2s ease;
   }
 
-  .vib-message-actions button:hover {
+  .brainda-message-actions button:hover {
     color: var(--accent-primary);
     border-color: var(--accent-primary);
     transform: translateY(-1px);
   }
 
-  .vib-chat-input {
+  .brainda-chat-input {
     background: color-mix(in srgb, var(--bg-elevated) 85%, transparent);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-2xl);
@@ -631,7 +631,7 @@ const GLOBAL_STYLES = `
     bottom: var(--space-6);
   }
 
-  .vib-textarea {
+  .brainda-textarea {
     background: transparent;
     border: none;
     resize: none;
@@ -643,20 +643,20 @@ const GLOBAL_STYLES = `
     outline: none;
   }
 
-  .vib-composer-footer {
+  .brainda-composer-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
   }
 
-  .vib-toolbar {
+  .brainda-toolbar {
     display: flex;
     align-items: center;
     gap: var(--space-2);
   }
 
-  .vib-toolbar button {
+  .brainda-toolbar button {
     width: 36px;
     height: 36px;
     border-radius: var(--radius-full);
@@ -669,13 +669,13 @@ const GLOBAL_STYLES = `
     transition: all 0.2s ease;
   }
 
-  .vib-toolbar button:hover {
+  .brainda-toolbar button:hover {
     color: var(--accent-primary);
     border-color: var(--accent-primary);
     transform: translateY(-1px);
   }
 
-  .vib-send-button {
+  .brainda-send-button {
     border: none;
     border-radius: var(--radius-full);
     padding: var(--space-2) var(--space-4);
@@ -687,19 +687,19 @@ const GLOBAL_STYLES = `
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
-  .vib-send-button:disabled {
+  .brainda-send-button:disabled {
     background: rgba(255, 255, 255, 0.08);
     color: var(--text-tertiary);
     cursor: not-allowed;
     box-shadow: none;
   }
 
-  .vib-send-button:not(:disabled):hover {
+  .brainda-send-button:not(:disabled):hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
   }
 
-  .vib-status {
+  .brainda-status {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     display: flex;
@@ -707,15 +707,15 @@ const GLOBAL_STYLES = `
     gap: var(--space-2);
   }
 
-  .vib-status-dot {
+  .brainda-status-dot {
     width: 8px;
     height: 8px;
     border-radius: var(--radius-full);
     background: var(--accent-primary);
-    animation: vib-pulse 1.2s infinite;
+    animation: brainda-pulse 1.2s infinite;
   }
 
-  .vib-empty-state {
+  .brainda-empty-state {
     text-align: center;
     color: var(--text-secondary);
     font-size: var(--text-sm);
@@ -725,7 +725,7 @@ const GLOBAL_STYLES = `
     background: rgba(255, 255, 255, 0.02);
   }
 
-  @keyframes vib-fade-in {
+  @keyframes brainda-fade-in {
     from {
       opacity: 0;
       transform: translateY(6px);
@@ -736,7 +736,7 @@ const GLOBAL_STYLES = `
     }
   }
 
-  @keyframes vib-pulse {
+  @keyframes brainda-pulse {
     0%, 100% {
       opacity: 0.2;
       transform: scale(1);
@@ -748,48 +748,48 @@ const GLOBAL_STYLES = `
   }
 
   @media (max-width: 1024px) {
-    .vib-sidebar {
+    .brainda-sidebar {
       display: none;
     }
 
-    .vib-chat {
+    .brainda-chat {
       padding: var(--space-4);
     }
 
-    .vib-calendar-pane {
+    .brainda-calendar-pane {
       display: none;
     }
 
-    .vib-chat-input {
+    .brainda-chat-input {
       border-radius: var(--radius-xl);
     }
   }
 
   @media (max-width: 640px) {
-    .vib-header {
+    .brainda-header {
       flex-wrap: wrap;
       gap: var(--space-3);
       padding: 0 var(--space-4);
     }
 
-    .vib-search {
+    .brainda-search {
       width: 100%;
     }
 
-    .vib-search:focus-within {
+    .brainda-search:focus-within {
       width: 100%;
     }
 
-    .vib-header-section {
+    .brainda-header-section {
       width: 100%;
       justify-content: space-between;
     }
 
-    .vib-chat {
+    .brainda-chat {
       padding: var(--space-3);
     }
 
-    .vib-chat-input {
+    .brainda-chat-input {
       padding: var(--space-3);
     }
   }
@@ -881,7 +881,7 @@ function generateAssistantResponse(input: string): { text: string; toolCall?: To
   };
 }
 
-export default function VibInterface() {
+export default function BraindaInterface() {
   const [activeNav, setActiveNav] = useState<string>('chat');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -994,12 +994,12 @@ export default function VibInterface() {
   );
 
   return (
-    <div className="vib-app">
+    <div className="brainda-app">
       <style>{GLOBAL_STYLES}</style>
-      <header className="vib-header">
-        <div className="vib-header-section">
-          <div className="vib-logo">VIB</div>
-          <label className="vib-search" aria-label="Search conversations and notes">
+      <header className="brainda-header">
+        <div className="brainda-header-section">
+          <div className="brainda-logo">Brainda</div>
+          <label className="brainda-search" aria-label="Search conversations and notes">
             <span role="img" aria-hidden="true">
               🔍
             </span>
@@ -1010,54 +1010,54 @@ export default function VibInterface() {
             />
           </label>
         </div>
-        <div className="vib-header-section">
-          <button className="vib-icon-button" type="button" aria-label="Notifications">
+        <div className="brainda-header-section">
+          <button className="brainda-icon-button" type="button" aria-label="Notifications">
             <span role="img" aria-hidden="true">
               🔔
             </span>
             {notificationCount > 0 ? (
-              <span className="vib-notification-badge">{notificationCount}</span>
+              <span className="brainda-notification-badge">{notificationCount}</span>
             ) : null}
           </button>
-          <button className="vib-icon-button" type="button" aria-label="Settings">
+          <button className="brainda-icon-button" type="button" aria-label="Settings">
             <span role="img" aria-hidden="true">
               ⚙️
             </span>
           </button>
-          <div className="vib-avatar" aria-label="User avatar">
+          <div className="brainda-avatar" aria-label="User avatar">
             JD
           </div>
         </div>
       </header>
-      <div className="vib-main">
-        <aside className={`vib-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`} aria-label="Primary navigation">
-          <nav className="vib-nav">
+      <div className="brainda-main">
+        <aside className={`brainda-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`} aria-label="Primary navigation">
+          <nav className="brainda-nav">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                className={`vib-nav-item ${activeNav === item.id ? 'active' : ''}`}
+                className={`brainda-nav-item ${activeNav === item.id ? 'active' : ''}`}
                 onClick={() => setActiveNav(item.id)}
               >
-                <span className="vib-nav-icon" aria-hidden="true">
+                <span className="brainda-nav-icon" aria-hidden="true">
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
               </button>
             ))}
           </nav>
-          <div className="vib-divider" aria-hidden="true" />
+          <div className="brainda-divider" aria-hidden="true" />
           <div>
-            <div className="vib-section-title">Recent</div>
+            <div className="brainda-section-title">Recent</div>
             <div>
               {recentItems.map((item) => (
-                <div key={item} className="vib-recent-item">
+                <div key={item} className="brainda-recent-item">
                   {item}
                 </div>
               ))}
             </div>
           </div>
-          <div className="vib-collapse">
+          <div className="brainda-collapse">
             <button type="button" onClick={() => setSidebarCollapsed((previous) => !previous)}>
               <span role="img" aria-hidden="true">
                 {sidebarCollapsed ? '➡️' : '⬅️'}
@@ -1066,37 +1066,37 @@ export default function VibInterface() {
             </button>
           </div>
         </aside>
-        <main className="vib-chat">
-          <section className="vib-chat-surface" aria-label="Chat conversation">
-            <div className="vib-message-list">
+        <main className="brainda-chat">
+          <section className="brainda-chat-surface" aria-label="Chat conversation">
+            <div className="brainda-message-list">
               {formattedMessages.length === 0 ? (
-                <div className="vib-empty-state">Start a conversation to see messages here.</div>
+                <div className="brainda-empty-state">Start a conversation to see messages here.</div>
               ) : (
                 formattedMessages.map((message) => (
                   <article
                     key={message.id}
-                    className={`vib-message ${message.role}`}
+                    className={`brainda-message ${message.role}`}
                     aria-live={message.role === 'assistant' ? 'polite' : undefined}
                   >
-                    <div className={`vib-avatar-ring ${message.role === 'assistant' ? 'ai' : ''}`} aria-hidden="true">
+                    <div className={`brainda-avatar-ring ${message.role === 'assistant' ? 'ai' : ''}`} aria-hidden="true">
                       {message.role === 'assistant' ? '✨' : '🙂'}
                     </div>
-                    <div className="vib-message-content">
+                    <div className="brainda-message-content">
                       {message.toolCall ? (
-                        <div className="vib-tool-call" role="status">
-                          <div className="vib-tool-call-header">
+                        <div className="brainda-tool-call" role="status">
+                          <div className="brainda-tool-call-header">
                             <span aria-hidden="true">{message.toolCall.icon}</span>
                             <span>{message.toolCall.name}</span>
                           </div>
-                          <div className="vib-tool-call-result">{message.toolCall.result}</div>
+                          <div className="brainda-tool-call-result">{message.toolCall.result}</div>
                         </div>
                       ) : null}
-                      <div className="vib-message-bubble">{message.text}</div>
-                      <div className="vib-message-meta">
+                      <div className="brainda-message-bubble">{message.text}</div>
+                      <div className="brainda-message-meta">
                         <span>{message.relativeTime}</span>
                       </div>
                       {message.actions && message.actions.length > 0 ? (
-                        <div className="vib-message-actions">
+                        <div className="brainda-message-actions">
                           {message.actions.map((action) => (
                             <button key={action} type="button">
                               {action}
@@ -1111,7 +1111,7 @@ export default function VibInterface() {
               <div ref={messageEndRef} />
             </div>
             <form
-              className="vib-chat-input"
+              className="brainda-chat-input"
               onSubmit={(event) => {
                 event.preventDefault();
                 handleSend();
@@ -1123,12 +1123,12 @@ export default function VibInterface() {
                 onChange={(event) => setInputValue(event.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask anything, create notes, set reminders..."
-                className="vib-textarea"
+                className="brainda-textarea"
                 aria-label="Message composer"
                 rows={1}
               />
-              <div className="vib-composer-footer">
-                <div className="vib-toolbar">
+              <div className="brainda-composer-footer">
+                <div className="brainda-toolbar">
                   <button type="button" aria-label="Attach a document">
                     📎
                   </button>
@@ -1141,12 +1141,12 @@ export default function VibInterface() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   {isStreaming ? (
-                    <div className="vib-status">
-                      <span className="vib-status-dot" aria-hidden="true" />
+                    <div className="brainda-status">
+                      <span className="brainda-status-dot" aria-hidden="true" />
                       <span>Assistant is responding...</span>
                     </div>
                   ) : null}
-                  <button className="vib-send-button" type="submit" disabled={!inputValue.trim()}>
+                  <button className="brainda-send-button" type="submit" disabled={!inputValue.trim()}>
                     Send
                   </button>
                 </div>
@@ -1154,7 +1154,7 @@ export default function VibInterface() {
             </form>
           </section>
         </main>
-        <aside className="vib-calendar-pane" aria-label="Weekly calendar overview">
+        <aside className="brainda-calendar-pane" aria-label="Weekly calendar overview">
           <WeeklyCalendar />
         </aside>
       </div>

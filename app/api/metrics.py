@@ -1,5 +1,5 @@
 """
-Central Prometheus metrics registry for VIB.
+Central Prometheus metrics registry for Brainda.
 
 Metrics cover:
 - Business SLOs (reminder firing accuracy, push delivery)

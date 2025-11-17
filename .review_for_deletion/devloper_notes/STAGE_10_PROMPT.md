@@ -2,7 +2,7 @@
 
 ## Context
 
-You are implementing **Stage 10** of the VIB project. The previous stages are **already complete**:
+You are implementing **Stage 10** of the Brainda project. The previous stages are **already complete**:
 
 - ✅ Stages 0-4: MVP (single unified agent)
 - ✅ Stage 5: Mobile app with idempotency
@@ -151,7 +151,7 @@ class RoutingDecision(BaseModel):
     reasoning: str
 
 ROUTER_SYSTEM_PROMPT = """
-You are a routing assistant for VIB. Your ONLY job is to classify user messages into categories.
+You are a routing assistant for Brainda. Your ONLY job is to classify user messages into categories.
 
 Categories:
 - **reminder**: User wants to create, update, list, or cancel reminders. Time-based or location-based.
@@ -167,7 +167,7 @@ Categories:
   Examples: "Create event next Monday at 2pm", "Show my calendar for this week", "Reschedule the team meeting"
 
 - **general**: Conversational, greetings, help requests, or unclear intent.
-  Examples: "Hello", "How does VIB work?", "What can you do?"
+  Examples: "Hello", "How does Brainda work?", "What can you do?"
 
 Respond ONLY with valid JSON:
 {
@@ -224,7 +224,7 @@ async def route_message(message: str, user_id: UUID) -> RoutingDecision:
 
 ```python
 REMINDER_AGENT_PROMPT = """
-You are the Reminder Specialist for VIB. Your expertise is creating, managing, and organizing reminders.
+You are the Reminder Specialist for Brainda. Your expertise is creating, managing, and organizing reminders.
 
 Available tools:
 - create_reminder: Create time-based or location-based reminder
@@ -290,7 +290,7 @@ async def reminder_agent_execute(message: str, user_id: UUID, conversation_histo
 
 ```python
 KB_AGENT_PROMPT = """
-You are the Knowledge Base Specialist for VIB. Your expertise is searching and synthesizing information from user's notes and documents.
+You are the Knowledge Base Specialist for Brainda. Your expertise is searching and synthesizing information from user's notes and documents.
 
 Available tools:
 - search_knowledge_base: Semantic search across notes and documents
@@ -752,7 +752,7 @@ After 6 weeks of A/B testing:
 
 **Multi-agent architecture is an optimization, not a necessity.**
 
-Most VIB users will be perfectly satisfied with the MVP's single unified agent. Only implement Stage 10 if you have DATA showing the single agent is failing for specific task types.
+Most Brainda users will be perfectly satisfied with the MVP's single unified agent. Only implement Stage 10 if you have DATA showing the single agent is failing for specific task types.
 
 Remember: **Complexity is a tax.** Make sure the benefits justify the cost.
 

@@ -45,7 +45,7 @@ from api.services.vector_service import VectorService
 
 # --- Setup ---
 celery_app = Celery(
-    'vib-worker',
+    'brainda-worker',
     broker=os.getenv('REDIS_URL', 'redis://redis:6379/0'),
     backend=os.getenv('REDIS_URL', 'redis://redis:6379/0')
 )
@@ -719,21 +719,21 @@ async def _load_google_credentials(
     return credentials
 
 
-async def _ensure_vib_calendar(service, repo: GoogleCalendarRepository, user_id: uuid.UUID) -> Optional[str]:
+async def _ensure_brainda_calendar(service, repo: GoogleCalendarRepository, user_id: uuid.UUID) -> Optional[str]:
     sync_state = await repo.get_sync_state(user_id)
     if sync_state and sync_state.get("google_calendar_id"):
         return sync_state["google_calendar_id"]
 
     calendars = service.calendarList().list().execute()
     for calendar in calendars.get("items", []):
-        if calendar.get("summary") == "VIB":
+        if calendar.get("summary") == "Brainda":
             calendar_id = calendar.get("id")
             await repo.update_sync_state(user_id, google_calendar_id=calendar_id)
             return calendar_id
 
     calendar_body = {
-        "summary": "VIB",
-        "description": "Events synced from VIB",
+        "summary": "Brainda",
+        "description": "Events synced from Brainda",
         "timeZone": "UTC",
     }
     created = service.calendars().insert(body=calendar_body).execute()
@@ -897,7 +897,7 @@ def sync_google_calendar_push(user_id_str: str):
                 return
 
             service = build("calendar", "v3", credentials=credentials, cache_discovery=False)
-            calendar_id = await _ensure_vib_calendar(service, repo, user_id)
+            calendar_id = await _ensure_brainda_calendar(service, repo, user_id)
             if not calendar_id:
                 logger.warning("google_sync_no_calendar", user_id=user_id_str)
                 return
@@ -995,7 +995,7 @@ def sync_google_calendar_pull(user_id_str: str):
                 return
 
             service = build("calendar", "v3", credentials=credentials, cache_discovery=False)
-            calendar_id = await _ensure_vib_calendar(service, repo, user_id)
+            calendar_id = await _ensure_brainda_calendar(service, repo, user_id)
             if not calendar_id:
                 logger.warning("google_sync_no_calendar", user_id=user_id_str)
                 return

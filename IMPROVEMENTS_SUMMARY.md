@@ -195,7 +195,7 @@ curl http://localhost:8000 | grep -i "<!DOCTYPE html>"
 curl http://localhost:8000/api/v1/health
 
 # 4. Check container size
-docker images | grep vib-orchestrator
+docker images | grep brainda-orchestrator
 
 # 5. Cleanup
 docker compose -f docker-compose.prod.yml down

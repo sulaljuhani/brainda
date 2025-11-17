@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown (if needed)
 
-app = FastAPI(title="VIB API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Brainda API", version="1.0.0", lifespan=lifespan)
 
 # --- Database and Model Setup ---
 DATABASE_URL = os.getenv("DATABASE_URL")

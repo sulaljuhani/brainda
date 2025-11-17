@@ -322,7 +322,7 @@ CIRCUIT_BREAKER_RESET_TIMEOUT=30
 docker compose -f docker-compose.prod.yml logs orchestrator
 
 # Check resource usage
-docker stats vib-orchestrator
+docker stats brainda-orchestrator
 
 # Increase memory limit if OOM (Out of Memory)
 ```

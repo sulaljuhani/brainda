@@ -84,7 +84,7 @@ async def test_notification(
     
     test_payload = {
         "title": "Test Notification",
-        "body": "VIB notifications are working!",
+        "body": "Brainda notifications are working!",
         "data": {"test": True}
     }
     

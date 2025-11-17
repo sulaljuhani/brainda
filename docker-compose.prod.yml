@@ -7,7 +7,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.prod
-    container_name: vib-orchestrator
+    container_name: brainda-orchestrator
     init: true
     restart: unless-stopped
     ports:
@@ -56,7 +56,7 @@ services:
 
   postgres:
     image: postgres:15
-    container_name: vib-postgres
+    container_name: brainda-postgres
     init: true
     restart: unless-stopped
     ports:
@@ -90,7 +90,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: vib-redis
+    container_name: brainda-redis
     init: true
     restart: unless-stopped
     command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save 60 1000
@@ -116,7 +116,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: vib-qdrant
+    container_name: brainda-qdrant
     init: true
     restart: unless-stopped
     ports:
@@ -152,7 +152,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.prod
-    container_name: vib-worker
+    container_name: brainda-worker
     init: true
     restart: unless-stopped
     volumes:
@@ -186,7 +186,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.prod
-    container_name: vib-beat
+    container_name: brainda-beat
     init: true
     restart: unless-stopped
     env_file:

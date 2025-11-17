@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# VIB Atomic Backup Script
+# Brainda Atomic Backup Script
 # ------------------------
 # Creates coordinated backups for Postgres, Qdrant, and filesystem data.
 # Intended to be run nightly via cron or systemd timer.
@@ -41,7 +41,7 @@ PG_DB=${POSTGRES_DB:-vib}
 PG_PASSWORD=${POSTGRES_PASSWORD:-${PGPASSWORD:-change-me-in-production}}
 
 # Prefer dumping via Docker to avoid requiring pg_dump on host
-POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-vib-postgres}
+POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-brainda-postgres}
 
 ## Default to localhost so backup can run from host without container DNS
 QDRANT_URL=${QDRANT_URL:-http://localhost:6333}
@@ -194,7 +194,7 @@ done
 # -------------------------------------------
 log "Writing manifest $MANIFEST"
 cat >"$MANIFEST" <<MANIFEST
-VIB Backup Manifest
+Brainda Backup Manifest
 ===================
 Timestamp: $TIMESTAMP
 Date: $(date)

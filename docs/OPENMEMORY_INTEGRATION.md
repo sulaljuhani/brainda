@@ -1,10 +1,10 @@
 # OpenMemory Integration Guide
 
-This document describes the OpenMemory integration in VIB, which provides long-term AI memory capabilities for enhanced conversational experiences.
+This document describes the OpenMemory integration in Brainda, which provides long-term AI memory capabilities for enhanced conversational experiences.
 
 ## Overview
 
-OpenMemory is integrated into VIB to provide:
+OpenMemory is integrated into Brainda to provide:
 
 - **Persistent Conversation Memory**: Automatically stores chat interactions for context continuity
 - **Semantic Memory Search**: Retrieves relevant past conversations based on current queries
@@ -344,7 +344,7 @@ If you see "OpenMemory integration is disabled":
 
 1. Check `OPENMEMORY_ENABLED=true` in `.env`
 2. Restart the orchestrator: `docker compose restart orchestrator`
-3. Verify environment variable: `docker exec vib-orchestrator env | grep OPENMEMORY`
+3. Verify environment variable: `docker exec brainda-orchestrator env | grep OPENMEMORY`
 
 ### Connection Errors
 
@@ -516,12 +516,12 @@ Potential improvements:
 
 For issues with:
 
-- **VIB Integration**: Check VIB logs and this documentation
+- **Brainda Integration**: Check Brainda logs and this documentation
 - **OpenMemory Server**: See [OpenMemory documentation](https://github.com/CaviraOSS/OpenMemory)
 - **API Questions**: Review `/api/v1/docs` (FastAPI Swagger UI)
 
 ## References
 
 - [OpenMemory GitHub](https://github.com/CaviraOSS/OpenMemory)
-- [VIB CLAUDE.md](../CLAUDE.md) - Project overview
+- [Brainda CLAUDE.md](../CLAUDE.md) - Project overview
 - [RAG Service](../app/api/services/rag_service.py) - Implementation details

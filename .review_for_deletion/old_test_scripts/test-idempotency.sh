@@ -131,7 +131,7 @@ sleep 2
 
 # Query the database to count reminders with this title
 if command -v docker &> /dev/null; then
-    COUNT=$(docker exec vib-postgres psql -U vib -d vib -t -c \
+    COUNT=$(docker exec brainda-postgres psql -U brainda  -d brainda -t -c \
       "SELECT COUNT(*) FROM reminders WHERE title LIKE 'Aggressive Test ${KEY2:0:8}%';" 2>/dev/null | tr -d ' ' || echo "0")
 
     if [ "$COUNT" = "1" ]; then

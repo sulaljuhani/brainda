@@ -2,7 +2,7 @@
 
 ## Context
 
-You are implementing **Stage 7** of the VIB project. The previous stages are **already complete**:
+You are implementing **Stage 7** of the Brainda project. The previous stages are **already complete**:
 
 - ✅ Stages 0-4: MVP
 - ✅ Stage 5: Mobile app with full idempotency
@@ -19,7 +19,7 @@ Build **Google Calendar synchronization** with:
 ## Why This Stage Matters
 
 Users want to:
-- **Consolidate schedules**: See VIB events in their main Google Calendar
+- **Consolidate schedules**: See Brainda events in their main Google Calendar
 - **Share availability**: Google Calendar is their "source of truth" for external meetings
 - **Reduce friction**: Don't maintain two separate calendars
 - **Preserve existing workflow**: Keep using Google Calendar for work/school events
@@ -35,7 +35,7 @@ Users want to:
 **Manual Steps** (document for users):
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create new project: "VIB Calendar Sync"
+2. Create new project: "Brainda Calendar Sync"
 3. Enable Google Calendar API
 4. Create OAuth2 credentials:
    - Application type: Web application
@@ -212,7 +212,7 @@ from datetime import datetime
 @shared_task
 def sync_to_google_calendar(user_id: str):
     """
-    One-way sync: Push VIB events to Google Calendar.
+    One-way sync: Push Brainda events to Google Calendar.
 
     Strategy:
     1. Fetch all internal events (source='internal')
@@ -240,7 +240,7 @@ def sync_to_google_calendar(user_id: str):
 
     service = build('calendar', 'v3', credentials=creds)
 
-    # Get or create dedicated VIB calendar
+    # Get or create dedicated Brainda calendar
     calendar_id = await get_or_create_vib_calendar(service, user_id)
 
     # Fetch internal events to sync
@@ -325,7 +325,7 @@ def sync_to_google_calendar(user_id: str):
 
 async def get_or_create_vib_calendar(service, user_id: str) -> str:
     """
-    Get or create a dedicated 'VIB' calendar in Google.
+    Get or create a dedicated 'Brainda' calendar in Google.
     Prevents polluting the user's primary calendar.
     """
     # Check if we already have a calendar_id stored
@@ -333,10 +333,10 @@ async def get_or_create_vib_calendar(service, user_id: str) -> str:
     if sync_state and sync_state.google_calendar_id:
         return sync_state.google_calendar_id
 
-    # Search for existing VIB calendar
+    # Search for existing Brainda calendar
     calendars = service.calendarList().list().execute()
     for cal in calendars.get('items', []):
-        if cal['summary'] == 'VIB':
+        if cal['summary'] == 'Brainda':
             calendar_id = cal['id']
             await db.update_calendar_sync_state(
                 user_id=user_id,
@@ -346,8 +346,8 @@ async def get_or_create_vib_calendar(service, user_id: str) -> str:
 
     # Create new calendar
     calendar_body = {
-        'summary': 'VIB',
-        'description': 'Events synced from VIB personal assistant',
+        'summary': 'Brainda',
+        'description': 'Events synced from Brainda personal assistant',
         'timeZone': 'UTC',
     }
 
@@ -369,7 +369,7 @@ async def get_or_create_vib_calendar(service, user_id: str) -> str:
 
 def to_google_event_format(event) -> dict:
     """
-    Convert VIB event to Google Calendar API format.
+    Convert Brainda event to Google Calendar API format.
     """
     google_event = {
         'summary': event.title,
@@ -401,13 +401,13 @@ def to_google_event_format(event) -> dict:
 @shared_task
 def sync_from_google_calendar(user_id: str):
     """
-    Two-way sync: Pull Google Calendar events to VIB.
+    Two-way sync: Pull Google Calendar events to Brainda.
 
     Strategy:
     1. Use incremental sync with sync tokens
     2. For each Google event:
-       - If not in VIB: create with source='google'
-       - If in VIB: check updated_at, apply conflict resolution
+       - If not in Brainda: create with source='google'
+       - If in Brainda: check updated_at, apply conflict resolution
     3. Handle deletions
     """
 
@@ -469,15 +469,15 @@ async def process_google_event(user_id: str, google_event: dict, calendar_id: st
     Process a single Google Calendar event.
 
     Conflict resolution strategy:
-    - If event exists in VIB with source='google': update from Google (Google wins)
-    - If event exists with source='internal': skip (user created it in VIB, don't overwrite)
-    - If deleted in Google: mark as cancelled in VIB
+    - If event exists in Brainda with source='google': update from Google (Google wins)
+    - If event exists with source='internal': skip (user created it in Brainda, don't overwrite)
+    - If deleted in Google: mark as cancelled in Brainda
     """
 
     google_event_id = google_event['id']
     status = google_event.get('status', 'confirmed')
 
-    # Check if event exists in VIB
+    # Check if event exists in Brainda
     existing = await db.get_calendar_event_by_google_id(google_event_id)
 
     if status == 'cancelled':
@@ -491,7 +491,7 @@ async def process_google_event(user_id: str, google_event: dict, calendar_id: st
     vib_event = from_google_event_format(google_event, user_id, calendar_id)
 
     if not existing:
-        # Create new event in VIB
+        # Create new event in Brainda
         created = await db.create_calendar_event(**vib_event)
         logger.info("google_event_imported", extra={"event_id": str(created.id)})
 
@@ -514,7 +514,7 @@ async def process_google_event(user_id: str, google_event: dict, calendar_id: st
                 "resolution": "google_wins",
             })
         else:
-            # VIB version is newer, skip update
+            # Brainda version is newer, skip update
             logger.info("google_event_conflict_resolved", extra={
                 "event_id": str(existing.id),
                 "resolution": "vib_wins",
@@ -523,7 +523,7 @@ async def process_google_event(user_id: str, google_event: dict, calendar_id: st
 
 def from_google_event_format(google_event: dict, user_id: str, calendar_id: str) -> dict:
     """
-    Convert Google Calendar event to VIB format.
+    Convert Google Calendar event to Brainda format.
     """
     start = google_event['start'].get('dateTime', google_event['start'].get('date'))
     end = google_event['end'].get('dateTime', google_event['end'].get('date'))
@@ -715,23 +715,23 @@ export default function GoogleCalendarCallback() {
 ### OAuth Flow
 
 - [ ] User clicks "Connect Google Calendar" → redirected to Google consent page
-- [ ] User grants permission → redirected back to VIB with success message
+- [ ] User grants permission → redirected back to Brainda with success message
 - [ ] Access token and refresh token stored securely in database (encrypted)
 - [ ] Token refresh works automatically when access token expires
 
 ### One-Way Sync (Internal → Google)
 
-- [ ] Creating event in VIB → appears in Google Calendar within 15 minutes (or immediate with manual sync)
-- [ ] Updating event in VIB → updated in Google Calendar
-- [ ] Cancelling event in VIB → deleted from Google Calendar
+- [ ] Creating event in Brainda → appears in Google Calendar within 15 minutes (or immediate with manual sync)
+- [ ] Updating event in Brainda → updated in Google Calendar
+- [ ] Cancelling event in Brainda → deleted from Google Calendar
 - [ ] Recurring events synced with RRULE preserved
-- [ ] Events appear in dedicated "VIB" calendar in Google (not primary calendar)
+- [ ] Events appear in dedicated "Brainda" calendar in Google (not primary calendar)
 
 ### Two-Way Sync (Optional)
 
-- [ ] Creating event in Google → appears in VIB within 15 minutes
-- [ ] Updating event in Google → updated in VIB
-- [ ] Deleting event in Google → marked cancelled in VIB
+- [ ] Creating event in Google → appears in Brainda within 15 minutes
+- [ ] Updating event in Google → updated in Brainda
+- [ ] Deleting event in Google → marked cancelled in Brainda
 - [ ] Conflict resolution: Last-write-wins based on `updated_at` timestamp
 - [ ] Incremental sync using sync tokens (efficient, doesn't re-fetch all events)
 
@@ -751,24 +751,24 @@ export default function GoogleCalendarCallback() {
 **Test 1: One-Way Sync**
 
 1. Connect Google Calendar
-2. Create event in VIB: "Test Event on Monday at 10am"
+2. Create event in Brainda: "Test Event on Monday at 10am"
 3. Click "Sync Now" or wait 15 minutes
 4. Open Google Calendar web interface
-5. Verify event appears in "VIB" calendar
+5. Verify event appears in "Brainda" calendar
 
 **Test 2: Two-Way Sync**
 
 1. Enable two-way sync in settings
 2. Create event in Google Calendar: "Google Event on Tuesday at 2pm"
 3. Wait 15 minutes or trigger sync
-4. Check VIB calendar
+4. Check Brainda calendar
 5. Verify event appears with source='google'
 
 **Test 3: Conflict Resolution**
 
-1. Create event "Conflict Test" in VIB
+1. Create event "Conflict Test" in Brainda
 2. Sync to Google
-3. Edit title in VIB: "Conflict Test - VIB Edit"
+3. Edit title in Brainda: "Conflict Test - Brainda Edit"
 4. Edit title in Google: "Conflict Test - Google Edit"
 5. Trigger two-way sync
 6. Verify: Most recent edit wins (based on updated_at)
@@ -826,7 +826,7 @@ docker-compose restart orchestrator worker
 
 - [ ] **Rate limiting**: Google Calendar API has quotas (10,000 requests/day), implement backoff
 - [ ] **Token expiry**: Handle expired refresh tokens gracefully (prompt user to re-authenticate)
-- [ ] **Sync loops**: Prevent infinite loops (event updated in VIB → synced to Google → synced back to VIB)
+- [ ] **Sync loops**: Prevent infinite loops (event updated in Brainda → synced to Google → synced back to Brainda)
 - [ ] **Data loss**: Never delete events without user confirmation (soft delete only)
 - [ ] **Privacy**: Inform users that event data will be sent to Google
 - [ ] **Network failures**: Retry failed syncs with exponential backoff

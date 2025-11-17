@@ -1,6 +1,6 @@
-# VIB Mobile App
+# Brainda Mobile App
 
-React Native/Expo mobile application for VIB (chat-first notes, reminders & knowledge assistant).
+React Native/Expo mobile application for Brainda (chat-first notes, reminders & knowledge assistant).
 
 ## Features
 
@@ -133,6 +133,6 @@ To test offline functionality:
 
 ## Notes
 
-- This app requires the VIB backend to be running
+- This app requires the Brainda backend to be running
 - Push notifications only work on physical devices, not simulators
 - Deep linking requires proper URL scheme configuration in `app.json`
