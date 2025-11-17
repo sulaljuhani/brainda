@@ -1,54 +1,56 @@
 # Brainda - Personal Knowledge Management System
 
-Brainda is a personal knowledge management system that combines note-taking, document ingestion, semantic search, and intelligent reminders. It features RAG (Retrieval Augmented Generation) capabilities for answering questions based on your stored knowledge.
+Brainda is a personal knowledge management system that combines note-taking, document ingestion, semantic search, and intelligent reminders. It features RAG (Retrieval Augmented Generation) capabilities powered by multiple LLM providers for answering questions based on your stored knowledge.
 
 ## Features
 
-- **Note Management**: Create, update, and organize notes with tags
-- **Document Ingestion**: Upload and process documents (PDF, text, etc.) with automatic parsing
-- **Semantic Search**: Vector-based search across notes and documents using embeddings
-- **RAG Chat Interface**: Ask questions and get answers based on your knowledge base
-- **Modern Chat UI**: Dark-mode chat surface with responsive navigation and tool-call visualization
-- **Smart Reminders**: Schedule and manage reminders with natural language processing
-- **Calendar Scheduling**: Create recurring events, view a weekly calendar, and link reminders to events
+- **Note Management**: Create, update, and organize markdown notes with tags and semantic search
+- **Document Ingestion**: Upload and process documents (PDF, text, etc.) with automatic parsing and embedding
+- **Semantic Search**: Vector-based search across notes and documents using sentence transformers
+- **RAG Chat Interface**: Chat with your knowledge base using Ollama, OpenAI, Anthropic, or custom LLM providers
+- **OpenMemory Integration**: Long-term conversational memory with multi-sector semantic recall
+- **Modern Web UI**: React-based interface with dark mode, responsive navigation, and streaming chat
+- **Smart Reminders**: Schedule reminders with RRULE support and calendar integration
+- **Calendar Scheduling**: Create recurring events, weekly calendar view, and Google Calendar sync
 - **Push Notifications**: Web push notifications for reminders and updates
-- **Metrics & Monitoring**: Prometheus metrics for system health and performance
-- **Passkeys & TOTP Security**: Multi-user authentication with WebAuthn passkeys, session tokens, and backup TOTP codes
+- **Multi-User Authentication**: WebAuthn passkeys, session tokens, and TOTP backup codes
+- **Metrics & Monitoring**: Prometheus metrics for system health and performance SLOs
+- **Mobile App**: React Native (Expo) mobile application for iOS and Android
 
-## MVP Requirement Coverage
+## Architecture Overview
 
-The Stage 0-8 requirements documented in [`devloper_notes/README.md`](devloper_notes/README.md) map to the implementation as follows:
+Brainda uses a microservices architecture with the following key components:
 
-| Requirement | Implementation Highlights |
-| --- | --- |
-| Chat-first interface with streaming responses【F:devloper_notes/README.md†L23-L35】 | React prototype in `app/web/components/VibInterface.tsx` drives chat, notes, reminders, calendar, and search panes with tool-call visualization.【F:app/web/components/VibInterface.tsx†L798-L880】 |
-| Simple authentication with API tokens (plus Stage 8 passkeys/TOTP)【F:devloper_notes/README.md†L25-L35】 | API validates bearer tokens and issues hashed session tokens via the auth service; passkey/TOTP routes extend login flows.【F:app/api/dependencies.py†L39-L101】【F:app/api/services/auth_service.py†L197-L257】 |
-| Time-based reminders with deduplication【F:devloper_notes/README.md†L27-L35】 | Reminder service creates RRULE-aware reminders, links calendar events, and prevents duplicates via metrics-backed safeguards.【F:app/api/services/reminder_service.py†L15-L159】 |
-| Notes stored as Markdown and exposed via unified vector search【F:devloper_notes/README.md†L28-L35】 | Note endpoints persist Markdown files and queue embeddings that feed semantic search through the vector service and RAG pipeline.【F:app/api/main.py†L717-L825】【F:app/api/services/rag_service.py†L12-L84】 |
-| Document ingestion pipeline with deduping and background jobs【F:devloper_notes/README.md†L29-L35】 | Document router stores uploads under `/app/uploads`, deduplicates by SHA-256, and enqueues Celery jobs for embedding.【F:app/api/routers/documents.py†L1-L110】【F:app/api/services/document_service.py†L11-L139】 |
-| Push notifications across Web/FCM/APNs with TTL + collapse keys【F:devloper_notes/README.md†L31-L35】 | Notification service fans out to Web Push, FCM, and APNs adapters, handling TTL, collapse IDs, and structured payloads.【F:app/api/services/notification_service.py†L1-L366】 |
-| Metrics/observability for ingestion, reminders, chat, and health【F:devloper_notes/README.md†L32-L35】 | Prometheus registry exports business SLOs, ingestion counters, and infrastructure gauges via `/api/v1/metrics`.【F:app/api/metrics.py†L1-L198】 |
+| Component | Purpose | Technology |
+| --- | --- | --- |
+| **API Server** | REST API and WebSocket endpoints | FastAPI with async/await |
+| **Worker** | Background task processing | Celery with Redis broker |
+| **Beat Scheduler** | Periodic task scheduling | Celery Beat with APScheduler |
+| **PostgreSQL** | Primary data store | PostgreSQL 15 with asyncpg |
+| **Redis** | Message broker and cache | Redis 7 |
+| **Qdrant** | Vector database | Qdrant for semantic search |
+| **Web Frontend** | User interface | React 18 + TypeScript + Vite |
+| **Mobile App** | iOS/Android client | React Native (Expo) |
 
-## Architecture
+### Key Implementation Highlights
 
-Brainda consists of several microservices orchestrated with Docker Compose:
+- **Chat-first Interface**: React-based chat UI with streaming responses, tool-call visualization, and conversation history
+- **Multi-User Auth**: WebAuthn passkeys with TOTP backup codes and session-based authentication
+- **Smart Reminders**: RRULE-aware reminders with calendar integration and deduplication
+- **Semantic Search**: Unified vector search across notes and documents using `sentence-transformers/all-MiniLM-L6-v2`
+- **Document Pipeline**: SHA-256 deduplication, background embedding jobs, and automatic content extraction
+- **Push Notifications**: Multi-platform support (Web Push, FCM, APNs) with TTL and collapse keys
+- **Observability**: Prometheus metrics for SLOs, request latency, and business KPIs
 
-- **API Server** (FastAPI): Main application server
-- **Worker** (Celery): Background task processing for embeddings and document ingestion
-- **Beat** (Celery Beat): Scheduled task management
-- **PostgreSQL**: Primary database for structured data
-- **Redis**: Message broker and cache
-- **Qdrant**: Vector database for semantic search
-- **Web Frontend**: React-based user interface
+## Quick Start
 
-## Prerequisites
+### Prerequisites
 
-- **Docker** (version 20.10 or higher)
-- **Docker Compose** (version 2.0 or higher)
-- **Git**
-- At least **4GB RAM** available for Docker
+- Docker 20.10+ and Docker Compose 2.0+
+- At least 4GB RAM available for Docker
+- Git
 
-## Installation
+## Installation & Setup
 
 ### 1. Clone the Repository
 
@@ -127,11 +129,28 @@ mkdir -p vault/notes uploads
 
 ### 4. Start the Services
 
+**For Development** (recommended for active development with hot reload):
+
 ```bash
-docker compose up -d
+# Start all services including frontend with hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
-This will start all services in detached mode. Initial startup may take several minutes as Docker downloads images and builds containers.
+Access:
+- Frontend: http://localhost:3000 (Vite dev server with hot reload)
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+**For Production** (single optimized endpoint):
+
+```bash
+# Build and start with frontend served from FastAPI
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Access everything at: http://localhost:8000
+
+See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for comprehensive Docker configuration guide.
 
 ### 5. Verify Installation
 
@@ -171,11 +190,15 @@ Repeat this command on each environment when you deploy Stage 8.
 - **Metrics**: http://localhost:8000/api/v1/metrics
 - **API Docs**: http://localhost:8000/docs
 
-### Modern UI Prototype
+### Modern Web UI
 
-- The chat-first interface described in `devloper_notes/UI.md` is implemented in `app/web/components/VibInterface.tsx`.
-- Import the component into your React shell (for example, a Vite or Next.js page) to preview the dark-mode layout, sidebar navigation, and streaming chat experience.
-- Design tokens (color, typography, spacing) are defined via CSS custom properties at the top of the component so the visual system can be reused across additional screens.
+The frontend is built with React 18 + TypeScript and located in `app/web/src/`:
+- **Chat Interface**: Streaming chat with conversation history and tool-call visualization
+- **Notes Management**: Create, edit, and organize markdown notes with tags
+- **Document Upload**: Drag-and-drop document upload with processing status
+- **Calendar View**: Weekly calendar with event creation and reminder linking
+- **Settings**: API configuration, LLM provider selection, and authentication management
+- **Responsive Design**: Mobile-first design with dark mode support
 
 ### API Authentication
 
@@ -337,34 +360,52 @@ curl -X POST http://localhost:8000/api/v1/calendar/events/$EVENT_ID/reminders/$R
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 
-The web prototype (`app/web/components/VibInterface.tsx`) now shows a weekly calendar panel next to chat, and the Expo mobile app (`vib-mobile/src/screens/CalendarScreen.tsx`) includes a dedicated **Calendar** tab.
+The web interface includes a dedicated calendar view, and the mobile app (`brainda-mobile/`) provides native calendar access on iOS and Android.
 
 ## Development
 
 ### Running in Development Mode
 
-For development with hot-reload:
+**Recommended: Docker Development Mode**
 
 ```bash
-# Start backend services
+# Start all services with hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# View logs
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f orchestrator frontend
+
+# Restart specific service after changes
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart worker
+```
+
+**Alternative: Manual Mode** (for advanced debugging)
+
+```bash
+# Start infrastructure only
 docker compose up -d postgres redis qdrant
 
-# Run API server locally
+# Run API server locally (terminal 1)
 cd app
 export PYTHONPATH=$(pwd)
+export DATABASE_URL="postgresql://vib:<password>@localhost:5434/vib"
+export REDIS_URL="redis://localhost:6379/0"
+export QDRANT_URL="http://localhost:6333"
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
-# Run Celery worker (in another terminal)
+# Run Celery worker (terminal 2)
 celery -A worker.tasks worker --loglevel=info
 
-# Run Celery beat (in another terminal)
-celery -A worker.scheduler beat --loglevel=info
+# Run Celery beat (terminal 3)
+celery -A worker.tasks beat --loglevel=info
 
-# Run web frontend (in another terminal)
+# Run web frontend (terminal 4)
 cd app/web
 npm install
 npm run dev
 ```
+
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for more details.
 
 ### Running Tests
 
@@ -395,16 +436,30 @@ choco install jq
 
 #### Running the Test Suite
 
-Execute the comprehensive test suite:
+Execute the comprehensive integration test suite:
 
 ```bash
-# Run MVP complete tests
-./test-mvp-complete.sh
+# Run all 8 stages of tests
+./tests/stage_runner.sh --all --verbose
 
-# Run specific stage tests
-./test-stage0.sh  # Basic health and metrics
-./test-stage1.sh  # Notes and reminders
+# Run specific stage
+./tests/stage_runner.sh --stage 0 --verbose  # Health and metrics
+./tests/stage_runner.sh --stage 1 --verbose  # Notes + vector search
+./tests/stage_runner.sh --stage 2 --verbose  # Reminders + scheduler
+./tests/stage_runner.sh --stage 3 --verbose  # Documents + RAG
+./tests/stage_runner.sh --stage 8 --verbose  # Multi-user auth
 ```
+
+Available test stages (Stage 0-8):
+- **Stage 0**: Health checks and Prometheus metrics
+- **Stage 1**: Notes CRUD and vector search
+- **Stage 2**: Reminders and scheduler
+- **Stage 3**: Document ingestion and RAG
+- **Stage 4**: Metrics validation
+- **Stage 5**: Idempotency
+- **Stage 6**: Calendar events with RRULE
+- **Stage 7**: Google Calendar sync
+- **Stage 8**: Multi-user authentication (passkeys + TOTP)
 
 ### Viewing Logs
 
@@ -422,11 +477,19 @@ docker compose logs -f postgres
 
 ### Database Migrations
 
-Database schema is initialized automatically on first startup via `init.sql`. For incremental migrations:
+Database schema is managed through SQL migration files in the `migrations/` directory. Migrations are applied automatically on startup via the FastAPI lifespan handler. For manual migration:
 
 ```bash
 docker exec brainda-postgres psql -U vib -d vib -f /app/migrations/your_migration.sql
 ```
+
+Current migrations:
+- 001: Core tables (notes, documents, reminders)
+- 002: Deduplication indexes
+- 003: Document ingestion improvements
+- 004: Additional features
+- 005: Calendar events and notes constraints
+- 006: Multi-user authentication (passkeys, TOTP, sessions)
 
 ### Adjusting Resource Limits
 
@@ -505,21 +568,35 @@ docker compose logs orchestrator | grep "all-MiniLM-L6-v2"
 .
 ├── app/
 │   ├── api/                    # FastAPI application
-│   │   ├── adapters/          # External service adapters
-│   │   ├── models/            # Pydantic models
+│   │   ├── adapters/          # External service adapters (LLM, OpenMemory, Google)
+│   │   ├── models/            # Pydantic request/response models
 │   │   ├── routers/           # API route handlers
-│   │   ├── services/          # Business logic
-│   │   ├── tools/             # Reusable tool implementations
+│   │   ├── services/          # Business logic layer
+│   │   ├── middleware/        # Custom middleware (metrics, idempotency, auth)
 │   │   └── main.py            # Application entry point
-│   ├── common/                # Shared utilities
+│   ├── common/                # Shared utilities and database connections
 │   ├── web/                   # React frontend
+│   │   ├── src/               # Source code
+│   │   │   ├── components/   # React components (auth, chat, calendar, etc.)
+│   │   │   ├── pages/        # Page-level components
+│   │   │   ├── hooks/        # Custom React hooks
+│   │   │   └── layouts/      # Layout wrappers
+│   │   └── package.json      # Frontend dependencies
 │   └── worker/                # Celery tasks and scheduler
+├── brainda-mobile/            # React Native mobile app (Expo)
 ├── migrations/                # SQL migration files
-├── tests/                     # Test scripts and fixtures
+├── tests/                     # Integration test suite (Stage 0-8)
+├── scripts/                   # Utility scripts
+├── docs/                      # Additional documentation
 ├── vault/                     # Note storage (markdown files)
 ├── uploads/                   # Uploaded document storage
-├── docker-compose.yml         # Service orchestration
-├── Dockerfile                 # Container build definition
+├── docker-compose.yml         # Base Docker services
+├── docker-compose.dev.yml     # Development overlay (hot reload)
+├── docker-compose.prod.yml    # Production configuration
+├── Dockerfile.dev             # Development Dockerfile
+├── Dockerfile.prod            # Production multi-stage build
+├── CLAUDE.md                  # Claude Code instructions
+├── DOCKER_SETUP.md            # Comprehensive Docker guide
 └── README.md                  # This file
 ```
 
@@ -532,9 +609,28 @@ docker compose logs orchestrator | grep "all-MiniLM-L6-v2"
 - **File Uploads**: Uploaded files are stored with restricted permissions (600)
 - **Database**: Use strong passwords and restrict network access in production
 
+## Documentation
+
+- **[CLAUDE.md](./CLAUDE.md)** - Comprehensive guide for Claude Code development
+- **[DOCKER_SETUP.md](./DOCKER_SETUP.md)** - Docker configuration modes and best practices
+- **[DEVELOPMENT.md](./DEVELOPMENT.md)** - Development workflow and guidelines
+- **[PRODUCTION_READY.md](./PRODUCTION_READY.md)** - Production deployment checklist
+- **[Agents.md](./Agents.md)** - Development guidelines and coding standards
+- **[docs/](./docs/)** - Additional technical documentation
+
+## Recent Cleanup (2025-11-17)
+
+The codebase has been cleaned up with the following improvements:
+- Moved 17 test log files to `.review_for_deletion/` for review
+- Removed redundant documentation (6 analysis files moved to review)
+- Consolidated legacy frontend components (9 files moved from `app/web/components/` to review)
+- Removed temporary development files
+- Updated README to reflect current architecture
+- See `.review_for_deletion/CLEANUP_SUMMARY.md` for details on what was moved
+
 ## Contributing
 
-See `AGENTS.md` for development guidelines, coding standards, and contribution workflow.
+See [Agents.md](./Agents.md) for development guidelines, coding standards, and contribution workflow.
 
 ## License
 
