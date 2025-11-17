@@ -213,6 +213,7 @@ export interface Citation {
 
 export interface ChatRequest {
   message: string;
+  model_id?: string | null;
 }
 
 // Search

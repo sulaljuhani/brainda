@@ -6,10 +6,11 @@ import type { ChatMessage } from '@/types';
 interface UseChatOptions {
   conversationId?: string | null;
   onConversationCreated?: (conversationId: string) => void;
+  modelId?: string | null;
 }
 
 export function useChat(options: UseChatOptions = {}) {
-  const { conversationId, onConversationCreated } = options;
+  const { conversationId, onConversationCreated, modelId } = options;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export function useChat(options: UseChatOptions = {}) {
       }
 
       // Get AI response via streaming
-      const stream = await chatService.sendMessage(text);
+      const stream = await chatService.sendMessage(text, modelId);
       const reader = stream.getReader();
       const decoder = new TextDecoder();
 
