@@ -8,10 +8,32 @@ import importlib
 importlib.import_module("multipart")
 PY
 
+# Graceful shutdown handler
+shutdown() {
+  echo "Received shutdown signal, gracefully stopping..."
+  # Send SIGTERM to child process
+  if [ -n "$child_pid" ]; then
+    kill -TERM "$child_pid" 2>/dev/null || true
+    # Wait for process to finish (max 30 seconds)
+    wait "$child_pid" || true
+  fi
+  echo "Shutdown complete"
+  exit 0
+}
+
+# Trap SIGTERM and SIGINT for graceful shutdown
+trap shutdown TERM INT
+
 if [ "$SERVICE" = "worker" ]; then
-  exec celery -A worker.tasks worker --loglevel=info
+  celery -A worker.tasks worker --loglevel=info &
+  child_pid=$!
 elif [ "$SERVICE" = "beat" ]; then
-  exec celery -A worker.tasks beat --loglevel=info
+  celery -A worker.tasks beat --loglevel=info &
+  child_pid=$!
 else
-  exec uvicorn api.main:app --host 0.0.0.0 --port 8000
+  uvicorn api.main:app --host 0.0.0.0 --port 8000 &
+  child_pid=$!
 fi
+
+# Wait for child process
+wait "$child_pid"
