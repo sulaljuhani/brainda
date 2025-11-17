@@ -72,31 +72,29 @@ git clone <your-repository-url> brainda
 cd brainda
 ```
 
-#### Step 5: Start Backend Services
+#### Step 5: Start All Services (Development Mode with Hot Reload)
 
 ```powershell
-# Start all Docker services (backend)
-docker-compose up -d
+# Start all services including frontend with hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 # Wait for services to be healthy (check logs)
-docker-compose logs -f orchestrator
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f orchestrator frontend
 
-# Press Ctrl+C when you see "Application startup complete"
+# Press Ctrl+C when you see "Application startup complete" and Vite dev server ready
+
+# Access the application:
+# - Frontend: http://localhost:3000 (with hot reload)
+# - Backend API: http://localhost:8000
 ```
 
-#### Step 6: Install and Start Frontend
+**Alternative - Production Mode (Single Endpoint):**
 
 ```powershell
-# Navigate to frontend directory
-cd app\web
+# For production builds (frontend served from backend)
+docker compose -f docker-compose.prod.yml up -d --build
 
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Frontend will be available at http://localhost:3000 (or next available port)
+# Access everything at http://localhost:8000
 ```
 
 ### Option 2: Keep Git History (Soft Reset)
@@ -105,9 +103,8 @@ npm run dev
 # Navigate to project
 cd C:\Users\Sultan\Documents\brainda
 
-# Stop all processes
-Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
-docker-compose down -v
+# Stop all services
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
 
 # Reset all changes and clean untracked files
 git reset --hard HEAD
@@ -116,7 +113,14 @@ git clean -fdx
 # Pull latest changes
 git pull
 
-# Start services
+# Start services with hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+### Option 3: Legacy Mode (Manual Frontend - Not Recommended)
+
+```powershell
+# Only use this if you need to run frontend outside Docker
 docker-compose up -d
 cd app\web
 npm install
@@ -205,40 +209,32 @@ nano .env  # or vi .env
 # Press Ctrl+X, then Y, then Enter to save in nano
 ```
 
-#### Step 6: Start Backend Services
+#### Step 6: Start All Services (Development Mode)
 
 ```bash
-# Start all Docker services
-docker-compose up -d
-
-# Or newer syntax
-docker compose up -d
+# Start all services including frontend with hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 # Check status
-docker-compose ps
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
 
 # View logs to ensure services are healthy
-docker-compose logs -f orchestrator
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f orchestrator frontend
 
 # Press Ctrl+C to exit logs
+
+# Access the application:
+# - Frontend: http://<unraid-ip>:3000 (with hot reload)
+# - Backend API: http://<unraid-ip>:8000
 ```
 
-#### Step 7: Install and Start Frontend
+**Alternative - Production Mode:**
 
 ```bash
-# Navigate to frontend directory
-cd app/web
+# For production builds (single endpoint)
+docker compose -f docker-compose.prod.yml up -d --build
 
-# Install dependencies
-npm install
-
-# Start development server in background
-nohup npm run dev > /tmp/vite.log 2>&1 &
-
-# View the log
-tail -f /tmp/vite.log
-
-# Frontend will be available at http://<unraid-ip>:3000
+# Access everything at http://<unraid-ip>:8000
 ```
 
 ### Option 2: Soft Reset (Keep Git History)
@@ -248,10 +244,7 @@ tail -f /tmp/vite.log
 cd /mnt/user/appdata/brainda
 
 # Stop all services
-docker-compose down -v
-
-# Kill node processes
-pkill -9 node
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
 
 # Reset git and clean
 git reset --hard HEAD
@@ -260,13 +253,19 @@ git clean -fdx
 # Pull latest
 git pull
 
-# Restart services
-docker-compose up -d
+# Restart services with hot reload
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
 
-# Reinstall frontend dependencies
+### Option 3: Legacy Mode (Manual Frontend - Not Recommended)
+
+```bash
+# Only use this if you need to run frontend outside Docker
+docker-compose up -d
 cd app/web
 npm install
 nohup npm run dev > /tmp/vite.log 2>&1 &
+tail -f /tmp/vite.log
 ```
 
 ---
@@ -275,24 +274,33 @@ nohup npm run dev > /tmp/vite.log 2>&1 &
 
 ### 1. Verify Backend Health
 
-**Windows:**
+**Windows (Development Mode):**
 ```powershell
 # Check API health
 curl http://localhost:8000/api/v1/health
 
 # Check all services are running
-docker-compose ps
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
 
 # All services should show "Up (healthy)" status
 ```
 
-**Unraid:**
+**Unraid (Development Mode):**
 ```bash
 # Check API health
 curl http://localhost:8000/api/v1/health
 
 # Check all services
-docker-compose ps
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
+```
+
+**Production Mode:**
+```bash
+# Check API health
+curl http://localhost:8000/api/v1/health
+
+# Check all services
+docker compose -f docker-compose.prod.yml ps
 ```
 
 Expected healthy response:
@@ -312,8 +320,14 @@ Expected healthy response:
 ### 2. Verify Frontend
 
 Navigate to the frontend URL:
-- **Windows**: http://localhost:3001 (or port shown in terminal)
-- **Unraid**: http://<unraid-server-ip>:3001
+
+**Development Mode:**
+- **Windows**: http://localhost:3000
+- **Unraid**: http://<unraid-server-ip>:3000
+
+**Production Mode:**
+- **Windows**: http://localhost:8000
+- **Unraid**: http://<unraid-server-ip>:8000
 
 You should see the login page.
 
@@ -342,8 +356,14 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 ### 4. Access the Application
 
 Open your browser and navigate to:
-- **Windows**: http://localhost:3001
-- **Unraid**: http://<unraid-server-ip>:3001
+
+**Development Mode:**
+- **Windows**: http://localhost:3000
+- **Unraid**: http://<unraid-server-ip>:3000
+
+**Production Mode:**
+- **Windows**: http://localhost:8000
+- **Unraid**: http://<unraid-server-ip>:8000
 
 Use the registration page to create your first account.
 
@@ -385,7 +405,13 @@ taskkill /PID <PID> /F
 
 **Solution**:
 ```powershell
-# Force remove all containers
+# Stop development mode services
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -f
+
+# Or stop production mode services
+docker compose -f docker-compose.prod.yml down -f
+
+# Force remove all containers if needed
 docker rm -f $(docker ps -aq)
 
 # Remove all volumes
@@ -398,9 +424,13 @@ docker volume prune -f
 
 **Solution**:
 ```powershell
-# Must remove volumes to reset database
-docker-compose down -v
-docker-compose up -d
+# Must remove volumes to reset database (development mode)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Or production mode
+docker compose -f docker-compose.prod.yml down -v
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ### Unraid
@@ -421,15 +451,23 @@ chown -R nobody:users .  # Typical Unraid user
 
 **Problem**: Cannot access frontend from browser
 
-**Solution**:
+**Solution (Development Mode)**:
 ```bash
-# Check if Vite is running
+# Check frontend container status
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps frontend
+
+# Check frontend logs
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs frontend
+
+# Restart frontend service
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart frontend
+```
+
+**Solution (Legacy Manual Mode)**:
+```bash
+# Only if running frontend manually
 ps aux | grep vite
-
-# Check the log
 tail -f /tmp/vite.log
-
-# Restart if needed
 pkill -9 node
 cd /mnt/user/appdata/brainda/app/web
 nohup npm run dev > /tmp/vite.log 2>&1 &
@@ -461,9 +499,13 @@ free -h
 # Reduce worker concurrency in .env
 echo "CELERY_WORKER_CONCURRENCY=1" >> .env
 
-# Restart services
-docker-compose down
-docker-compose up -d
+# Restart services (development mode)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Or production mode
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 #### Node.js Version Issues
@@ -484,44 +526,85 @@ node --version
 
 ## Quick Reference Commands
 
-### Windows
+### Windows (Development Mode - Recommended)
 
 ```powershell
-# Complete reset and restart
+# Complete reset and restart with hot reload
 cd C:\Users\Sultan\Documents
-docker-compose -f brainda/docker-compose.yml down -v
+docker compose -f brainda/docker-compose.yml -f brainda/docker-compose.dev.yml down -v
 Remove-Item -Recurse -Force brainda
 git clone <repo-url> brainda
 cd brainda
-docker-compose up -d
-cd app\web
-npm install
-npm run dev
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
-### Unraid
+### Windows (Production Mode)
+
+```powershell
+# Complete reset and restart with production build
+cd C:\Users\Sultan\Documents
+docker compose -f brainda/docker-compose.prod.yml down -v
+Remove-Item -Recurse -Force brainda
+git clone <repo-url> brainda
+cd brainda
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+### Unraid (Development Mode - Recommended)
 
 ```bash
-# Complete reset and restart
+# Complete reset and restart with hot reload
 cd /mnt/user/appdata
-docker-compose -f brainda/docker-compose.yml down -v
+docker compose -f brainda/docker-compose.yml -f brainda/docker-compose.dev.yml down -v
 rm -rf brainda
 git clone <repo-url> brainda
 cd brainda
-docker-compose up -d
-cd app/web
-npm install
-nohup npm run dev > /tmp/vite.log 2>&1 &
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+### Unraid (Production Mode)
+
+```bash
+# Complete reset and restart with production build
+cd /mnt/user/appdata
+docker compose -f brainda/docker-compose.prod.yml down -v
+rm -rf brainda
+git clone <repo-url> brainda
+cd brainda
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ---
 
 ## Additional Resources
 
+- **Docker Setup Guide**: See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for comprehensive Docker configuration documentation
+- **Docker Quick Start**: See [DOCKER_QUICKSTART.md](./DOCKER_QUICKSTART.md) for quick reference commands
 - **Main Documentation**: See [CLAUDE.md](./CLAUDE.md) for detailed architecture
 - **Environment Variables**: See `.env.example` for all available configuration options
 - **Testing**: See [CLAUDE.md#Testing](./CLAUDE.md#testing) for integration test instructions
 - **API Documentation**: Backend API runs on http://localhost:8000 with automatic OpenAPI docs at `/docs`
+
+## Docker Configuration Modes
+
+VIB now supports three Docker configurations:
+
+1. **Development Mode** (Recommended for development)
+   - Command: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`
+   - Features: Hot reload for frontend + backend, no rebuilds needed
+   - Frontend: http://localhost:3000
+   - Backend: http://localhost:8000
+
+2. **Production Mode** (Recommended for deployment)
+   - Command: `docker compose -f docker-compose.prod.yml up -d --build`
+   - Features: Optimized build, single endpoint, smaller images
+   - Everything: http://localhost:8000
+
+3. **Legacy Mode** (Not recommended)
+   - Command: `docker-compose up -d` + manual `npm run dev`
+   - Only use if you need to run frontend outside Docker
+
+See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for detailed documentation.
 
 ---
 
@@ -529,8 +612,12 @@ nohup npm run dev > /tmp/vite.log 2>&1 &
 
 If you encounter issues not covered in this guide:
 
-1. Check logs: `docker-compose logs -f orchestrator`
-2. Check frontend logs: Look at the terminal running `npm run dev`
-3. Verify all services are healthy: `docker-compose ps`
+1. Check logs:
+   - Development: `docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f orchestrator frontend`
+   - Production: `docker compose -f docker-compose.prod.yml logs -f orchestrator`
+2. Verify all services are healthy:
+   - Development: `docker compose -f docker-compose.yml -f docker-compose.dev.yml ps`
+   - Production: `docker compose -f docker-compose.prod.yml ps`
+3. Review [DOCKER_SETUP.md](./DOCKER_SETUP.md) for troubleshooting
 4. Review [CLAUDE.md](./CLAUDE.md) for architecture details
 5. Check browser console (F12) for frontend errors

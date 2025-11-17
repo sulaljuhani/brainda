@@ -1,0 +1,79 @@
+# ============================================
+# Stage 1: Build Frontend
+# ============================================
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /frontend
+
+# Copy frontend package files
+COPY app/web/package.json app/web/package-lock.json* ./
+RUN npm ci
+
+# Copy frontend source and build
+COPY app/web/ ./
+RUN npm run build
+
+# ============================================
+# Stage 2: Python Backend + Serve Frontend
+# ============================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    procps \
+    poppler-utils \
+    tesseract-ocr \
+    libmagic1 \
+    binutils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
+COPY app/api/requirements.txt /app/api/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --timeout=100 --upgrade pip \
+ && pip install --timeout=100 -r /app/api/requirements.txt
+
+# Install Celery wrapper shim for better debugging
+RUN sh -c 'set -eu; CEL=$(command -v celery); mv "$CEL" /usr/local/bin/celery-real'
+COPY scripts/celery-wrapper.sh /usr/local/bin/celery
+RUN chmod +x /usr/local/bin/celery
+
+# Verify ONNX Runtime security
+RUN bash -c 'set -euo pipefail; \
+paths=$(python3 -c "import site, glob; [print(p) for d in site.getsitepackages() for p in glob.glob(d + \"/onnxruntime/**/*.so\", recursive=True)]"); \
+echo "Discovered ONNX Runtime shared objects:"; echo "$paths"; \
+bad=0; \
+for so in $paths; do \
+  line=$(readelf -lW "$so" | grep GNU_STACK || true); \
+  echo "[$so] $line"; \
+  if echo "$line" | grep -q " E "; then bad=1; fi; \
+done; \
+if [ "$bad" -eq 1 ]; then \
+  echo "ERROR: At least one ONNX Runtime .so requests an executable stack (GNU_STACK ... E)."; \
+  exit 1; \
+else \
+  echo "✓ All ONNX Runtime .so files have non-executable stack."; \
+fi'
+
+# Pre-download sentence-transformers model
+RUN python - <<'PY'
+from sentence_transformers import SentenceTransformer
+SentenceTransformer('all-MiniLM-L6-v2')
+PY
+
+# Copy application code
+COPY app/ /app/
+
+# Copy built frontend from stage 1
+COPY --from=frontend-builder /frontend/dist /app/web/dist
+
+# Copy entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENV PYTHONPATH="/app"
+ENV TOKENIZERS_PARALLELISM=false
+
+ENTRYPOINT ["/entrypoint.sh"]

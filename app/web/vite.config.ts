@@ -24,7 +24,8 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // Use Docker service name when running in container, localhost otherwise
+        target: process.env.VITE_API_URL || 'http://orchestrator:8000',
         changeOrigin: true,
       },
     },
