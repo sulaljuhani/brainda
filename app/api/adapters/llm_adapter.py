@@ -674,3 +674,120 @@ def get_llm_adapter() -> BaseLLMAdapter:
     backend = os.getenv("LLM_BACKEND", "dummy").lower()
     return _build_adapter(backend)
 
+
+def build_adapter_from_config(provider: str, model_name: str, config: Dict[str, Any], temperature: float = 0.7, max_tokens: Optional[int] = None) -> BaseLLMAdapter:
+    """Build an LLM adapter from configuration dictionary.
+
+    This is used for dynamically creating adapters from database-stored model configurations.
+
+    Args:
+        provider: The provider type (openai, anthropic, ollama, custom)
+        model_name: The model identifier
+        config: Configuration dictionary with provider-specific settings
+        temperature: Default temperature for requests
+        max_tokens: Default max tokens for requests
+
+    Returns:
+        BaseLLMAdapter instance configured for the model
+    """
+    logger.info("building_adapter_from_config", provider=provider, model_name=model_name)
+
+    if provider == "openai":
+        return _build_openai_adapter_from_config(model_name, config, temperature, max_tokens)
+    elif provider == "anthropic":
+        return _build_anthropic_adapter_from_config(model_name, config, temperature, max_tokens)
+    elif provider == "ollama":
+        return _build_ollama_adapter_from_config(model_name, config, temperature, max_tokens)
+    elif provider == "custom":
+        return _build_custom_adapter_from_config(model_name, config, temperature, max_tokens)
+    else:
+        logger.warning("unknown_provider_for_dynamic_adapter", provider=provider)
+        return DummyLLMAdapter()
+
+
+def _build_openai_adapter_from_config(model_name: str, config: Dict[str, Any], temperature: float, max_tokens: Optional[int]) -> BaseLLMAdapter:
+    """Build OpenAI adapter from config."""
+    try:
+        from openai import AsyncOpenAI
+    except ImportError as exc:
+        raise LLMAdapterError("openai package is required for OpenAI backend") from exc
+
+    api_key = config.get("api_key")
+    if not api_key:
+        raise LLMAdapterError("api_key is required in config for OpenAI adapter")
+
+    base_url = config.get("base_url")
+
+    # Create a custom adapter instance
+    adapter = OpenAIAdapter.__new__(OpenAIAdapter)
+    adapter._model = model_name
+    adapter._client = AsyncOpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        timeout=LLM_TIMEOUT,
+    )
+    adapter._circuit_breaker = get_circuit_breaker("openai")
+    adapter.retry_attempts = 3
+
+    return adapter
+
+
+def _build_anthropic_adapter_from_config(model_name: str, config: Dict[str, Any], temperature: float, max_tokens: Optional[int]) -> BaseLLMAdapter:
+    """Build Anthropic adapter from config."""
+    try:
+        from anthropic import AsyncAnthropic
+    except ImportError as exc:
+        raise LLMAdapterError("anthropic package is required for Anthropic backend") from exc
+
+    api_key = config.get("api_key")
+    if not api_key:
+        raise LLMAdapterError("api_key is required in config for Anthropic adapter")
+
+    # Create a custom adapter instance
+    adapter = AnthropicAdapter.__new__(AnthropicAdapter)
+    adapter._model = model_name
+    adapter._client = AsyncAnthropic(api_key=api_key)
+    adapter._default_max_tokens = max_tokens or int(os.getenv("ANTHROPIC_MAX_TOKENS", "1024"))
+    adapter.retry_attempts = 3
+
+    return adapter
+
+
+def _build_ollama_adapter_from_config(model_name: str, config: Dict[str, Any], temperature: float, max_tokens: Optional[int]) -> BaseLLMAdapter:
+    """Build Ollama adapter from config."""
+    base_url = config.get("base_url", "http://ollama:11434")
+
+    # Create a custom adapter instance
+    adapter = OllamaAdapter.__new__(OllamaAdapter)
+    adapter._model = model_name
+    adapter._client = httpx.AsyncClient(base_url=base_url, timeout=30.0)
+    adapter.retry_attempts = 3
+
+    return adapter
+
+
+def _build_custom_adapter_from_config(model_name: str, config: Dict[str, Any], temperature: float, max_tokens: Optional[int]) -> BaseLLMAdapter:
+    """Build custom adapter from config."""
+    url = config.get("url") or config.get("base_url")
+    if not url:
+        raise LLMAdapterError("url or base_url is required in config for custom adapter")
+
+    api_key = config.get("api_key")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    # Merge any additional headers from config
+    extra_headers = config.get("headers", {})
+    headers.update(extra_headers)
+
+    # Create a custom adapter instance
+    adapter = CustomLLMAdapter.__new__(CustomLLMAdapter)
+    adapter._url = url
+    adapter._model = model_name
+    adapter._headers = headers
+    adapter._client = httpx.AsyncClient(timeout=30.0)
+    adapter.retry_attempts = 3
+
+    return adapter
+

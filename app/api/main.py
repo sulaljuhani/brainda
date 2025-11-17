@@ -93,7 +93,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
                 status_code=status_code,
             ).observe(duration)
 
-from api.adapters.llm_adapter import get_llm_adapter
+from api.adapters.llm_adapter import get_llm_adapter, build_adapter_from_config
 from api.dependencies import get_db, get_current_user
 from api.metrics import (
     api_request_duration_seconds,
@@ -563,6 +563,7 @@ class NoteUpdateRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     conversation_id: Optional[uuid.UUID] = None
+    model_id: Optional[uuid.UUID] = None  # Optional LLM model to use
 
 
 class ChatResponse(BaseModel):
@@ -693,10 +694,63 @@ async def _handle_reminder_chat(
     }
 
 
-async def _handle_rag_chat(message: str, user_id: uuid.UUID) -> Dict[str, Any]:
+async def _get_llm_adapter_for_user(user_id: uuid.UUID, model_id: Optional[uuid.UUID] = None, db: Optional[asyncpg.Connection] = None):
+    """Get LLM adapter for a user, either from model_id or use default."""
+    from api.services.llm_models_service import LLMModelsService
+
+    # If no model_id specified and no db connection, use environment-based adapter
+    if not model_id and not db:
+        return get_llm_adapter()
+
+    # If db provided but no model_id, try to get default model
+    if db and not model_id:
+        service = LLMModelsService(db)
+        model = await service.get_default_model(user_id)
+
+        if not model:
+            # Fall back to environment-based adapter
+            return get_llm_adapter()
+
+        # Build adapter from model config
+        return build_adapter_from_config(
+            provider=model["provider"],
+            model_name=model["model_name"],
+            config=model["config"],
+            temperature=model.get("temperature", 0.7),
+            max_tokens=model.get("max_tokens"),
+        )
+
+    # If specific model_id provided
+    if model_id and db:
+        service = LLMModelsService(db)
+        model = await service.get_model(user_id, model_id, decrypt=True)
+
+        if not model:
+            # Fall back to environment-based adapter
+            logger.warning("model_not_found_fallback_to_env", model_id=str(model_id), user_id=str(user_id))
+            return get_llm_adapter()
+
+        # Build adapter from model config
+        return build_adapter_from_config(
+            provider=model["provider"],
+            model_name=model["model_name"],
+            config=model["config"],
+            temperature=model.get("temperature", 0.7),
+            max_tokens=model.get("max_tokens"),
+        )
+
+    # Fallback
+    return get_llm_adapter()
+
+
+async def _handle_rag_chat(message: str, user_id: uuid.UUID, model_id: Optional[uuid.UUID] = None, db: Optional[asyncpg.Connection] = None) -> Dict[str, Any]:
     try:
         vector_service = VectorService()
-        rag_service = RAGService(vector_service, get_llm_adapter())
+
+        # Get LLM adapter - either from model_id or use default
+        llm_adapter = await _get_llm_adapter_for_user(user_id, model_id, db)
+
+        rag_service = RAGService(vector_service, llm_adapter)
         answer = await rag_service.answer_question(message, user_id)
         tool_calls_total.labels("rag_answer", "success").inc()
         return {
@@ -720,6 +774,7 @@ async def _dispatch_chat(
     message: str,
     user_id: uuid.UUID,
     db: asyncpg.Connection,
+    model_id: Optional[uuid.UUID] = None,
 ) -> Dict[str, Any]:
     """
     Dispatch chat using LLM tool calling.
@@ -728,8 +783,8 @@ async def _dispatch_chat(
     # Combine all available tools
     all_tools = CALENDAR_TOOLS + REMINDER_TOOLS + TASK_TOOLS
 
-    # Get LLM adapter
-    llm_adapter = get_llm_adapter()
+    # Get LLM adapter - either from model_id or use default
+    llm_adapter = await _get_llm_adapter_for_user(user_id, model_id, db)
 
     # System prompt to guide the LLM
     system_prompt = """You are a helpful assistant with access to calendar, task, and reminder management tools.
@@ -861,6 +916,7 @@ async def _run_chat_flow(
     conversation_id: Optional[uuid.UUID],
     user_id: uuid.UUID,
     db: asyncpg.Connection,
+    model_id: Optional[uuid.UUID] = None,
 ) -> Dict[str, Any]:
     allowed, retry_after = await chat_rate_limiter.allow(str(user_id))
     if not allowed:
@@ -876,7 +932,7 @@ async def _run_chat_flow(
         )
 
     chat_turns_total.labels(user_id=str(user_id)).inc()
-    response = await _dispatch_chat(message, user_id, db)
+    response = await _dispatch_chat(message, user_id, db, model_id)
     response["conversation_id"] = conversation_id
     return response
 
@@ -992,7 +1048,7 @@ async def chat_endpoint(
     if not message:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    return await _run_chat_flow(message, payload.conversation_id, user_id, db)
+    return await _run_chat_flow(message, payload.conversation_id, user_id, db, payload.model_id)
 
 
 @router.get("/chat", response_model=ChatResponse)
@@ -1046,6 +1102,7 @@ from api.routers import (
     settings,
     chat,
     stats,
+    llm_models,
 )
 app.include_router(reminders.router)
 app.include_router(devices.router)
@@ -1060,6 +1117,7 @@ app.include_router(categories.router)
 app.include_router(settings.router)
 app.include_router(chat.router)
 app.include_router(stats.router)
+app.include_router(llm_models.router)
 
 # Mount static files from web/dist directory (Vite build output)
 # This must be done AFTER all API routes are registered

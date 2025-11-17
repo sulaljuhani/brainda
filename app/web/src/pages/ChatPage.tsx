@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MessageList } from '../components/chat/MessageList';
 import { ChatInput } from '../components/chat/ChatInput';
+import { ModelSelector } from '../components/chat/ModelSelector';
 import { useChat } from '../hooks/useChat';
 import { useConversation } from '../hooks/useConversation';
 import './ChatPage.css';
 
 export default function ChatPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const { messages: loadedMessages, isLoading: isLoadingConversation } = useConversation(selectedConversationId);
 
   const {
@@ -17,6 +19,7 @@ export default function ChatPage() {
     loadMessages,
   } = useChat({
     conversationId: selectedConversationId,
+    modelId: selectedModelId,
     onConversationCreated: (newConversationId) => {
       setSelectedConversationId(newConversationId);
     },
@@ -52,6 +55,12 @@ export default function ChatPage() {
 
   return (
     <div className="chat-page">
+      <div className="chat-page__header">
+        <ModelSelector
+          selectedModelId={selectedModelId}
+          onModelChange={setSelectedModelId}
+        />
+      </div>
       <MessageList messages={messages} isLoading={isLoading || isLoadingConversation} />
       <ChatInput onSendMessage={sendMessage} disabled={isLoading || isLoadingConversation} />
     </div>
