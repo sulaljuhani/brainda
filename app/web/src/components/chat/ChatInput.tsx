@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, FormEvent, KeyboardEvent, ChangeEvent } from 'react';
 import { Send } from 'lucide-react';
+import { VoiceRecorder } from './VoiceRecorder';
 import './ChatInput.css';
 
 interface ChatInputProps {
@@ -44,6 +45,14 @@ export function ChatInput({ onSendMessage, disabled = false, placeholder = 'Ask 
     setMessage(e.target.value);
   };
 
+  const handleVoiceTranscription = (text: string) => {
+    // Append transcription to current message
+    setMessage(prev => prev ? `${prev} ${text}` : text);
+
+    // Focus textarea
+    textareaRef.current?.focus();
+  };
+
   return (
     <form className="chat-input" onSubmit={handleSubmit}>
       <div className="chat-input__wrapper">
@@ -58,6 +67,13 @@ export function ChatInput({ onSendMessage, disabled = false, placeholder = 'Ask 
           rows={1}
           maxLength={10000}
         />
+
+        {/* Voice recorder */}
+        <VoiceRecorder
+          onTranscription={handleVoiceTranscription}
+          onError={(err) => console.error('Voice recording error:', err)}
+        />
+
         <button
           type="submit"
           disabled={disabled || !message.trim()}

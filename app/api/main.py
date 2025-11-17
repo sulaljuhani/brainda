@@ -1103,6 +1103,7 @@ from api.routers import (
     chat,
     stats,
     llm_models,
+    transcribe,
 )
 app.include_router(reminders.router)
 app.include_router(devices.router)
@@ -1118,6 +1119,7 @@ app.include_router(settings.router)
 app.include_router(chat.router)
 app.include_router(stats.router)
 app.include_router(llm_models.router)
+app.include_router(transcribe.router)
 
 # Mount static files from web/dist directory (Vite build output)
 # This must be done AFTER all API routes are registered

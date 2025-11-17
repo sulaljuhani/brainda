@@ -5,6 +5,7 @@ import time
 import hashlib
 import uuid
 import asyncio
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -42,6 +43,15 @@ import requests
 from api.services.embedding_service import EmbeddingService
 from api.services.parsing_service import ParsingService
 from api.services.vector_service import VectorService
+
+# Whisper for audio transcription
+try:
+    import whisper
+    WHISPER_AVAILABLE = True
+except ImportError:
+    WHISPER_AVAILABLE = False
+    logger = structlog.get_logger()
+    logger.warning("whisper_not_available", message="openai-whisper not installed")
 
 # --- Setup ---
 celery_app = Celery(
@@ -90,6 +100,48 @@ def get_vector_service() -> VectorService:
     if _vector_service is None:
         _vector_service = VectorService(embedding_service)
     return _vector_service
+
+
+# Whisper model globals (singleton per worker process)
+WHISPER_MODEL = None
+WHISPER_MODEL_LOCK = threading.Lock()
+
+
+def get_whisper_model():
+    """Load Whisper model (singleton per worker process)."""
+    global WHISPER_MODEL
+
+    if not WHISPER_AVAILABLE:
+        raise RuntimeError("Whisper is not available. Install openai-whisper package.")
+
+    if WHISPER_MODEL is None:
+        with WHISPER_MODEL_LOCK:
+            # Double-check after acquiring lock
+            if WHISPER_MODEL is None:
+                model_size = os.getenv("WHISPER_MODEL_SIZE", "base")
+                device = os.getenv("WHISPER_DEVICE", "cpu")
+                cache_dir = os.getenv("WHISPER_MODEL_CACHE", "/app/.cache/whisper")
+
+                logger.info(
+                    "whisper_model_loading",
+                    model_size=model_size,
+                    device=device,
+                    cache_dir=cache_dir,
+                )
+
+                # Create cache directory
+                Path(cache_dir).mkdir(parents=True, exist_ok=True)
+
+                # Download and load model (cached after first download)
+                WHISPER_MODEL = whisper.load_model(
+                    model_size,
+                    device=device,
+                    download_root=cache_dir,
+                )
+
+                logger.info("whisper_model_loaded", model_size=model_size)
+
+    return WHISPER_MODEL
 
 RETENTION_MESSAGES = int(os.getenv("RETENTION_MESSAGES", "90"))
 RETENTION_JOBS = int(os.getenv("RETENTION_JOBS", "30"))
@@ -508,6 +560,87 @@ async def _mark_job_failed(job_id: str, error_message: str):
                 )
     finally:
         await conn.close()
+
+
+@celery_app.task(bind=True, max_retries=3, soft_time_limit=180, time_limit=240)
+def transcribe_audio_task(self, audio_file_path: str, language: str = None) -> dict:
+    """
+    Transcribe audio file using local Whisper model.
+
+    Args:
+        audio_file_path: Path to audio file (mp3, wav, m4a, webm, etc.)
+        language: ISO 639-1 language code (None for auto-detect)
+
+    Returns:
+        {
+            "text": str,
+            "language": str,
+            "duration": float,
+            "segments": list,
+        }
+    """
+    try:
+        model = get_whisper_model()
+
+        logger.info("transcribe_audio_start", file_path=audio_file_path, language=language)
+
+        # Transcribe
+        result = model.transcribe(
+            audio_file_path,
+            language=language or os.getenv("WHISPER_DEFAULT_LANGUAGE"),
+            fp16=False,  # Set to True if using GPU with FP16 support
+            verbose=False,
+
+            # Optional: improve accuracy with these settings
+            temperature=0.0,  # Deterministic output
+            compression_ratio_threshold=2.4,
+            logprob_threshold=-1.0,
+            no_speech_threshold=0.6,
+
+            # Optional: enable word-level timestamps
+            word_timestamps=True,
+        )
+
+        # Extract key information
+        transcript = {
+            "text": result["text"].strip(),
+            "language": result["language"],
+            "duration": result.get("duration", 0),
+            "segments": [
+                {
+                    "id": seg["id"],
+                    "start": seg["start"],
+                    "end": seg["end"],
+                    "text": seg["text"].strip(),
+                }
+                for seg in result.get("segments", [])
+            ],
+        }
+
+        logger.info(
+            "transcribe_audio_complete",
+            file_path=audio_file_path,
+            language=transcript["language"],
+            duration=transcript["duration"],
+            text_preview=transcript["text"][:100],
+        )
+
+        # Cleanup temp file
+        if os.path.exists(audio_file_path) and "/tmp/" in audio_file_path:
+            os.remove(audio_file_path)
+            logger.debug("transcribe_audio_cleanup", file_path=audio_file_path)
+
+        return transcript
+
+    except Exception as exc:
+        logger.error("transcribe_audio_failed", file_path=audio_file_path, error=str(exc))
+
+        # Cleanup on error
+        if os.path.exists(audio_file_path) and "/tmp/" in audio_file_path:
+            os.remove(audio_file_path)
+
+        # Retry on transient errors
+        raise self.retry(exc=exc, countdown=10)
 
 
 @celery_app.task(name="worker.tasks.cleanup_old_data")

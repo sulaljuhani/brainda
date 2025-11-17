@@ -1,0 +1,116 @@
+.voice-recorder {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-recorder__button {
+  padding: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-recorder__button:hover:not(:disabled) {
+  background: var(--background-hover);
+  color: var(--text-primary);
+}
+
+.voice-recorder__button.recording {
+  color: var(--error-color);
+  background: var(--error-background);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.voice-recorder__button.processing {
+  color: var(--primary-color);
+  cursor: not-allowed;
+}
+
+.voice-recorder__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.voice-recorder__spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.voice-recorder__indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--error-background);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--error-color);
+  font-weight: 500;
+}
+
+.voice-recorder__dot {
+  width: 8px;
+  height: 8px;
+  background: var(--error-color);
+  border-radius: 50%;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.voice-recorder__time {
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+}
+
+.voice-recorder__status {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.voice-recorder__error {
+  position: absolute;
+  bottom: -30px;
+  left: 0;
+  font-size: 12px;
+  color: var(--error-color);
+  background: var(--error-background);
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
