@@ -137,3 +137,85 @@ async def sync_scheduled_reminders():
         logger.info("scheduled_reminders_synced", count=len(reminders))
     finally:
         await conn.close()
+
+
+async def register_agent_schedules():
+    """
+    Register scheduled agents for autonomous assistance.
+
+    Agents registered:
+    - Morning briefing (7:00 AM daily)
+    - Evening review (8:00 PM daily)
+    - Weekly summary (Sunday 6:00 PM)
+
+    Note: Agent schedules can be enabled/disabled via environment variables.
+    """
+    if not scheduler:
+        logger.warning("agent_schedules_not_registered_scheduler_unavailable")
+        return
+
+    # Check if agents are enabled
+    agents_enabled = os.getenv("ENABLE_AGENTS", "false").lower() == "true"
+    if not agents_enabled:
+        logger.info("agent_schedules_disabled_via_config")
+        return
+
+    from worker.agents import get_all_active_users
+
+    # Get all active users for scheduling
+    users = await get_all_active_users()
+
+    if not users:
+        logger.info("no_active_users_for_agent_scheduling")
+        return
+
+    for user in users:
+        user_id = str(user["id"])
+
+        # Morning briefing - 7:00 AM daily
+        try:
+            scheduler.add_job(
+                func="worker.agents.morning_briefing_agent",
+                trigger="cron",
+                hour=7,
+                minute=0,
+                args=[user_id],
+                id=f"morning_briefing_{user_id}",
+                replace_existing=True,
+            )
+            logger.info("agent_scheduled", agent="morning_briefing", user_id=user_id)
+        except Exception as exc:
+            logger.error("failed_to_schedule_agent", agent="morning_briefing", error=str(exc))
+
+        # Evening review - 8:00 PM daily
+        try:
+            scheduler.add_job(
+                func="worker.agents.evening_review_agent",
+                trigger="cron",
+                hour=20,
+                minute=0,
+                args=[user_id],
+                id=f"evening_review_{user_id}",
+                replace_existing=True,
+            )
+            logger.info("agent_scheduled", agent="evening_review", user_id=user_id)
+        except Exception as exc:
+            logger.error("failed_to_schedule_agent", agent="evening_review", error=str(exc))
+
+        # Weekly summary - Sunday 6:00 PM
+        try:
+            scheduler.add_job(
+                func="worker.agents.weekly_summary_agent",
+                trigger="cron",
+                day_of_week="sun",
+                hour=18,
+                minute=0,
+                args=[user_id],
+                id=f"weekly_summary_{user_id}",
+                replace_existing=True,
+            )
+            logger.info("agent_scheduled", agent="weekly_summary", user_id=user_id)
+        except Exception as exc:
+            logger.error("failed_to_schedule_agent", agent="weekly_summary", error=str(exc))
+
+    logger.info("agent_schedules_registered", user_count=len(users))
