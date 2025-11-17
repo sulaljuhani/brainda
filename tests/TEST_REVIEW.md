@@ -228,13 +228,13 @@ wait 2>/dev/null || true
 **Docker Operations** - Several scripts assume containers exist:
 ```bash
 # Current (risky):
-docker exec vib-postgres psql ...
+docker exec brainda-postgres psql ...
 
 # Better:
-if docker exec vib-postgres true 2>/dev/null; then
-  docker exec vib-postgres psql ...
+if docker exec brainda-postgres true 2>/dev/null; then
+  docker exec brainda-postgres psql ...
 else
-  error "vib-postgres container not running"
+  error "brainda-postgres container not running"
   return 1
 fi
 ```
@@ -509,4 +509,4 @@ The test suite is **well-architected** with **strong foundation scripts** (stage
 - Portability: 85/100 ⭐⭐⭐⭐
 - Documentation: 92/100 ⭐⭐⭐⭐⭐
 
-The test suite provides excellent validation of the VIB system and serves as a strong regression testing foundation for future development.
+The test suite provides excellent validation of the Brainda system and serves as a strong regression testing foundation for future development.

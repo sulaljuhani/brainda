@@ -68,7 +68,7 @@ cleanup() {
           -H "Content-Type: application/json" \
           -d '{}' >/dev/null
     fi
-    docker exec vib-postgres psql -U vib -d vib -c "DELETE FROM reminders WHERE title = 'DB-level test';" >/dev/null 2>&1
+    docker exec brainda-postgres psql -U brainda  -d brainda -c "DELETE FROM reminders WHERE title = 'DB-level test';" >/dev/null 2>&1
     set -e
 }
 
@@ -196,13 +196,13 @@ echo ""
 
 # Test 6: Check database dedup constraint
 log "Test 6: Testing database constraint (attempt to bypass service layer)..."
-docker exec vib-postgres psql -U vib -d vib -c "
+docker exec brainda-postgres psql -U brainda  -d brainda -c "
     INSERT INTO reminders (user_id, title, due_at_utc, due_at_local, timezone)
     SELECT id, 'DB-level test', NOW() + INTERVAL '1 day', '12:00:00', 'UTC' FROM users LIMIT 1;
 "
 log "✓ DB insert OK"
 log "Attempting duplicate..."
-if docker exec vib-postgres psql -U vib -d vib -c "
+if docker exec brainda-postgres psql -U brainda  -d brainda -c "
     INSERT INTO reminders (user_id, title, due_at_utc, due_at_local, timezone)
     SELECT id, 'DB-level test', NOW() + INTERVAL '1 day', '12:00:00', 'UTC' FROM users LIMIT 1;
 "; then

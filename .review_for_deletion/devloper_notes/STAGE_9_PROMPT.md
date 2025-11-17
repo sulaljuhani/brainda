@@ -2,7 +2,7 @@
 
 ## Context
 
-You are implementing **Stage 9** of the VIB project. The previous stages are **already complete**:
+You are implementing **Stage 9** of the Brainda project. The previous stages are **already complete**:
 
 - ✅ Stages 0-4: MVP
 - ✅ Stage 5: Mobile app with full idempotency
@@ -502,7 +502,7 @@ export default function LocationRemindersScreen() {
 ```
 Location Data Usage
 
-VIB collects and processes your location data when you:
+Brainda collects and processes your location data when you:
 1. Manually check nearby location reminders (one-time access)
 2. Enable background geofencing for automatic location reminders
 
@@ -521,10 +521,10 @@ Battery Impact: Background geofencing may reduce battery life by 5-10%.
 
 ```xml
 <key>NSLocationWhenInUseUsageDescription</key>
-<string>VIB needs your location to check nearby reminders when you tap "Check My Location".</string>
+<string>Brainda needs your location to check nearby reminders when you tap "Check My Location".</string>
 
 <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>VIB needs background location access to automatically notify you of nearby reminders. This may impact battery life.</string>
+<string>Brainda needs background location access to automatically notify you of nearby reminders. This may impact battery life.</string>
 ```
 
 **Android AndroidManifest.xml**:
@@ -590,7 +590,7 @@ const batteryLevel = await Battery.getBatteryLevelAsync();
 1. Charge phone to 100%
 2. Enable geofencing with 5 locations
 3. Use phone normally for 24 hours
-4. Check battery usage: VIB should be <5%
+4. Check battery usage: Brainda should be <5%
 
 ---
 

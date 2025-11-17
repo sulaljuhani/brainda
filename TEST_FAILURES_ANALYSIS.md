@@ -150,10 +150,10 @@ After analyzing test failures across stages 0-8, I've identified and fixed **3 c
 - **Verification Steps**:
   ```bash
   # Check if API keys are set
-  docker exec vib-orchestrator env | grep -E "(OPENAI|ANTHROPIC)_API_KEY"
+  docker exec brainda-orchestrator env | grep -E "(OPENAI|ANTHROPIC)_API_KEY"
 
   # Check orchestrator logs during RAG test
-  docker logs vib-orchestrator --since 2m | grep -A 5 -B 5 "chat"
+  docker logs brainda-orchestrator --since 2m | grep -A 5 -B 5 "chat"
   ```
 
 - **Recommended Fix**:
@@ -214,7 +214,7 @@ After analyzing test failures across stages 0-8, I've identified and fixed **3 c
 
 - **Dependencies Check**:
   ```bash
-  docker exec vib-orchestrator python -c "import pytz; import dateutil; print('OK')"
+  docker exec brainda-orchestrator python -c "import pytz; import dateutil; print('OK')"
   ```
 
 - **Recommended Fix**:
@@ -340,7 +340,7 @@ To apply all fixes:
    docker-compose up -d
 
    # Verify migration applied
-   docker exec vib-postgres psql -U vib -d vib -c "\d reminders" | grep "idx_reminders_dedup"
+   docker exec brainda-postgres psql -U vib -d vib -c "\d reminders" | grep "idx_reminders_dedup"
    # Should show no results (index dropped)
    ```
 

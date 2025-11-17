@@ -10,7 +10,7 @@ fetch_metrics() {
 METRICS=$(fetch_metrics)
 
 echo "======================================"
-echo "VIB SLO Dashboard"
+echo "Brainda SLO Dashboard"
 echo "Source: $METRICS_URL"
 echo "======================================"
 

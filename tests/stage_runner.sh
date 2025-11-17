@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # stage_runner.sh
-# Main test runner that orchestrates all VIB integration tests
+# Main test runner that orchestrates all Brainda integration tests
 # Sources common functions and stage-specific tests
 
 set -euo pipefail
@@ -11,7 +11,7 @@ cd "$SCRIPT_ROOT"
 
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 START_TIME="$(date +%s)"
-TEST_DIR="${TEST_DIR:-/tmp/vib-test-$TIMESTAMP}"
+TEST_DIR="${TEST_DIR:-/tmp/brainda-test-$TIMESTAMP}"
 mkdir -p "$TEST_DIR"
 TEST_LOG="$TEST_DIR/run.log"
 touch "$TEST_LOG"
@@ -245,7 +245,7 @@ generate_html_report() {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>VIB MVP Test Report</title>
+  <title>Brainda MVP Test Report</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 24px; }
     .pass { color: #2d7f2d; }
@@ -257,7 +257,7 @@ generate_html_report() {
   </style>
 </head>
 <body>
-  <h1>VIB MVP Test Report</h1>
+  <h1>Brainda MVP Test Report</h1>
   <p><strong>Timestamp:</strong> $TIMESTAMP</p>
   <p><strong>Base URL:</strong> $BASE_URL</p>
   <p><strong>Total:</strong> $TOTAL_TESTS &nbsp; <span class="pass">Passed: $PASSED_TESTS</span> &nbsp; <span class="fail">Failed: $FAILED_TESTS</span> &nbsp; <span class="warn">Warnings: $WARNINGS</span></p>

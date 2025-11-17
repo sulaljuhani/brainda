@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-vib-postgres}
+POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-brainda-postgres}
 PG_USER=${POSTGRES_USER:-postgres}
 PG_DB=${POSTGRES_DB:-vib}
 
@@ -9,7 +9,7 @@ cmd() {
   docker exec "$POSTGRES_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -c "$1"
 }
 
-echo "VIB Database Size Report"
+echo "Brainda Database Size Report"
 echo "========================"
 echo ""
 cmd "SELECT pg_size_pretty(pg_database_size('$PG_DB')) AS database_size;"

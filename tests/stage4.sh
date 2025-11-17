@@ -9,7 +9,7 @@ if [[ "${DEBUG:-0}" == "1" ]]; then
   set -x
 fi
 
-RESTORE_DB_NAME="${RESTORE_DB_NAME:-vib_restore_test}"
+RESTORE_DB_NAME="${RESTORE_DB_NAME:-brainda_restore_test}"
 METRIC_RETRY_ATTEMPTS=${METRIC_RETRY_ATTEMPTS:-10}
 METRIC_RETRY_DELAY=${METRIC_RETRY_DELAY:-5}
 METRICS_CACHE_TTL=${METRICS_CACHE_TTL:-2}
@@ -55,7 +55,7 @@ metric_value() {
 }
 
 cleanup_restore_db() {
-  docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -c "DROP DATABASE IF EXISTS \"$RESTORE_DB_NAME\";" >/dev/null 2>&1 || true
+  docker exec brainda-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -c "DROP DATABASE IF EXISTS \"$RESTORE_DB_NAME\";" >/dev/null 2>&1 || true
 }
 
 discover_latest_backup() {
@@ -87,7 +87,7 @@ stage4_restore_temp_db() {
   [[ -z "$ts" ]] && return 1
   cleanup_restore_db
   POSTGRES_DB="$RESTORE_DB_NAME" \
-  POSTGRES_CONTAINER="vib-postgres" \
+  POSTGRES_CONTAINER="brainda-postgres" \
   SERVICES_TO_STOP="" \
   COMPOSE_CMD="true" \
   BACKUP_DIR="$BACKUP_ROOT" \
@@ -279,13 +279,13 @@ stage4_check() {
       trap cleanup_restore_db EXIT
       stage4_restore_temp_db "$LATEST_BACKUP_TS" || rc=1
       local exists
-      exists=$(docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -t -c "SELECT COUNT(*) FROM pg_database WHERE datname = '$RESTORE_DB_NAME';" | tr -d '[:space:]')
+      exists=$(docker exec brainda-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -t -c "SELECT COUNT(*) FROM pg_database WHERE datname = '$RESTORE_DB_NAME';" | tr -d '[:space:]')
       assert_equals "$exists" "1" "Temp database restored" || rc=1
       cleanup_restore_db
       trap - EXIT
       ;;
     retention_scheduler)
-      docker exec vib-beat pgrep -f "celery" >/dev/null 2>&1 || rc=1
+      docker exec brainda-beat pgrep -f "celery" >/dev/null 2>&1 || rc=1
       if [[ $rc -eq 0 ]]; then
         success "Celery beat running"
       else
@@ -295,7 +295,7 @@ stage4_check() {
     retention_cleanup_manual)
       local output
       # Task can exit non-zero when no eligible rows exist; capture output but don't fail immediately.
-      output=$(docker exec vib-worker celery -A worker.tasks call worker.tasks.cleanup_old_data 2>&1 || true)
+      output=$(docker exec brainda-worker celery -A worker.tasks call worker.tasks.cleanup_old_data 2>&1 || true)
       assert_contains "$output" "SUCCESS" "Retention cleanup task invoked" || rc=1
       ;;
     retention_metrics)
@@ -306,10 +306,10 @@ stage4_check() {
     database_size_report)
       local output
       output=$(bash scripts/check-db-size.sh 2>&1 || true)
-      assert_contains "$output" "VIB Database Size Report" "DB size script runs" || rc=1
+      assert_contains "$output" "Brainda Database Size Report" "DB size script runs" || rc=1
       ;;
     database_vacuum)
-      docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d "${POSTGRES_DB:-vib}" -c "VACUUM (ANALYZE) notes;" >/dev/null 2>&1 || rc=1
+      docker exec brainda-postgres psql -U "${POSTGRES_USER:-vib}" -d "${POSTGRES_DB:-vib}" -c "VACUUM (ANALYZE) notes;" >/dev/null 2>&1 || rc=1
       [[ $rc -eq 0 ]] && success "VACUUM completed"
       ;;
     metrics_prometheus_format)

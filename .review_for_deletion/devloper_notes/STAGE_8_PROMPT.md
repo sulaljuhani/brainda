@@ -2,7 +2,7 @@
 
 ## Context
 
-You are implementing **Stage 8** of the VIB project. The previous stages are **already complete**:
+You are implementing **Stage 8** of the Brainda project. The previous stages are **already complete**:
 
 - ✅ Stages 0-4: MVP
 - ✅ Stage 5: Mobile app with full idempotency
@@ -31,7 +31,7 @@ The current MVP uses:
 - **Recovery**: TOTP backup codes for when primary device is lost
 
 **Decision Gate**: Only implement this if:
-- [ ] You want to share VIB with family members (multi-user)
+- [ ] You want to share Brainda with family members (multi-user)
 - [ ] You want stronger security than API token
 - [ ] You're comfortable with WebAuthn complexity
 
@@ -156,7 +156,7 @@ import secrets
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 RP_ID = os.getenv("WEBAUTHN_RP_ID", "localhost")  # Your domain
-RP_NAME = os.getenv("WEBAUTHN_RP_NAME", "VIB Personal Assistant")
+RP_NAME = os.getenv("WEBAUTHN_RP_NAME", "Brainda Personal Assistant")
 ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "http://localhost:3000")
 
 
@@ -421,7 +421,7 @@ async def setup_totp(current_user = Depends(get_current_user)):
     totp = pyotp.TOTP(secret)
     provisioning_uri = totp.provisioning_uri(
         name=current_user.email,
-        issuer_name="VIB",
+        issuer_name="Brainda",
     )
 
     qr = qrcode.make(provisioning_uri)
@@ -742,7 +742,7 @@ export default function PasskeyLogin() {
 
 ### Multi-User Support
 
-- [ ] Multiple users can register on same VIB instance
+- [ ] Multiple users can register on same Brainda instance
 - [ ] Each user's data isolated (notes, reminders, documents)
 - [ ] Organization model supports family hosting
 - [ ] Audit log tracks all auth events per user

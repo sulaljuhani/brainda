@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "VIB",
-    "slug": "vib-mobile",
+    "name": "Brainda",
+    "slug": "brainda-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "vib",
+    "scheme": "brainda",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -17,14 +17,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.vib.app"
+      "bundleIdentifier": "com.brainda.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.vib.app"
+      "package": "com.brainda.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"

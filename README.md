@@ -1,6 +1,6 @@
-# VIB - Personal Knowledge Management System
+# Brainda - Personal Knowledge Management System
 
-VIB is a personal knowledge management system that combines note-taking, document ingestion, semantic search, and intelligent reminders. It features RAG (Retrieval Augmented Generation) capabilities for answering questions based on your stored knowledge.
+Brainda is a personal knowledge management system that combines note-taking, document ingestion, semantic search, and intelligent reminders. It features RAG (Retrieval Augmented Generation) capabilities for answering questions based on your stored knowledge.
 
 ## Features
 
@@ -31,7 +31,7 @@ The Stage 0-8 requirements documented in [`devloper_notes/README.md`](devloper_n
 
 ## Architecture
 
-VIB consists of several microservices orchestrated with Docker Compose:
+Brainda consists of several microservices orchestrated with Docker Compose:
 
 - **API Server** (FastAPI): Main application server
 - **Worker** (Celery): Background task processing for embeddings and document ingestion
@@ -156,7 +156,7 @@ You should see a JSON response with `"status": "healthy"` and all services marke
 Run the Stage 8 SQL migration to create multi-user authentication tables:
 
 ```bash
-docker compose exec vib-postgres \
+docker compose exec brainda-postgres \
   psql -U vib -d vib -f migrations/006_add_multi_user_auth.sql
 ```
 
@@ -211,7 +211,7 @@ Front-end components `PasskeyRegister.tsx` and `PasskeyLogin.tsx` demonstrate ho
 
 ### Google Calendar Synchronisation (Stage 7)
 
-VIB can synchronise calendar events with Google Calendar once you register an OAuth2 client and provide credentials.
+Brainda can synchronise calendar events with Google Calendar once you register an OAuth2 client and provide credentials.
 
 1. Create a Google Cloud project and enable the **Google Calendar API**.
 2. Configure an OAuth2 client (application type **Web Application**) with the redirect URI `http://localhost:8000/api/v1/calendar/google/callback` (add your production URL as needed).
@@ -425,7 +425,7 @@ docker compose logs -f postgres
 Database schema is initialized automatically on first startup via `init.sql`. For incremental migrations:
 
 ```bash
-docker exec vib-postgres psql -U vib -d vib -f /app/migrations/your_migration.sql
+docker exec brainda-postgres psql -U vib -d vib -f /app/migrations/your_migration.sql
 ```
 
 ### Adjusting Resource Limits

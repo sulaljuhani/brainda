@@ -1,7 +1,7 @@
 services:
   orchestrator:
     build: .
-    container_name: vib-orchestrator
+    container_name: brainda-orchestrator
     init: true  # Prevent zombie processes
     ports:
       - "8000:8000"
@@ -40,7 +40,7 @@ services:
 
   postgres:
     image: postgres:15
-    container_name: vib-postgres
+    container_name: brainda-postgres
     init: true  # Prevent zombie processes
     ports:
       - "5434:5432"
@@ -60,7 +60,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: vib-redis
+    container_name: brainda-redis
     init: true  # Prevent zombie processes
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
@@ -73,7 +73,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: vib-qdrant
+    container_name: brainda-qdrant
     init: true  # Prevent zombie processes
     ports:
       - "6333:6333"
@@ -95,7 +95,7 @@ services:
 
   worker:
     build: .
-    container_name: vib-worker
+    container_name: brainda-worker
     init: true  # Prevent zombie processes
     # SECURITY: seccomp:unconfined removed to prevent container escape vulnerabilities
     # If ONNX Runtime has issues, create a custom seccomp profile instead of disabling all sandboxing
@@ -120,7 +120,7 @@ services:
 
   beat:
     build: .
-    container_name: vib-beat
+    container_name: brainda-beat
     init: true  # Prevent zombie processes
     env_file:
       - .env
@@ -139,7 +139,7 @@ services:
 
   # ollama:
   #   image: ollama/ollama:latest
-  #   container_name: vib-ollama
+  #   container_name: brainda-ollama
   #   ports:
   #     - "11434:11434"
   #   volumes:

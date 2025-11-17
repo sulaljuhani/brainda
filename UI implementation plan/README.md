@@ -317,7 +317,7 @@ npm run dev  # Start dev server on port 3000
 - [ ] Responsive on mobile
 - [ ] Accessible (ARIA labels, keyboard navigation)
 - [ ] No console errors
-- [ ] No "VIB" references (should be "Brainda")
+- [ ] No "Brainda" references (should be "Brainda")
 
 ### 4. Testing Guidelines
 

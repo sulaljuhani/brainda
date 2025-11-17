@@ -36,7 +36,7 @@ create_unique_reminder() {
 stage2_log_count() {
   local keyword="$1"
   local logs
-  if ! logs=$(docker logs vib-orchestrator --tail 400 2>&1); then
+  if ! logs=$(docker logs brainda-orchestrator --tail 400 2>&1); then
     error "Unable to read orchestrator logs for '$keyword'"
     return 1
   fi
@@ -125,7 +125,7 @@ test_reminder_scheduler_entry() {
   local pair reminder_id baseline
   # Get baseline log count for "reminder_scheduled" event BEFORE creating reminder
   # This ensures we can detect the new log entry
-  baseline=$(docker logs vib-orchestrator 2>&1 | grep -c "reminder_scheduled" || echo "0")
+  baseline=$(docker logs brainda-orchestrator 2>&1 | grep -c "reminder_scheduled" || echo "0")
 
   # Now create the reminder
   pair=$(create_unique_reminder 15)
@@ -137,10 +137,10 @@ test_reminder_scheduler_entry() {
   local elapsed=0
   while [[ $elapsed -lt $timeout ]]; do
     local current
-    current=$(docker logs vib-orchestrator 2>&1 | grep -c "reminder_scheduled" || echo "0")
+    current=$(docker logs brainda-orchestrator 2>&1 | grep -c "reminder_scheduled" || echo "0")
     if (( current > baseline )); then
       # Verify the log contains our specific reminder_id
-      if docker logs vib-orchestrator 2>&1 | grep -q "$reminder_id"; then
+      if docker logs brainda-orchestrator 2>&1 | grep -q "$reminder_id"; then
         success "Reminder $reminder_id scheduled in APScheduler"
         return 0
       fi
@@ -192,7 +192,7 @@ test_reminder_dedup_response() {
 
 test_reminder_dedup_constraint() {
   ensure_reminder_fixture
-  if docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d "${POSTGRES_DB:-vib}" -c \
+  if docker exec brainda-postgres psql -U "${POSTGRES_USER:-vib}" -d "${POSTGRES_DB:-vib}" -c \
     "INSERT INTO reminders (id,user_id,title,due_at_utc,due_at_local,timezone,status) SELECT gen_random_uuid(), user_id, title, due_at_utc, due_at_local, timezone, 'active' FROM reminders WHERE id = '$REMINDER_ID';" >/dev/null 2>&1; then
     error "DB dedup constraint allowed duplicate"
     return 1

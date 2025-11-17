@@ -7,7 +7,7 @@ _Review executed per `tests/TEST_REVIEW_PLAN.md`._
 - **Purpose:** Exercises three end-to-end workflows: creating reminders from notes, asking chat questions against document fixtures, and validating that a freshly generated backup can be restored.
 - **Dependencies:**
   - Relies on helper utilities from `tests/common.sh` (`ensure_note_fixture`, `ensure_document_fixture`, `assert_*`, `run_test`, etc.).
-  - Requires environment variables such as `BASE_URL`, `TOKEN`, `TEST_DIR`, `NOTE_FIXTURE_ID`, `BACKUP_ROOT`, `LATEST_BACKUP_TS`, and Docker access to `vib-postgres`.
+  - Requires environment variables such as `BASE_URL`, `TOKEN`, `TEST_DIR`, `NOTE_FIXTURE_ID`, `BACKUP_ROOT`, `LATEST_BACKUP_TS`, and Docker access to `brainda-postgres`.
   - Interacts with API endpoints (`/api/v1/reminders`, `/api/v1/chat`) and the backing Postgres instance via `psql_query`/`docker exec`.
 
 ## Phase 2 – Testing Methodology

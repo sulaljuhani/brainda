@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 
-BASE_URL = os.getenv("VIB_URL", "http://localhost:8000")
+BASE_URL = os.getenv("BRAINDA_URL", "http://localhost:8000")
 API_TOKEN = os.getenv("API_TOKEN")
 
 HEADERS = {

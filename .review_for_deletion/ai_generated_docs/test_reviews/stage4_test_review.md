@@ -5,7 +5,7 @@ _Review scope_: `tests/stage4.sh`
 ## Phase 1 – Initial Assessment & Metadata
 - **Purpose**: Exercises end-to-end backup creation/restore, retention cleanup hooks, and Prometheus metrics/SLO checks for reminders, ingestion, and vector search.
 - **Key routines**: `discover_latest_backup`, `run_backup_job`, `stage4_restore_temp_db`, `metric_value`, and `stage4_check`'s large case statement consumed by `run_stage4`.
-- **Dependencies**: Relies on running Docker services (`vib-postgres`, `vib-beat`, `vib-worker`), backup scripts under `backups/`, metrics endpoint (`METRICS_URL`), API base URL & auth (`BASE_URL`, `TOKEN`), plus histogram helpers (`histogram_quantile_from_metrics`) provided by `common.sh`.
+- **Dependencies**: Relies on running Docker services (`brainda-postgres`, `brainda-beat`, `brainda-worker`), backup scripts under `backups/`, metrics endpoint (`METRICS_URL`), API base URL & auth (`BASE_URL`, `TOKEN`), plus histogram helpers (`histogram_quantile_from_metrics`) provided by `common.sh`.
 
 ## Phase 2 – Testing Methodology
 - Comprehensive matrix of metrics, SLO, backup, and retention checks wired through `run_test`, but some tests share state (e.g., backup artifacts reused across assertions) without explicit sequencing comments.

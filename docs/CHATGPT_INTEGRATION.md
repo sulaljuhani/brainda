@@ -4,9 +4,9 @@ This guide shows how to import your ChatGPT conversation history into OpenMemory
 
 ## Overview
 
-Import your entire ChatGPT conversation history into VIB's OpenMemory system, enabling:
+Import your entire ChatGPT conversation history into Brainda's OpenMemory system, enabling:
 - Unified memory across AI systems
-- Context migration from ChatGPT to VIB
+- Context migration from ChatGPT to Brainda
 - Searchable conversation history
 - Cross-platform memory access
 
@@ -185,31 +185,31 @@ python scripts/import_chatgpt.py conversations.json \
 
 ### 1. Unified Memory Across AI Systems
 
-Import ChatGPT history → Query it in VIB's RAG chat:
+Import ChatGPT history → Query it in Brainda's RAG chat:
 
 ```bash
 # Import ChatGPT conversations
 python scripts/import_chatgpt.py chatgpt_export.json
 
-# Now ask VIB about those conversations
+# Now ask Brainda about those conversations
 curl -X POST http://localhost:8000/api/v1/chat \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"message": "What did I discuss about Python async patterns?"}'
 
-# VIB will search both:
+# Brainda will search both:
 # - OpenMemory (your ChatGPT conversations)
 # - Qdrant (your documents and notes)
 ```
 
 ### 2. Context Migration
 
-Moving from ChatGPT to VIB? Import your entire conversation history:
+Moving from ChatGPT to Brainda? Import your entire conversation history:
 
 ```bash
 # Import everything
 python scripts/import_chatgpt.py conversations.json
 
-# VIB now has context of all your previous ChatGPT interactions
+# Brainda now has context of all your previous ChatGPT interactions
 ```
 
 ### 3. Conversation Analytics
@@ -301,7 +301,7 @@ docker compose up -d --build orchestrator
 
 **Error: "Connection refused"**
 ```bash
-# Ensure VIB is running
+# Ensure Brainda is running
 curl http://localhost:8000/api/v1/health
 
 # Check docker services
@@ -469,7 +469,7 @@ A: Not directly. Claude.ai doesn't provide conversation exports yet. The script 
 A: Yes! The import script can be adapted for any JSON export format. You'd need to modify the `parse_chatgpt_export()` function to match the export structure.
 
 **Q: Do imported conversations affect RAG quality?**
-A: Yes, positively! They provide conversational context. VIB's RAG will search both OpenMemory (conversations) and Qdrant (documents).
+A: Yes, positively! They provide conversational context. Brainda's RAG will search both OpenMemory (conversations) and Qdrant (documents).
 
 **Q: How much storage do conversations use?**
 A: Approximately 1-2 KB per conversation turn. 1000 conversations ≈ 1-2 MB in OpenMemory.
@@ -486,7 +486,7 @@ A: Not directly. You'd need to delete and re-import, or store a new corrected ve
 **Q: How long does import take?**
 A: ~0.1 seconds per conversation turn. 1000 turns ≈ 100 seconds (1.7 minutes).
 
-**Q: Can I import while VIB is in use?**
+**Q: Can I import while Brainda is in use?**
 A: Yes, the import runs via API and won't disrupt normal operations.
 
 ---

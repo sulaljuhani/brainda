@@ -45,7 +45,7 @@ async def send_reminder_notification(reminder: dict, device: dict):
         "body": reminder.get('body') or f"Reminder set for {reminder['due_at_local']}",
         "data": {
             "reminder_id": str(reminder['id']),
-            "deep_link": f"vib://reminders/{reminder['id']}"
+            "deep_link": f"brainda://reminders/{reminder['id']}"
         },
         "actions": [
             {"id": "snooze_15m", "title": "Snooze 15m"},

@@ -9,7 +9,7 @@
 
 ## Build, Test, and Development Commands
 - `docker compose up -d` — boots API, worker, Postgres, Redis, Qdrant, Ollama, and Unstructured.
-- `docker compose exec vib-api alembic upgrade head` — run DB migrations if Alembic is used; otherwise `docker exec vib-postgres psql -U postgres -d vib -f migrations/<file>.sql`.
+- `docker compose exec vib-api alembic upgrade head` — run DB migrations if Alembic is used; otherwise `docker exec brainda-postgres psql -U postgres -d vib -f migrations/<file>.sql`.
 - `npm install && npm run dev --prefix app/web` — launch the web client with hot reload.
 - `tests/stage3-validation.sh` — full Stage 3 smoke test (ingestion, RAG, dedupe, metrics). Requires pandoc for fixture PDFs.
 

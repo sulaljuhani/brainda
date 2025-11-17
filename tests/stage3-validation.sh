@@ -27,8 +27,8 @@ ensure_dependencies() {
     for cmd in curl jq docker; do
         require_command "$cmd"
     done
-    if ! docker ps --format '{{.Names}}' | grep -q '^vib-postgres$'; then
-        fail "vib-postgres container is not running"
+    if ! docker ps --format '{{.Names}}' | grep -q '^brainda-postgres$'; then
+        fail "brainda-postgres container is not running"
     fi
 }
 
@@ -84,7 +84,7 @@ mkdir -p tests/fixtures
 if [ ! -f "tests/fixtures/test-document.pdf" ]; then
     log "Creating test PDF fixture..."
     cat <<'EOF' >/tmp/stage3-doc.txt
-This is a test document for VIB Stage 3 validation.
+This is a test document for Brainda Stage 3 validation.
 
 It contains some sample text about:
 - Document ingestion
@@ -146,9 +146,9 @@ log "✓ Test fixture ready"
 log "Test 2: Uploading test document..."
 
 # Cleanup any previous test artifacts to keep run idempotent
-docker exec vib-postgres psql -U vib -d vib -c \
+docker exec brainda-postgres psql -U brainda  -d brainda -c \
   "DELETE FROM jobs WHERE (payload->>'document_id') IN (SELECT id::text FROM documents WHERE filename = 'test-document.pdf');" >/dev/null
-docker exec vib-postgres psql -U vib -d vib -c \
+docker exec brainda-postgres psql -U brainda  -d brainda -c \
   "DELETE FROM documents WHERE filename = 'test-document.pdf';" >/dev/null
 
 RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/ingest" \
@@ -170,7 +170,7 @@ log "✓ Document uploaded (job_id=$JOB_ID, document_id=$DOC_ID)"
 log "Test 3: Verifying document exists in database..."
 DOC_PRESENT=0
 for attempt in {1..5}; do
-    DOC_COUNT=$(docker exec vib-postgres psql -U postgres -d vib -t -c \
+    DOC_COUNT=$(docker exec brainda-postgres psql -U postgres  -d brainda -t -c \
       "SELECT COUNT(*) FROM documents WHERE id = '$DOC_ID';" | tr -d '[:space:]')
     if [ "$DOC_COUNT" = "1" ]; then
         DOC_PRESENT=1
@@ -212,7 +212,7 @@ log "Test 5: Checking chunks..."
 CHUNK_READY=0
 CHUNK_COUNT=0
 for attempt in {1..5}; do
-    CHUNK_COUNT=$(docker exec vib-postgres psql -U postgres -d vib -t -c \
+    CHUNK_COUNT=$(docker exec brainda-postgres psql -U postgres  -d brainda -t -c \
       "SELECT COUNT(*) FROM chunks WHERE document_id = '$DOC_ID';" | tr -d '[:space:]')
     if [ "${CHUNK_COUNT:-0}" -ge 1 ]; then
         CHUNK_READY=1
@@ -227,7 +227,7 @@ fi
 log "✓ $CHUNK_COUNT chunks stored"
 
 log "Test 6: Document status is indexed..."
-DOC_STATUS=$(docker exec vib-postgres psql -U postgres -d vib -t -c \
+DOC_STATUS=$(docker exec brainda-postgres psql -U postgres  -d brainda -t -c \
   "SELECT status FROM documents WHERE id = '$DOC_ID';" | tr -d '[:space:]')
 if [ "$DOC_STATUS" != "indexed" ]; then
     log "✗ Document status $DOC_STATUS (expected indexed)"
@@ -344,7 +344,7 @@ if command -v pandoc >/dev/null 2>&1; then
         wait_with_log 10 "Waiting for temp doc ingestion"
         curl -s -X DELETE "$BASE_URL/api/v1/documents/$TEMP_DOC_ID" \
           -H "Authorization: Bearer $TOKEN" >/dev/null
-        DOC_EXISTS=$(docker exec vib-postgres psql -U postgres -d vib -t -c \
+        DOC_EXISTS=$(docker exec brainda-postgres psql -U postgres  -d brainda -t -c \
           "SELECT COUNT(*) FROM documents WHERE id = '$TEMP_DOC_ID';" | tr -d '[:space:]')
         if [ "$DOC_EXISTS" != "0" ]; then
             log "✗ Document still present after deletion"

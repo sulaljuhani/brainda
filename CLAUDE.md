@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-VIB is a personal knowledge management system combining note-taking, document ingestion, semantic search, RAG chat, smart reminders, and calendar scheduling. It's a microservices architecture running on Docker Compose with 8 development stages (Stage 0-8) testing progressive features.
+Brainda is a personal knowledge management system combining note-taking, document ingestion, semantic search, RAG chat, smart reminders, and calendar scheduling. It's a microservices architecture running on Docker Compose with 8 development stages (Stage 0-8) testing progressive features.
 
 ## Architecture
 
@@ -18,15 +18,15 @@ The application uses **container-based service selection** via `entrypoint.sh`:
 **Docker Services (varies by configuration mode):**
 
 **Base Services** (all modes):
-1. **orchestrator** (vib-orchestrator): FastAPI API server on port 8000
-2. **worker** (vib-worker): Celery background task processor
-3. **beat** (vib-beat): Celery beat scheduler for periodic tasks
-4. **postgres** (vib-postgres): PostgreSQL 15 database on port 5434
-5. **redis** (vib-redis): Redis 7 message broker/cache on port 6379
-6. **qdrant** (vib-qdrant): Vector database on port 6333
+1. **orchestrator** (brainda-orchestrator): FastAPI API server on port 8000
+2. **worker** (brainda-worker): Celery background task processor
+3. **beat** (brainda-beat): Celery beat scheduler for periodic tasks
+4. **postgres** (brainda-postgres): PostgreSQL 15 database on port 5434
+5. **redis** (brainda-redis): Redis 7 message broker/cache on port 6379
+6. **qdrant** (brainda-qdrant): Vector database on port 6333
 
 **Additional in Development Mode** (`docker-compose.dev.yml`):
-7. **frontend** (vib-frontend): Vite dev server on port 3000 with hot reload
+7. **frontend** (brainda-frontend): Vite dev server on port 3000 with hot reload
 
 **Production Mode** (`docker-compose.prod.yml`):
 - Uses `Dockerfile.prod` multi-stage build
@@ -64,7 +64,7 @@ The application uses **container-based service selection** via `entrypoint.sh`:
 
 ### Docker Configuration Modes
 
-VIB supports three Docker configuration modes. **See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for comprehensive documentation.**
+Brainda supports three Docker configuration modes. **See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for comprehensive documentation.**
 
 #### Development Mode (Recommended for Active Development)
 
@@ -90,7 +90,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml down
 - ✅ Frontend hot reload (Vite dev server)
 - ✅ Backend hot reload (FastAPI `--reload`)
 - ✅ No rebuilds needed for code changes
-- ✅ Separate frontend container (`vib-frontend`)
+- ✅ Separate frontend container (`brainda-frontend`)
 - ✅ All code mounted as volumes
 
 #### Production Mode (Recommended for Deployment)
@@ -207,21 +207,21 @@ Tests use bash scripts in `tests/` with shared utilities in `tests/common.sh`. E
 
 ```bash
 # Access PostgreSQL
-docker exec -it vib-postgres psql -U vib -d vib
+docker exec -it brainda-postgres psql -U vib -d vib
 
 # Run migration manually
-docker exec vib-postgres psql -U vib -d vib -f /app/migrations/006_add_multi_user_auth.sql
+docker exec brainda-postgres psql -U vib -d vib -f /app/migrations/006_add_multi_user_auth.sql
 
 # Query examples
-docker exec vib-postgres psql -U vib -d vib -c "SELECT COUNT(*) FROM notes;"
-docker exec vib-postgres psql -U vib -d vib -c "SELECT * FROM file_sync_state LIMIT 5;"
+docker exec brainda-postgres psql -U vib -d vib -c "SELECT COUNT(*) FROM notes;"
+docker exec brainda-postgres psql -U vib -d vib -c "SELECT * FROM file_sync_state LIMIT 5;"
 ```
 
 ### Debugging
 
 ```bash
 # Check Redis queue depth
-docker exec vib-redis redis-cli LLEN celery
+docker exec brainda-redis redis-cli LLEN celery
 
 # Check Qdrant collections
 curl http://localhost:6333/collections
@@ -464,7 +464,7 @@ Each memory is automatically classified into 2-3 relevant sectors with one embed
 4. Store encrypted OAuth tokens in `google_calendar_tokens` table
 
 **Sync Logic**:
-- **One-way (default)**: VIB → Google only
+- **One-way (default)**: Brainda → Google only
 - **Two-way**: Bidirectional sync with conflict resolution
 - Debounce window: 5 minutes (prevent sync storms)
 - Background jobs every 15 minutes via Celery beat

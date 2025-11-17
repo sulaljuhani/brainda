@@ -73,7 +73,7 @@ echo ""
 
 # Test 6: Database tables
 echo "Test 6: Database initialization..."
-TABLES=$(docker exec vib-postgres psql -U vib -d vib -t -c "\dt" 2>/dev/null | grep -E "users|devices|feature_flags" | wc -l)
+TABLES=$(docker exec brainda-postgres psql -U brainda  -d brainda -t -c "\dt" 2>/dev/null | grep -E "users|devices|feature_flags" | wc -l)
 if [ "$TABLES" -ge 3 ]; then
     echo "✓ Database tables created"
 else
@@ -84,7 +84,7 @@ echo ""
 
 # Test 7: Structured logging...
 echo "Test 7: Structured logging..."
-LOGS=$(docker logs vib-orchestrator 2>&1 | tail -5)
+LOGS=$(docker logs brainda-orchestrator 2>&1 | tail -5)
 if echo "$LOGS" | grep -q "timestamp"; then
     echo "✓ Logs are JSON formatted"
 else
@@ -95,7 +95,7 @@ echo ""
 
 # Test 8: Redis
 echo "Test 8: Redis connectivity..."
-REDIS=$(docker exec vib-redis redis-cli ping 2>/dev/null || echo "FAILED")
+REDIS=$(docker exec brainda-redis redis-cli ping 2>/dev/null || echo "FAILED")
 if [ "$REDIS" = "PONG" ]; then
     echo "✓ Redis working"
 else
@@ -117,7 +117,7 @@ echo ""
 
 # Test 10: Celery worker
 echo "Test 10: Celery worker..."
-docker exec vib-worker celery -A worker.tasks inspect active &>/dev/null
+docker exec brainda-worker celery -A worker.tasks inspect active &>/dev/null
 if [ $? -eq 0 ]; then
     echo "✓ Celery worker running"
 else

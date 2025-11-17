@@ -1,6 +1,6 @@
 # Fresh Start Instructions
 
-This guide provides step-by-step commands to completely reset and start fresh with the VIB application on both Windows and Unraid servers.
+This guide provides step-by-step commands to completely reset and start fresh with the Brainda application on both Windows and Unraid servers.
 
 ---
 
@@ -587,7 +587,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ## Docker Configuration Modes
 
-VIB now supports three Docker configurations:
+Brainda now supports three Docker configurations:
 
 1. **Development Mode** (Recommended for development)
    - Command: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`

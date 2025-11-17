@@ -54,9 +54,9 @@ workflow_check() {
       assert_not_empty "${LATEST_BACKUP_TS:-}" "Backup timestamp discovered" || rc=1
       stage4_restore_temp_db "$LATEST_BACKUP_TS" || rc=1
       local note_count
-      note_count=$(docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d vib_restore_test -t -c "SELECT COUNT(*) FROM notes;" | tr -d '[:space:]')
+      note_count=$(docker exec brainda-postgres psql -U "${POSTGRES_USER:-vib}" -d brainda_restore_test -t -c "SELECT COUNT(*) FROM notes;" | tr -d '[:space:]')
       assert_greater_than "${note_count:-0}" "0" "Restored DB contains notes" || rc=1
-      docker exec vib-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -c "DROP DATABASE IF EXISTS vib_restore_test;" >/dev/null 2>&1 || {
+      docker exec brainda-postgres psql -U "${POSTGRES_USER:-vib}" -d postgres -c "DROP DATABASE IF EXISTS brainda_restore_test;" >/dev/null 2>&1 || {
         error "Failed to drop temporary restore database"
         rc=1
       }

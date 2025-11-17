@@ -30,7 +30,7 @@ const queryClient = new QueryClient({
 
 // Deep linking configuration
 const linking = {
-  prefixes: ['vib://', 'https://vib.app'],
+  prefixes: ['brainda://', 'https://brainda.app'],
   config: {
     screens: {
       Chat: 'chat',

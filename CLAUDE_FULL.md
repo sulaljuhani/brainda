@@ -1,6 +1,6 @@
-# CLAUDE.md - VIB Knowledge Management System
+# CLAUDE.md - Brainda Knowledge Management System
 
-**Project**: VIB - Personal Knowledge Management System  
+**Project**: Brainda - Personal Knowledge Management System  
 **Architecture**: Microservices with Docker Compose  
 **Stack**: Python 3.11, FastAPI, PostgreSQL, Redis, Qdrant  
 **Location**: C:/Users/Sultan/Documents/brainda/

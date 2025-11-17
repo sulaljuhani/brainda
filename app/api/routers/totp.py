@@ -53,7 +53,7 @@ async def setup_totp(
     totp = pyotp.TOTP(secret)
     provisioning_uri = totp.provisioning_uri(
         name=user["email"],
-        issuer_name="VIB",
+        issuer_name="Brainda",
     )
 
     qr = qrcode.make(provisioning_uri)

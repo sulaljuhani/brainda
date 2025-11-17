@@ -138,7 +138,7 @@ fi
 echo "✓ Rate limiting working"
 
 # Database check
-docker exec vib-postgres psql -U postgres -d vib -c "\dt" | grep notes || exit 1
+docker exec brainda-postgres psql -U postgres -d vib -c "\dt" | grep notes || exit 1
 echo "✓ Database initialized"
 
 echo "✅ Stage 0 validated - ready for Stage 1"
@@ -232,7 +232,7 @@ CREATE INDEX idx_messages_user_created ON messages(user_id, created_at);
 
 **Apply migration**:
 ```bash
-docker exec vib-postgres psql -U vib -d vib -f /app/migrations/001_add_notes.sql
+docker exec brainda-postgres psql -U vib -d vib -f /app/migrations/001_add_notes.sql
 ```
 - [ ] FastAPI `/api/v1/chat` endpoint with SSE streaming
 - [ ] LLM adapter implementation (start with Ollama, make swappable)
@@ -315,7 +315,7 @@ echo "Test 1: Creating note..."
 RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/chat \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Add note titled TestNote with content Hello VIB"}')
+  -d '{"message": "Add note titled TestNote with content Hello Brainda"}')
 echo "Response: $RESPONSE"
 
 # Test 2: Verify file exists
@@ -333,7 +333,7 @@ sleep 60
 
 # Test 5: Check file_sync_state updated
 echo "Test 5: Checking sync state..."
-docker exec vib-postgres psql -U postgres -d vib -c \
+docker exec brainda-postgres psql -U postgres -d vib -c \
   "SELECT last_embedded_at, embedding_model FROM file_sync_state WHERE file_path = 'notes/testnote.md';" \
   | grep "all-MiniLM-L6-v2:1" || exit 1
 echo "✓ Sync state updated"
@@ -501,7 +501,7 @@ CREATE INDEX idx_notification_delivery_device ON notification_delivery(device_id
 - [ ] Clicking Done → reminder marked complete
 - [ ] "Remind me every Monday at 9am" → RRULE generated, first reminder fires next Monday
 - [ ] Creating duplicate reminder (same title, time within 5 minutes) → returns existing, no duplicate
-- [ ] System restart: `docker restart vib-orchestrator vib-worker` → reminders still fire on schedule
+- [ ] System restart: `docker restart brainda-orchestrator brainda-worker` → reminders still fire on schedule
 - [ ] Failed push (device offline) → retries 3x with backoff, status="failed" in delivery table
 - [ ] Metrics show `reminder_fire_lag_seconds` histogram with data
 - [ ] Push delivery success rate measurable (need real device for accurate test)
@@ -544,7 +544,7 @@ read
 
 # Test 3: Check notification_delivery table
 echo "Test 3: Checking delivery log..."
-docker exec vib-postgres psql -U postgres -d vib -c \
+docker exec brainda-postgres psql -U postgres -d vib -c \
   "SELECT status FROM notification_delivery WHERE reminder_id = '$REMINDER_ID';" \
   | grep -E "sent|delivered" || echo "Warning: No delivery record found (check if push is configured)"
 
@@ -755,7 +755,7 @@ echo "✓ Job completed"
 # Test 3: Verify chunks created
 echo "Test 3: Checking chunks..."
 DOC_ID=$(curl -s "http://localhost:8000/api/v1/jobs/$JOB_ID" -H "Authorization: Bearer $TOKEN" | jq -r '.result.document_id')
-CHUNK_COUNT=$(docker exec vib-postgres psql -U postgres -d vib -c \
+CHUNK_COUNT=$(docker exec brainda-postgres psql -U postgres -d vib -c \
   "SELECT COUNT(*) FROM chunks WHERE document_id = '$DOC_ID';" | grep -oP '\d+' | head -1)
 echo "Chunks created: $CHUNK_COUNT"
 if [ "$CHUNK_COUNT" -lt 1 ]; then
@@ -891,21 +891,21 @@ echo "Verify health after restore"
 
 # Test 4: Data retention
 echo "Test 4: Testing retention (insert old data)..."
-docker exec vib-postgres psql -U postgres -d vib -c \
+docker exec brainda-postgres psql -U postgres -d vib -c \
   "INSERT INTO messages (id, user_id, role, content, created_at) VALUES (gen_random_uuid(), (SELECT id FROM users LIMIT 1), 'user', 'old msg', NOW() - INTERVAL '100 days');"
 
 # Run retention job (manual or via celery beat)
 echo "Trigger retention job manually or wait for scheduled run"
 
 # Verify old message deleted
-REMAINING=$(docker exec vib-postgres psql -U postgres -d vib -c \
+REMAINING=$(docker exec brainda-postgres psql -U postgres -d vib -c \
   "SELECT COUNT(*) FROM messages WHERE created_at < NOW() - INTERVAL '90 days';" \
   | grep -oP '\d+' | head -1)
 echo "Old messages remaining: $REMAINING (should be 0 after retention runs)"
 
 echo "✅ Stage 4 validated - MVP is production-ready!"
 echo ""
-echo "🎉 Congratulations! You can now use VIB daily."
+echo "🎉 Congratulations! You can now use Brainda daily."
 echo "Next steps: Use it for 30 days, collect feedback, then prioritize Stage 5+"
 ```
 
@@ -913,7 +913,7 @@ echo "Next steps: Use it for 30 days, collect feedback, then prioritize Stage 5+
 
 ## Post-MVP Stages (Prioritize Based on Usage)
 
-After completing Stage 4, **use VIB for 30 days yourself**. Track:
+After completing Stage 4, **use Brainda for 30 days yourself**. Track:
 - What features do you use most?
 - What's frustrating or missing?
 - What would make it 10x better?
@@ -1099,6 +1099,6 @@ The docs are comprehensive but not perfect. They don't need to be. **The fastest
 - MVP = Stages 0-4 only
 - Test data = create as you go, not upfront
 - Ship fast, learn faster
-- Use VIB for 30 days before building Stage 5+
+- Use Brainda for 30 days before building Stage 5+
 
 Good luck! 🚀

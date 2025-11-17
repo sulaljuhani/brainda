@@ -11,7 +11,7 @@
 - **External Dependencies:**
   - REST APIs under `$BASE_URL/api/v1/*` and chat endpoint for natural language reminder creation. 【F:tests/stage2.sh†L12-L190】
   - PostgreSQL (`psql_query`, docker exec) and Prometheus metrics endpoints for validation. 【F:tests/stage2.sh†L96-L313】
-  - Dockerized orchestrator logs (`docker logs vib-orchestrator`). 【F:tests/stage2.sh†L31-L35】
+  - Dockerized orchestrator logs (`docker logs brainda-orchestrator`). 【F:tests/stage2.sh†L31-L35】
 
 ---
 

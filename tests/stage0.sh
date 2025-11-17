@@ -81,7 +81,7 @@ infrastructure_check() {
   fi
   case "$check" in
     containers)
-      local containers=(vib-orchestrator vib-worker vib-beat vib-postgres vib-redis vib-qdrant)
+      local containers=(brainda-orchestrator brainda-worker brainda-beat brainda-postgres brainda-redis brainda-qdrant)
       for c in "${containers[@]}"; do
         if ! docker inspect "$c" &>/dev/null; then
           error "Container $c is missing (not found in docker inspect)"
@@ -268,7 +268,7 @@ infrastructure_check() {
       ;;
     logs)
       local line
-      line=$(docker logs vib-orchestrator --tail 50 2>&1 | grep '{' | tail -n 1)
+      line=$(docker logs brainda-orchestrator --tail 50 2>&1 | grep '{' | tail -n 1)
       if [[ -z "$line" ]]; then
         error "Structured logs not found"
         rc=1
@@ -303,10 +303,10 @@ infrastructure_check() {
       fi
       ;;
     celery_worker)
-      docker exec vib-worker celery -A worker.tasks inspect ping >/dev/null 2>&1 && success "Celery worker responding" || { error "Celery worker not responding"; rc=1; }
+      docker exec brainda-worker celery -A worker.tasks inspect ping >/dev/null 2>&1 && success "Celery worker responding" || { error "Celery worker not responding"; rc=1; }
       ;;
     celery_beat)
-      docker exec vib-beat pgrep -f celery >/dev/null 2>&1 && success "Celery beat running" || { error "Celery beat not running"; rc=1; }
+      docker exec brainda-beat pgrep -f celery >/dev/null 2>&1 && success "Celery beat running" || { error "Celery beat not running"; rc=1; }
       ;;
     db_schema)
       local tables

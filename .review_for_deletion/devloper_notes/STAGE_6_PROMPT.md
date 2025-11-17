@@ -2,7 +2,7 @@
 
 ## Context
 
-You are implementing **Stage 6** of the VIB project. The previous stages are **already complete**:
+You are implementing **Stage 6** of the Brainda project. The previous stages are **already complete**:
 
 - ✅ Stages 0-4: MVP (infrastructure, chat, notes, reminders, RAG, observability)
 - ✅ Stage 5: Mobile app with full idempotency
@@ -931,13 +931,13 @@ echo "✓ Weekly RRULE working"
 
 ```bash
 # Apply migration
-docker exec vib-postgres psql -U vib -d vib -f /app/migrations/005_add_calendar.sql
+docker exec brainda-postgres psql -U vib -d vib -f /app/migrations/005_add_calendar.sql
 
 # Restart services
 docker-compose restart orchestrator worker
 
 # Verify tables created
-docker exec vib-postgres psql -U vib -d vib -c "\d calendar_events"
+docker exec brainda-postgres psql -U vib -d vib -c "\d calendar_events"
 ```
 
 ---

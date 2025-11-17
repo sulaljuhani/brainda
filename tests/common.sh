@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # common.sh
-# Common functions, variables, and fixtures for VIB integration tests
+# Common functions, variables, and fixtures for Brainda integration tests
 # This file is sourced by stage test scripts and the test runner
 
 set -euo pipefail
@@ -361,19 +361,19 @@ PY
 # Command wrappers
 psql_query() {
   local sql="$1"
-  local user="${POSTGRES_USER:-vib}"
-  local db="${POSTGRES_DB:-vib}"
+  local user="${POSTGRES_USER:-brainda}"
+  local db="${POSTGRES_DB:-brainda}"
   debug "psql_query: user=$user db=$db sql='${sql:0:100}...'"
 
   # Check if container is running
-  if ! docker inspect vib-postgres >/dev/null 2>&1; then
-    error "vib-postgres container not found"
+  if ! docker inspect brainda-postgres >/dev/null 2>&1; then
+    error "brainda-postgres container not found"
     return 1
   fi
 
-  if ! docker exec vib-postgres psql -U "$user" -d "$db" -At -c "$sql" 2>/dev/null; then
+  if ! docker exec brainda-postgres psql -U "$user" -d "$db" -At -c "$sql" 2>/dev/null; then
     error "psql_query failed: $sql"
-    debug "Check if vib-postgres container is running and database '$db' exists"
+    debug "Check if brainda-postgres container is running and database '$db' exists"
     return 1
   fi
 }
@@ -382,14 +382,14 @@ redis_cmd() {
   debug "redis_cmd: $*"
 
   # Check if container is running
-  if ! docker inspect vib-redis >/dev/null 2>&1; then
-    error "vib-redis container not found"
+  if ! docker inspect brainda-redis >/dev/null 2>&1; then
+    error "brainda-redis container not found"
     return 1
   fi
 
-  if ! docker exec vib-redis redis-cli "$@" 2>/dev/null; then
+  if ! docker exec brainda-redis redis-cli "$@" 2>/dev/null; then
     error "redis_cmd failed: $*"
-    debug "Check if vib-redis container is running"
+    debug "Check if brainda-redis container is running"
     return 1
   fi
 }
@@ -679,7 +679,7 @@ from pathlib import Path
 def pdf_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
-text = """VIB integration test document for Stage 3+ verification.
+text = """Brainda integration test document for Stage 3+ verification.
 
 This knowledge base document is generated automatically by the test harness.
 It contains multiple paragraphs to trigger chunking and embedding.
@@ -729,7 +729,7 @@ PY
   fi || true
   if [[ ! -f tests/fixtures/$DOC_FILENAME ]]; then
     # fallback simple text to pdf conversion
-    printf 'VIB integration test document\n' > tests/fixtures/test-document.txt
+    printf 'Brainda integration test document\n' > tests/fixtures/test-document.txt
     python - <<'PY'
 from pathlib import Path
 text = Path('tests/fixtures/test-document.txt').read_text()

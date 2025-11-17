@@ -20,7 +20,7 @@ self.addEventListener('push', function(event) {
 // Get API token from IndexedDB
 async function getApiToken() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('vib-auth', 1);
+    const request = indexedDB.open('brainda-auth', 1);
 
     request.onerror = () => reject(request.error);
 

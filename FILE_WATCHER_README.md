@@ -136,7 +136,7 @@ Add `sleep 35` after file edit to account for debounce delay.
 ## Architecture Overview
 
 ```
-Celery Worker Container (vib-worker)
+Celery Worker Container (brainda-worker)
     |
     +-- File Watcher (daemon thread)
     |   |
