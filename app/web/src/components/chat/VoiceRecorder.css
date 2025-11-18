@@ -19,18 +19,18 @@
 }
 
 .voice-recorder__button:hover:not(:disabled) {
-  background: var(--background-hover);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
 .voice-recorder__button.recording {
-  color: var(--error-color);
-  background: var(--error-background);
+  color: var(--error);
+  background: var(--color-error-bg);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 .voice-recorder__button.processing {
-  color: var(--primary-color);
+  color: var(--info);
   cursor: not-allowed;
 }
 
@@ -66,17 +66,17 @@
   align-items: center;
   gap: 8px;
   padding: 4px 12px;
-  background: var(--error-background);
+  background: var(--color-error-bg);
   border-radius: 12px;
   font-size: 14px;
-  color: var(--error-color);
+  color: var(--error);
   font-weight: 500;
 }
 
 .voice-recorder__dot {
   width: 8px;
   height: 8px;
-  background: var(--error-color);
+  background: var(--error);
   border-radius: 50%;
   animation: blink 1s ease-in-out infinite;
 }
@@ -99,7 +99,7 @@
   font-size: 12px;
   color: var(--text-secondary);
   padding: 4px 8px;
-  background: var(--background-secondary);
+  background: var(--bg-secondary);
   border-radius: 4px;
 }
 
@@ -108,8 +108,8 @@
   bottom: -30px;
   left: 0;
   font-size: 12px;
-  color: var(--error-color);
-  background: var(--error-background);
+  color: var(--error);
+  background: var(--color-error-bg);
   padding: 4px 8px;
   border-radius: 4px;
   white-space: nowrap;
