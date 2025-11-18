@@ -25,8 +25,8 @@ export function useChat(options: UseChatOptions = {}) {
     }
   }, [conversationId]);
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || isLoading) return;
+  const sendMessage = useCallback(async (text: string, files?: File[]) => {
+    if ((!text.trim() && (!files || files.length === 0)) || isLoading) return;
 
     // Add user message
     const userMessage: ChatMessage = {
@@ -41,12 +41,21 @@ export function useChat(options: UseChatOptions = {}) {
     setError(null);
 
     try {
-      // Save user message to database
-      const savedUserMessage = await chatConversationsService.createMessage({
-        conversation_id: currentConversationId || undefined,
-        role: 'user',
-        content: text,
-      });
+      // Save user message to database - use file upload endpoint if files present
+      let savedUserMessage;
+      if (files && files.length > 0) {
+        savedUserMessage = await chatConversationsService.createMessageWithFiles(
+          text,
+          files,
+          currentConversationId || undefined
+        );
+      } else {
+        savedUserMessage = await chatConversationsService.createMessage({
+          conversation_id: currentConversationId || undefined,
+          role: 'user',
+          content: text,
+        });
+      }
 
       // Update conversation ID if it was just created
       if (!currentConversationId && savedUserMessage.conversation_id) {
