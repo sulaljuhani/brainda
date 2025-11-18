@@ -3,7 +3,10 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies first (rarely change)
-RUN apt-get update && apt-get install -y nodejs npm procps poppler-utils tesseract-ocr libmagic1 binutils && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    nodejs npm procps poppler-utils tesseract-ocr libmagic1 binutils \
+    ffmpeg libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies (change occasionally)
 COPY app/api/requirements.txt /app/api/requirements.txt

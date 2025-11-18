@@ -33,3 +33,9 @@ google-api-python-client>=2.108.0
 cryptography>=41.0.0
 bcrypt>=4.0.1
 email-validator>=2.0.0
+
+# Whisper and audio processing
+openai-whisper==20231117
+ffmpeg-python==0.2.0
+soundfile==0.12.1
+librosa==0.10.1

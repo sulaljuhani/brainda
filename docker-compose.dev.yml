@@ -41,10 +41,17 @@ services:
       - ./vault:/vault
       - ./uploads:/uploads
       - ./entrypoint.sh:/entrypoint.sh
+      # Persist downloaded Whisper models
+      - ./cache/whisper:/app/.cache/whisper
     # Worker will auto-reload on code changes with --pool=solo
     environment:
       - SERVICE=worker
       - CELERY_WORKER_POOL=solo  # Better for development
+      # Whisper model configuration
+      - WHISPER_MODEL_SIZE=base  # Options: tiny, base, small, medium, large
+      - WHISPER_MODEL_CACHE=/app/.cache/whisper
+      - WHISPER_DEVICE=cpu  # Options: cpu, cuda
+      - WHISPER_DEFAULT_LANGUAGE=en
 
   beat:
     volumes:
