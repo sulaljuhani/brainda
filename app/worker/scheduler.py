@@ -137,3 +137,240 @@ async def sync_scheduled_reminders():
         logger.info("scheduled_reminders_synced", count=len(reminders))
     finally:
         await conn.close()
+
+
+async def register_agent_schedules():
+    """
+    Register scheduled agents for autonomous assistance based on user settings.
+
+    Agents are configured per-user from agent_settings table:
+    - Morning briefing (configurable time)
+    - Evening review (configurable time)
+    - Weekly summary (configurable day/time)
+
+    Each user can enable/disable agents and set custom times.
+    """
+    if not scheduler:
+        logger.warning("agent_schedules_not_registered_scheduler_unavailable")
+        return
+
+    from api.services.agent_settings_service import AgentSettingsService
+
+    settings_service = AgentSettingsService()
+    users = await settings_service.get_all_users_with_enabled_agents()
+
+    if not users:
+        logger.info("no_users_with_enabled_agents")
+        return
+
+    import pytz
+    from datetime import time as datetime_time
+
+    for user in users:
+        user_id = user["user_id"]
+        user_tz = pytz.timezone(user["timezone"])
+
+        for agent in user["enabled_agents"]:
+            agent_name = agent["name"]
+
+            try:
+                if agent_name == "morning_briefing":
+                    # Parse time
+                    agent_time = agent["time"]
+                    hour = agent_time.hour
+                    minute = agent_time.minute
+
+                    scheduler.add_job(
+                        func="worker.agents.morning_briefing_agent",
+                        trigger="cron",
+                        hour=hour,
+                        minute=minute,
+                        timezone=user_tz,
+                        args=[user_id],
+                        id=f"morning_briefing_{user_id}",
+                        replace_existing=True,
+                    )
+                    logger.info(
+                        "agent_scheduled",
+                        agent="morning_briefing",
+                        user_id=user_id,
+                        time=f"{hour:02d}:{minute:02d}",
+                        timezone=user["timezone"],
+                    )
+
+                elif agent_name == "evening_review":
+                    agent_time = agent["time"]
+                    hour = agent_time.hour
+                    minute = agent_time.minute
+
+                    scheduler.add_job(
+                        func="worker.agents.evening_review_agent",
+                        trigger="cron",
+                        hour=hour,
+                        minute=minute,
+                        timezone=user_tz,
+                        args=[user_id],
+                        id=f"evening_review_{user_id}",
+                        replace_existing=True,
+                    )
+                    logger.info(
+                        "agent_scheduled",
+                        agent="evening_review",
+                        user_id=user_id,
+                        time=f"{hour:02d}:{minute:02d}",
+                        timezone=user["timezone"],
+                    )
+
+                elif agent_name == "weekly_summary":
+                    agent_time = agent["time"]
+                    day_of_week = agent["day_of_week"]
+                    hour = agent_time.hour
+                    minute = agent_time.minute
+
+                    # Map day_of_week to cron format (mon, tue, wed, thu, fri, sat, sun)
+                    days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+                    day_str = days[day_of_week]
+
+                    scheduler.add_job(
+                        func="worker.agents.weekly_summary_agent",
+                        trigger="cron",
+                        day_of_week=day_str,
+                        hour=hour,
+                        minute=minute,
+                        timezone=user_tz,
+                        args=[user_id],
+                        id=f"weekly_summary_{user_id}",
+                        replace_existing=True,
+                    )
+                    logger.info(
+                        "agent_scheduled",
+                        agent="weekly_summary",
+                        user_id=user_id,
+                        day=day_str,
+                        time=f"{hour:02d}:{minute:02d}",
+                        timezone=user["timezone"],
+                    )
+
+            except Exception as exc:
+                logger.error(
+                    "failed_to_schedule_agent",
+                    agent=agent_name,
+                    user_id=user_id,
+                    error=str(exc),
+                )
+
+    logger.info("agent_schedules_registered", user_count=len(users))
+
+
+async def reconfigure_agent_schedules(user_id):
+    """
+    Reconfigure agent schedules for a specific user.
+    Called when user updates their agent settings.
+
+    Args:
+        user_id: User UUID or string
+    """
+    if not scheduler:
+        logger.warning("cannot_reconfigure_scheduler_unavailable")
+        return
+
+    from api.services.agent_settings_service import AgentSettingsService
+    from uuid import UUID
+    import pytz
+
+    # Convert to UUID if string
+    if isinstance(user_id, str):
+        user_id = UUID(user_id)
+
+    settings_service = AgentSettingsService()
+    result = await settings_service.get_enabled_agents_for_user(user_id)
+
+    if not result.get("success"):
+        logger.error("failed_to_get_user_agent_settings", user_id=str(user_id))
+        return
+
+    data = result["data"]
+    enabled_agents = data["enabled_agents"]
+    user_tz = pytz.timezone(data["timezone"])
+
+    # Remove all existing jobs for this user
+    job_ids = [
+        f"morning_briefing_{user_id}",
+        f"evening_review_{user_id}",
+        f"weekly_summary_{user_id}",
+    ]
+
+    for job_id in job_ids:
+        try:
+            scheduler.remove_job(job_id)
+        except:
+            pass  # Job doesn't exist, that's OK
+
+    # Re-add jobs based on current settings
+    for agent in enabled_agents:
+        agent_name = agent["name"]
+
+        try:
+            if agent_name == "morning_briefing":
+                schedule_time = agent["schedule"]
+                parts = schedule_time.split(":")
+                hour, minute = int(parts[0]), int(parts[1])
+
+                scheduler.add_job(
+                    func="worker.agents.morning_briefing_agent",
+                    trigger="cron",
+                    hour=hour,
+                    minute=minute,
+                    timezone=user_tz,
+                    args=[str(user_id)],
+                    id=f"morning_briefing_{user_id}",
+                    replace_existing=True,
+                )
+
+            elif agent_name == "evening_review":
+                schedule_time = agent["schedule"]
+                parts = schedule_time.split(":")
+                hour, minute = int(parts[0]), int(parts[1])
+
+                scheduler.add_job(
+                    func="worker.agents.evening_review_agent",
+                    trigger="cron",
+                    hour=hour,
+                    minute=minute,
+                    timezone=user_tz,
+                    args=[str(user_id)],
+                    id=f"evening_review_{user_id}",
+                    replace_existing=True,
+                )
+
+            elif agent_name == "weekly_summary":
+                schedule_info = agent["schedule"]
+                day_of_week = schedule_info["day_of_week"]
+                schedule_time = schedule_info["time"]
+                parts = schedule_time.split(":")
+                hour, minute = int(parts[0]), int(parts[1])
+
+                days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+                day_str = days[day_of_week]
+
+                scheduler.add_job(
+                    func="worker.agents.weekly_summary_agent",
+                    trigger="cron",
+                    day_of_week=day_str,
+                    hour=hour,
+                    minute=minute,
+                    timezone=user_tz,
+                    args=[str(user_id)],
+                    id=f"weekly_summary_{user_id}",
+                    replace_existing=True,
+                )
+
+        except Exception as exc:
+            logger.error(
+                "failed_to_reconfigure_agent",
+                agent=agent_name,
+                user_id=str(user_id),
+                error=str(exc),
+            )
+
+    logger.info("agent_schedules_reconfigured", user_id=str(user_id))
