@@ -45,6 +45,45 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <ToolCallCard toolCall={message.toolCall} />
         )}
 
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="message-bubble__attachments">
+            {message.attachments.map((attachment) => (
+              <div key={attachment.id} className="message-bubble__attachment">
+                {attachment.type === 'image' ? (
+                  <a href={attachment.url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={attachment.url}
+                      alt={attachment.filename}
+                      className="message-bubble__attachment-image"
+                      loading="lazy"
+                    />
+                  </a>
+                ) : (
+                  <a
+                    href={attachment.url}
+                    download={attachment.filename}
+                    className="message-bubble__attachment-link"
+                  >
+                    <span className="message-bubble__attachment-icon">
+                      {attachment.type === 'audio' ? '🎵' : '📄'}
+                    </span>
+                    <div className="message-bubble__attachment-info">
+                      <div className="message-bubble__attachment-filename">
+                        {attachment.filename}
+                      </div>
+                      <div className="message-bubble__attachment-meta">
+                        {(attachment.size_bytes / 1024).toFixed(1)} KB
+                        {attachment.status === 'processing' && ' • Processing...'}
+                        {attachment.status === 'failed' && ' • Failed'}
+                      </div>
+                    </div>
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="message-bubble__text">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
