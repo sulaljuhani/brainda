@@ -45,10 +45,20 @@ PY
 
 # Copy entrypoint
 COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Create non-root user for security
+# Note: In dev mode, volumes will be mounted with host permissions
+# but the container process will run as this user for security
+RUN useradd -m -u 1000 brainda && \
+    chown -R brainda:brainda /entrypoint.sh && \
+    mkdir -p /vault /uploads /memory_vault /app && \
+    chown -R brainda:brainda /vault /uploads /memory_vault /app
 
 # DON'T copy app/ here - it will be mounted as volume in dev mode
 
 ENV PYTHONPATH="/app"
 ENV TOKENIZERS_PARALLELISM=false
 
+USER brainda
 ENTRYPOINT ["/entrypoint.sh"]
