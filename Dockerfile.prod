@@ -73,7 +73,14 @@ COPY --from=frontend-builder /frontend/dist /app/web/dist
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Create non-root user for security
+RUN useradd -m -u 1000 brainda && \
+    chown -R brainda:brainda /app /entrypoint.sh && \
+    mkdir -p /vault /uploads /memory_vault && \
+    chown -R brainda:brainda /vault /uploads /memory_vault
+
 ENV PYTHONPATH="/app"
 ENV TOKENIZERS_PARALLELISM=false
 
+USER brainda
 ENTRYPOINT ["/entrypoint.sh"]

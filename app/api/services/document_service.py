@@ -143,16 +143,39 @@ class DocumentService:
         if not document:
             return False
 
-        from api.services.vector_service import VectorService
-
-        vector_service = VectorService()
-        await vector_service.delete_document(document_id)
-
         file_path = Path(self.storage_path.parent) / document["storage_path"]
-        if file_path.exists():
-            file_path.unlink()
 
-        await self.db.execute("DELETE FROM documents WHERE id = $1", document_id)
+        # Delete from database first (PostgreSQL transaction ensures atomicity)
+        # Vector DB and filesystem cleanup are best-effort (can be retried later if they fail)
+        async with self.db.transaction():
+            await self.db.execute("DELETE FROM documents WHERE id = $1", document_id)
+
+            # Then delete from vector DB (best-effort)
+            try:
+                from api.services.vector_service import VectorService
+                vector_service = VectorService()
+                await vector_service.delete_document(document_id)
+            except Exception as e:
+                logger.error(
+                    "vector_delete_failed_during_document_deletion",
+                    document_id=str(document_id),
+                    error=str(e),
+                    user_id=str(user_id)
+                )
+                # Don't raise - vector DB cleanup can be done later via background job
+
+            # Finally delete file from filesystem (best-effort)
+            try:
+                if file_path.exists():
+                    file_path.unlink()
+            except Exception as e:
+                logger.error(
+                    "file_delete_failed_during_document_deletion",
+                    path=str(file_path),
+                    error=str(e),
+                    user_id=str(user_id)
+                )
+                # Don't raise - file cleanup can be done later via background job
 
         logger.info(
             "document_deleted",
