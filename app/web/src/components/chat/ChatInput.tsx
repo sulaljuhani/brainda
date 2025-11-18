@@ -40,9 +40,38 @@ export function ChatInput({ onSendMessage, disabled = false, placeholder = 'Ask 
     const files = e.target.files;
     if (!files) return;
 
-    const newAttachments: AttachmentPreview[] = [];
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB
 
-    Array.from(files).forEach((file) => {
+    const newAttachments: AttachmentPreview[] = [];
+    let totalSize = attachments.reduce((sum, att) => sum + att.file.size, 0);
+
+    // Validate files
+    const filesToAdd = Array.from(files);
+    for (const file of filesToAdd) {
+      // Check individual file size
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`File "${file.name}" is too large. Maximum file size is 10MB.`);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
+      totalSize += file.size;
+    }
+
+    // Check total size
+    if (totalSize > MAX_TOTAL_SIZE) {
+      alert(`Total file size would exceed 50MB limit. Please remove some files.`);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    // Add files
+    filesToAdd.forEach((file) => {
       const type = detectFileType(file);
       const id = Math.random().toString(36).substring(7);
 

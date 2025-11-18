@@ -25,6 +25,8 @@ class ChatFileService:
         self.db = db
         self.storage_root = Path(storage_root)
         self.storage_root.mkdir(parents=True, exist_ok=True)
+        self.thumbnails_root = self.storage_root / "thumbnails"
+        self.thumbnails_root.mkdir(parents=True, exist_ok=True)
 
     async def save_file(
         self,
@@ -119,6 +121,67 @@ class ChatFileService:
             pass
 
         return metadata
+
+    async def generate_thumbnail(self, file_id: UUID, user_id: UUID, size: int = 200) -> Optional[Path]:
+        """Generate thumbnail for an image file.
+
+        Args:
+            file_id: UUID of the file
+            user_id: UUID of the user who owns the file
+            size: Maximum dimension of the thumbnail (default 200px)
+
+        Returns:
+            Path to the generated thumbnail, or None if generation failed
+        """
+        # Get file record
+        file_record = await self.get_file(file_id, user_id)
+        if not file_record:
+            return None
+
+        file_type = self._detect_file_type(file_record["mime_type"])
+        if file_type != "image" or Image is None:
+            return None
+
+        file_path = Path(file_record["storage_path"])
+        if not file_path.exists():
+            return None
+
+        # Generate thumbnail path
+        thumbnail_filename = f"{file_id}_thumb_{size}.jpg"
+        user_thumb_dir = self.thumbnails_root / str(user_id)
+        user_thumb_dir.mkdir(parents=True, exist_ok=True)
+        thumbnail_path = user_thumb_dir / thumbnail_filename
+
+        # Check if thumbnail already exists
+        if thumbnail_path.exists():
+            return thumbnail_path
+
+        try:
+            # Open image and generate thumbnail
+            with Image.open(file_path) as img:
+                # Convert to RGB if necessary (for PNG with transparency, etc.)
+                if img.mode in ("RGBA", "LA", "P"):
+                    # Create white background
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    if img.mode == "P":
+                        img = img.convert("RGBA")
+                    background.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
+                    img = background
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
+
+                # Calculate thumbnail size maintaining aspect ratio
+                img.thumbnail((size, size), Image.Resampling.LANCZOS)
+
+                # Save thumbnail
+                img.save(thumbnail_path, "JPEG", quality=85, optimize=True)
+
+            logger.info("thumbnail_generated", file_id=str(file_id), size=size)
+            return thumbnail_path
+
+        except Exception as exc:
+            logger.error("thumbnail_generation_failed", file_id=str(file_id), error=str(exc))
+            return None
 
     async def process_file(self, file_id: UUID, user_id: UUID) -> Dict[str, Any]:
         """Process file: extract text, generate embeddings, create thumbnail."""

@@ -71,6 +71,10 @@ celery_app.conf.beat_schedule = {
         "task": "worker.tasks.cleanup_expired_idempotency_keys",
         "schedule": crontab(minute=0),  # Every hour
     },
+    "cleanup-orphaned-files": {
+        "task": "worker.tasks.cleanup_orphaned_chat_files",
+        "schedule": crontab(minute=0),  # Every hour
+    },
     "google-calendar-sync": {
         "task": "worker.tasks.schedule_google_calendar_syncs",
         "schedule": crontab(minute="*/15"),
@@ -1117,3 +1121,73 @@ def process_chat_file_task(self, file_id: str, user_id: str):
         logger.error("process_chat_file_task_failed", file_id=file_id, error=str(exc))
         # Retry with exponential backoff
         raise self.retry(exc=exc, countdown=60)
+
+
+@celery_app.task(name="worker.tasks.cleanup_orphaned_chat_files")
+def cleanup_orphaned_chat_files():
+    """Clean up orphaned chat files (files with no message_id after 1 hour).
+
+    This task runs hourly and deletes:
+    - Files that have been created more than 1 hour ago
+    - Files that don't have a message_id (orphaned during upload)
+    - Associated physical files and thumbnails from storage
+    """
+    async def _cleanup():
+        import os
+        from pathlib import Path
+
+        conn = await _connect_db()
+        try:
+            # Find orphaned files (no message_id and older than 1 hour)
+            orphaned_files = await conn.fetch(
+                """
+                SELECT id, user_id, storage_path
+                FROM chat_files
+                WHERE message_id IS NULL
+                AND created_at < NOW() - INTERVAL '1 hour'
+                """,
+            )
+
+            deleted_count = 0
+            for file_record in orphaned_files:
+                file_id = file_record["id"]
+                user_id = file_record["user_id"]
+                storage_path = file_record["storage_path"]
+
+                try:
+                    # Delete physical file
+                    if storage_path and os.path.exists(storage_path):
+                        os.remove(storage_path)
+                        logger.info("deleted_orphaned_file", file_id=str(file_id), path=storage_path)
+
+                    # Delete thumbnails
+                    thumbnail_dir = Path("/app/uploads/chat/thumbnails") / str(user_id)
+                    if thumbnail_dir.exists():
+                        for thumb_file in thumbnail_dir.glob(f"{file_id}_thumb_*.jpg"):
+                            thumb_file.unlink()
+                            logger.info("deleted_orphaned_thumbnail", file_id=str(file_id), path=str(thumb_file))
+
+                    # Delete database record
+                    await conn.execute(
+                        "DELETE FROM chat_files WHERE id = $1",
+                        file_id,
+                    )
+
+                    deleted_count += 1
+
+                except Exception as exc:
+                    logger.warning(
+                        "failed_to_delete_orphaned_file",
+                        file_id=str(file_id),
+                        error=str(exc)
+                    )
+
+            if deleted_count > 0:
+                logger.info("cleanup_orphaned_files_complete", deleted_count=deleted_count)
+
+            return deleted_count
+
+        finally:
+            await conn.close()
+
+    return asyncio.run(_cleanup())

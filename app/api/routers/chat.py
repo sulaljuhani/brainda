@@ -11,12 +11,44 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import asyncpg
 import json
+import time
+import asyncio
+from collections import defaultdict, deque
 from api.dependencies import get_db, get_current_user
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+
+
+# Simple rate limiter for file uploads
+class FileUploadRateLimiter:
+    """Rate limiter for file uploads: max 20 files per minute per user."""
+
+    def __init__(self, max_uploads: int = 20, window_seconds: int = 60):
+        self.max_uploads = max_uploads
+        self.window_seconds = window_seconds
+        self._events = defaultdict(deque)
+        self._lock = asyncio.Lock()
+
+    async def allow(self, user_id: str) -> tuple[bool, Optional[int]]:
+        now = time.monotonic()
+        async with self._lock:
+            window = self._events[user_id]
+            # Remove old events outside the window
+            while window and now - window[0] > self.window_seconds:
+                window.popleft()
+            # Check if limit exceeded
+            if len(window) >= self.max_uploads:
+                retry_after = max(1, int(self.window_seconds - (now - window[0])))
+                return False, retry_after
+            window.append(now)
+            return True, None
+
+
+# Initialize rate limiter
+file_upload_rate_limiter = FileUploadRateLimiter(max_uploads=20, window_seconds=60)
 
 
 class ChatMessageModel(BaseModel):
@@ -310,9 +342,25 @@ async def create_message_with_files(
     - content: The message text
     - conversation_id: Optional conversation UUID
     - files: List of files to attach
+
+    File size limits:
+    - Max 10MB per file
+    - Max 50MB total per message
     """
     try:
         from api.services.chat_file_service import ChatFileService
+
+        # Check rate limit
+        allowed, retry_after = await file_upload_rate_limiter.allow(str(user_id))
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many file uploads. Please try again in {retry_after} seconds."
+            )
+
+        # File size limits (in bytes)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        MAX_TOTAL_SIZE = 50 * 1024 * 1024  # 50MB
 
         file_service = ChatFileService(db)
         attachments = []
@@ -320,7 +368,33 @@ async def create_message_with_files(
         # Parse conversation_id if provided
         conv_id = UUID(conversation_id) if conversation_id else None
 
-        # Save files first
+        # Validate file sizes before processing
+        total_size = 0
+        for uploaded_file in files:
+            # Get file size
+            file_content = await uploaded_file.read()
+            file_size = len(file_content)
+
+            # Reset file position for re-reading later
+            await uploaded_file.seek(0)
+
+            # Check individual file size
+            if file_size > MAX_FILE_SIZE:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File '{uploaded_file.filename}' exceeds maximum size of 10MB"
+                )
+
+            total_size += file_size
+
+        # Check total size
+        if total_size > MAX_TOTAL_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Total file size ({total_size / 1024 / 1024:.1f}MB) exceeds maximum of 50MB"
+            )
+
+        # Save files
         for uploaded_file in files:
             file_content = await uploaded_file.read()
 
@@ -451,11 +525,16 @@ async def get_chat_file_thumbnail(
 ):
     """Get thumbnail for image files.
 
-    TODO: Generate and cache thumbnails for better performance.
-    For now, returns the original image.
+    Generates and caches thumbnails for images. Non-image files return the original file.
+
+    Query parameters:
+    - size: Thumbnail size in pixels (default 200, max 400)
     """
     try:
         from api.services.chat_file_service import ChatFileService
+
+        # Validate size parameter
+        size = min(max(size, 50), 400)  # Clamp between 50 and 400
 
         service = ChatFileService(db)
         file_record = await service.get_file(file_id, user_id)
@@ -463,8 +542,19 @@ async def get_chat_file_thumbnail(
         if not file_record:
             raise HTTPException(status_code=404, detail="File not found")
 
-        # For now, just return the original file
-        # TODO: Generate actual thumbnails
+        # Check if it's an image
+        file_type = service._detect_file_type(file_record["mime_type"])
+        if file_type == "image":
+            # Generate/get thumbnail
+            thumbnail_path = await service.generate_thumbnail(file_id, user_id, size)
+            if thumbnail_path:
+                return FileResponse(
+                    path=str(thumbnail_path),
+                    filename=f"thumb_{file_record['original_filename']}",
+                    media_type="image/jpeg",
+                )
+
+        # Fall back to original file for non-images or if thumbnail generation failed
         return FileResponse(
             path=file_record["storage_path"],
             filename=file_record["original_filename"],
